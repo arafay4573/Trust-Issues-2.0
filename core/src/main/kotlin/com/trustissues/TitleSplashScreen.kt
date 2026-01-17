@@ -10,6 +10,7 @@ import com.badlogic.gdx.scenes.scene2d.actions.Actions
 import com.badlogic.gdx.scenes.scene2d.ui.Image
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.Table
+import com.badlogic.gdx.utils.Scaling
 import com.badlogic.gdx.utils.ScreenUtils
 
 class TitleSplashScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
@@ -32,7 +33,9 @@ class TitleSplashScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
 
         if (titleTexture != null) {
             val titleImage = Image(titleTexture)
-            table.add(titleImage).center()
+            titleImage.setScaling(Scaling.fit)
+            // Constrain size to ensure it fits nicely in the viewport
+            table.add(titleImage).size(900f, 300f).center()
         } else {
              // Fallback if asset missing
              val errorLabel = Label("TRUST ISSUES", Label.LabelStyle(font, Color.YELLOW))
@@ -64,6 +67,7 @@ class TitleSplashScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
     }
 
     override fun render(delta: Float) {
+        // Ensure background matches
         ScreenUtils.clear(Color.valueOf("01579B"))
 
         stage.act(delta)

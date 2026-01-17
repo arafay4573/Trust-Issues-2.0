@@ -10,6 +10,7 @@ import com.badlogic.gdx.scenes.scene2d.actions.Actions
 import com.badlogic.gdx.scenes.scene2d.ui.Image
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.Table
+import com.badlogic.gdx.utils.Scaling
 import com.badlogic.gdx.utils.ScreenUtils
 
 class StudioSplashScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
@@ -27,7 +28,6 @@ class StudioSplashScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
         try {
             if (Gdx.files.internal("swifters_logo.png").exists()) {
                 logoTexture = Texture(Gdx.files.internal("swifters_logo.png"))
-                val logoImage = Image(logoTexture)
 
                 font = BitmapFont()
                 val labelStyle = Label.LabelStyle(font, Color.WHITE)
@@ -37,7 +37,12 @@ class StudioSplashScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
                 table.setFillParent(true)
                 table.center()
 
-                table.add(logoImage).center()
+                val logoImage = Image(logoTexture)
+                logoImage.setScaling(Scaling.fit)
+
+                // Add image with a max size to ensure scaling happens if image is large
+                // Assuming 1280x720 viewport, let's restrict logo to a reasonable portion
+                table.add(logoImage).size(800f, 400f).center()
                 table.row()
                 table.add(loadingLabel).padTop(50f)
 
@@ -46,8 +51,12 @@ class StudioSplashScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
                  Gdx.app.error("StudioSplashScreen", "swifters_logo.png not found")
                  font = BitmapFont()
                  val label = Label("Swifters Studio (Logo Missing)", Label.LabelStyle(font, Color.BLACK))
-                 stage.addActor(label)
-                 label.setPosition(100f, 300f)
+
+                 val table = Table()
+                 table.setFillParent(true)
+                 table.center()
+                 table.add(label)
+                 stage.addActor(table)
             }
         } catch (e: Exception) {
             Gdx.app.error("StudioSplashScreen", "Failed to load splash assets", e)
@@ -55,6 +64,7 @@ class StudioSplashScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
     }
 
     override fun render(delta: Float) {
+        // Ensure background clear color matches the design
         ScreenUtils.clear(Color.valueOf("29B6F6"))
 
         timeSeconds += delta
