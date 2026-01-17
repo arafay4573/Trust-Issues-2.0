@@ -1,0 +1,29 @@
+buildscript {
+    ext {
+        kotlinVersion = '1.9.22'
+        gdxVersion = '1.12.1'
+        agpVersion = '8.2.0'
+    }
+
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath "com.android.tools.build:gradle:$agpVersion"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
+    }
+}
+
+allprojects {
+    version = '1.0'
+    ext {
+        appName = "Trust Issues"
+    }
+
+    repositories {
+        google()
+        mavenCentral()
+        maven { url 'https://jitpack.io' }
+    }
+}
