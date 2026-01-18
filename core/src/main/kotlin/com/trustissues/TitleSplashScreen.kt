@@ -3,14 +3,11 @@ package com.trustissues
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.ScreenAdapter
 import com.badlogic.gdx.graphics.Color
-import com.badlogic.gdx.graphics.Texture
 import com.badlogic.gdx.graphics.g2d.BitmapFont
 import com.badlogic.gdx.scenes.scene2d.Stage
 import com.badlogic.gdx.scenes.scene2d.actions.Actions
-import com.badlogic.gdx.scenes.scene2d.ui.Image
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.Table
-import com.badlogic.gdx.utils.Scaling
 import com.badlogic.gdx.utils.ScreenUtils
 
 class TitleSplashScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
@@ -18,34 +15,25 @@ class TitleSplashScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
     private var font: BitmapFont? = null
 
     override fun show() {
-        // Retrieve loaded asset
-        val titleTexture = if (game.assetManager.isLoaded("game_title.png")) {
-            game.assetManager.get("game_title.png", Texture::class.java)
-        } else {
-            null
-        }
-
         font = BitmapFont()
 
         val table = Table()
         table.setFillParent(true)
         table.center()
 
-        if (titleTexture != null) {
-            val titleImage = Image(titleTexture)
-            titleImage.setScaling(Scaling.fit)
-            // Constrain size to ensure it fits nicely in the viewport
-            table.add(titleImage).size(900f, 300f).center()
-        } else {
-             // Fallback if asset missing
-             val errorLabel = Label("TRUST ISSUES", Label.LabelStyle(font, Color.YELLOW))
-             errorLabel.setFontScale(2f)
-             table.add(errorLabel).center()
-        }
+        // Title: TRUST ISSUES (Gold color)
+        val goldColor = Color.valueOf("FFD700")
+        val titleStyle = Label.LabelStyle(font, goldColor)
+        val titleLabel = Label("TRUST ISSUES", titleStyle)
+        titleLabel.setFontScale(3.0f)
 
-        table.row()
-        val subtitle = Label("Nothing is what it looks like", Label.LabelStyle(font, Color.WHITE))
-        table.add(subtitle).padTop(20f)
+        // Subtitle: Nothing is what it looks like (White)
+        val subtitleStyle = Label.LabelStyle(font, Color.WHITE)
+        val subtitleLabel = Label("Nothing is what it looks like", subtitleStyle)
+        subtitleLabel.setFontScale(1.0f)
+
+        table.add(titleLabel).padBottom(20f).row()
+        table.add(subtitleLabel)
 
         stage.addActor(table)
 
@@ -67,8 +55,8 @@ class TitleSplashScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
     }
 
     override fun render(delta: Float) {
-        // Ensure background matches
-        ScreenUtils.clear(Color.valueOf("01579B"))
+        // Dark Blue Background #0277BD
+        ScreenUtils.clear(Color.valueOf("0277BD"))
 
         stage.act(delta)
         stage.draw()
@@ -81,6 +69,5 @@ class TitleSplashScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
     override fun dispose() {
         stage.dispose()
         font?.dispose()
-        // Do NOT dispose titleTexture as it is managed by AssetManager
     }
 }
