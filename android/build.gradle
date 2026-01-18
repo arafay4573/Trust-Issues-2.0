@@ -13,9 +13,12 @@ android {
             res.srcDirs = ['res']
         }
     }
-    packagingOptions {
+    packaging {
         resources {
             excludes += ['META-INF/robovm/ios/robovm.xml']
+        }
+        jniLibs {
+            useLegacyPackaging = true
         }
     }
     defaultConfig {
