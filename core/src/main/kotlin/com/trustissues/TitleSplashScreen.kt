@@ -12,10 +12,12 @@ import com.badlogic.gdx.utils.ScreenUtils
 
 class TitleSplashScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
     private val stage = Stage(game.viewport, game.batch)
-    private var font: BitmapFont? = null
+    private var titleFont: BitmapFont? = null
+    private var subtitleFont: BitmapFont? = null
 
     override fun show() {
-        font = BitmapFont()
+        titleFont = game.generateFont(50)
+        subtitleFont = game.generateFont(20) // Smaller for subtitle
 
         val table = Table()
         table.setFillParent(true)
@@ -23,14 +25,12 @@ class TitleSplashScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
 
         // Title: TRUST ISSUES (Gold color)
         val goldColor = Color.valueOf("FFD700")
-        val titleStyle = Label.LabelStyle(font, goldColor)
+        val titleStyle = Label.LabelStyle(titleFont, goldColor)
         val titleLabel = Label("TRUST ISSUES", titleStyle)
-        titleLabel.setFontScale(3.0f)
 
         // Subtitle: Nothing is what it looks like (White)
-        val subtitleStyle = Label.LabelStyle(font, Color.WHITE)
+        val subtitleStyle = Label.LabelStyle(subtitleFont, Color.WHITE)
         val subtitleLabel = Label("Nothing is what it looks like", subtitleStyle)
-        subtitleLabel.setFontScale(1.0f)
 
         table.add(titleLabel).padBottom(20f).row()
         table.add(subtitleLabel)
@@ -68,6 +68,7 @@ class TitleSplashScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
 
     override fun dispose() {
         stage.dispose()
-        font?.dispose()
+        titleFont?.dispose()
+        subtitleFont?.dispose()
     }
 }

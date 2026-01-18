@@ -1,8 +1,11 @@
 package com.trustissues
 
 import com.badlogic.gdx.Game
+import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.assets.AssetManager
+import com.badlogic.gdx.graphics.g2d.BitmapFont
 import com.badlogic.gdx.graphics.g2d.SpriteBatch
+import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator
 import com.badlogic.gdx.utils.viewport.FitViewport
 
 class TrustIssuesGame : Game() {
@@ -17,6 +20,15 @@ class TrustIssuesGame : Game() {
         viewport = FitViewport(1280f, 720f)
 
         setScreen(StudioSplashScreen(this))
+    }
+
+    fun generateFont(size: Int): BitmapFont {
+        val generator = FreeTypeFontGenerator(Gdx.files.internal("pixel.ttf"))
+        val parameter = FreeTypeFontGenerator.FreeTypeFontParameter()
+        parameter.size = size
+        val font = generator.generateFont(parameter)
+        generator.dispose()
+        return font
     }
 
     override fun dispose() {

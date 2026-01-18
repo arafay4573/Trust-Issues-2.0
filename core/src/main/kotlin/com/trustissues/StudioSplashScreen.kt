@@ -15,16 +15,16 @@ import com.badlogic.gdx.utils.ScreenUtils
 
 class StudioSplashScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
     private val stage = Stage(game.viewport, game.batch)
-    private var font: BitmapFont? = null
+    private var titleFont: BitmapFont? = null
+    private var subtitleFont: BitmapFont? = null
     private var whiteTexture: Texture? = null
     private var transitionStarted = false
     private var timeSeconds = 0f
 
     override fun show() {
-        // No assets to queue for TitleScreen anymore as it is procedural.
-        // If we had game assets, we would queue them here.
-
-        font = BitmapFont()
+        // Generate custom fonts
+        titleFont = game.generateFont(40)
+        subtitleFont = game.generateFont(24)
 
         // Create a 1x1 white texture for the loading bar
         val pixmap = Pixmap(1, 1, Pixmap.Format.RGBA8888)
@@ -38,14 +38,12 @@ class StudioSplashScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
         table.center()
 
         // Text 1: THE SWIFTERS STUDIO
-        val titleStyle = Label.LabelStyle(font, Color.YELLOW)
+        val titleStyle = Label.LabelStyle(titleFont, Color.YELLOW)
         val titleLabel = Label("THE SWIFTERS STUDIO", titleStyle)
-        titleLabel.setFontScale(3.0f)
 
         // Text 2: A Swifters Studio Production
-        val subtitleStyle = Label.LabelStyle(font, Color.WHITE)
+        val subtitleStyle = Label.LabelStyle(subtitleFont, Color.WHITE)
         val subtitleLabel = Label("A Swifters Studio Production", subtitleStyle)
-        subtitleLabel.setFontScale(1.2f)
 
         // Loading Bar (Visual only)
         val loadingBar = Image(whiteTexture)
@@ -89,7 +87,8 @@ class StudioSplashScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
 
     override fun dispose() {
         stage.dispose()
-        font?.dispose()
+        titleFont?.dispose()
+        subtitleFont?.dispose()
         whiteTexture?.dispose()
     }
 }

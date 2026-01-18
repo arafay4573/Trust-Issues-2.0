@@ -21,6 +21,7 @@ class MainMenuScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
 
     // Manage textures created for the skin to dispose them later
     private val disposables = mutableListOf<Texture>()
+    private val fonts = mutableListOf<BitmapFont>()
 
     override fun show() {
         Gdx.input.inputProcessor = stage
@@ -31,13 +32,13 @@ class MainMenuScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
         table.center()
 
         // Title: TRUST ISSUES
-        val titleStyle = Label.LabelStyle(skin!!.getFont("default-font"), Color.WHITE)
+        val titleFont = game.generateFont(60)
+        fonts.add(titleFont)
+        val titleStyle = Label.LabelStyle(titleFont, Color.WHITE)
         val titleLabel = Label("TRUST ISSUES", titleStyle)
-        titleLabel.setFontScale(3f)
 
         // Buttons
         val playButton = TextButton("PLAY", skin)
-        playButton.label.setFontScale(2f)
         playButton.addListener(object : ClickListener() {
             override fun clicked(event: InputEvent?, x: Float, y: Float) {
                 println("Start Game")
@@ -72,19 +73,22 @@ class MainMenuScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
         disposables.add(whiteTexture)
         skin!!.add("white", whiteTexture)
 
-        val font = BitmapFont()
-        skin!!.add("default-font", font)
+        // Generate button font
+        val buttonFont = game.generateFont(30)
+        fonts.add(buttonFont)
+        skin!!.add("default-font", buttonFont)
 
         // Configure LabelStyle
-        skin!!.add("default", Label.LabelStyle(font, Color.WHITE))
+        skin!!.add("default", Label.LabelStyle(buttonFont, Color.WHITE))
 
         // Configure TextButtonStyle
         val textButtonStyle = TextButton.TextButtonStyle()
-        textButtonStyle.up = skin!!.newDrawable("white", Color.ORANGE) // Default yellow/orange
+        textButtonStyle.up = skin!!.newDrawable("white", Color.ORANGE)
         textButtonStyle.down = skin!!.newDrawable("white", Color.DARK_GRAY)
         textButtonStyle.checked = skin!!.newDrawable("white", Color.ORANGE)
-        textButtonStyle.over = skin!!.newDrawable("white", Color.LIGHT_GRAY)
-        textButtonStyle.font = font
+        textButtonStyle.over = skin!!.newDrawable("white", Color.CORAL)
+        textButtonStyle.font = buttonFont
+        textButtonStyle.fontColor = Color.WHITE
         skin!!.add("default", textButtonStyle)
     }
 
@@ -108,5 +112,6 @@ class MainMenuScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
         stage.dispose()
         skin?.dispose()
         disposables.forEach { it.dispose() }
+        fonts.forEach { it.dispose() }
     }
 }
