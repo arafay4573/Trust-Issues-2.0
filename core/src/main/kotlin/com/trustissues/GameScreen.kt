@@ -7,9 +7,13 @@ import com.badlogic.gdx.graphics.Pixmap
 import com.badlogic.gdx.graphics.Texture
 import com.badlogic.gdx.graphics.g2d.BitmapFont
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer
+import com.badlogic.gdx.math.Intersector
+import com.badlogic.gdx.math.Rectangle
 import com.badlogic.gdx.scenes.scene2d.InputEvent
 import com.badlogic.gdx.scenes.scene2d.InputListener
 import com.badlogic.gdx.scenes.scene2d.Stage
+import com.badlogic.gdx.scenes.scene2d.actions.Actions
+import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.Skin
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
@@ -23,6 +27,11 @@ class GameScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
     private val gameViewport = FitViewport(1280f, 720f)
     private val shapeRenderer = ShapeRenderer()
 
+    // Collision Rects
+    private val playerRect = Rectangle()
+    private val sharkRect = Rectangle()
+    private val maskRect = Rectangle()
+
     // Player Stats
     private val playerWidth = 40f
     private val playerHeight = 80f
@@ -33,6 +42,10 @@ class GameScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
     private val jumpStrength = 500f
     private val moveSpeed = 300f
     private val floorY = 100f
+
+    // Game State
+    private var isDead = false
+    private var deathTimer = 0f
 
     // Assets
     private var sharkTexture: Texture? = null
@@ -45,11 +58,18 @@ class GameScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
     private val sharkPatrolLeft = 600f
     private var sharkFacingRight = false
 
+    // Mask Stats
+    private val maskX = 1100f
+    private val maskY = 200f
+    private val maskWidth = 30f
+    private val maskHeight = 30f
+
     // UI
     private val uiStage = Stage(FitViewport(1280f, 720f), game.batch)
     private var skin: Skin? = null
     private var buttonFont: BitmapFont? = null
     private var whiteTexture: Texture? = null
+    private var messageLabel: Label? = null
 
     // Controls
     private var isLeftPressed = false
@@ -62,6 +82,11 @@ class GameScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
         // UI Setup
         Gdx.input.inputProcessor = uiStage
         createUi()
+
+        // Init Rects
+        playerRect.set(playerX, playerY, playerWidth, playerHeight)
+        sharkRect.set(sharkX, sharkY, 200f, 100f) // Initial size, updated in loop
+        maskRect.set(maskX, maskY, maskWidth, maskHeight)
     }
 
     private fun createUi() {
@@ -86,6 +111,10 @@ class GameScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
         textButtonStyle.font = buttonFont
         textButtonStyle.fontColor = Color.WHITE
         skin!!.add("default", textButtonStyle)
+
+        // Label Style
+        val labelStyle = Label.LabelStyle(buttonFont, Color.RED)
+        skin!!.add("default", labelStyle)
 
         // Layout Table
         val rootTable = Table()
@@ -120,7 +149,7 @@ class GameScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
         val jumpBtn = TextButton("JUMP", skin)
         jumpBtn.addListener(object : ClickListener() {
             override fun clicked(event: InputEvent?, x: Float, y: Float) {
-                if (playerY <= floorY + 1f) { // Simple ground check
+                if (!isDead && playerY <= floorY + 1f) { // Simple ground check
                     velocityY = jumpStrength
                 }
             }
@@ -134,6 +163,12 @@ class GameScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
         rootTable.add(controlsTable).left().pad(20f).expandX()
         rootTable.add(jumpBtn).size(150f, 100f).right().pad(20f)
 
+        // Death Message Label (Hidden initially)
+        messageLabel = Label("You fed the shark.", skin)
+        messageLabel!!.isVisible = false
+        messageLabel!!.setPosition(1280f / 2 - messageLabel!!.width / 2, 500f)
+
+        uiStage.addActor(messageLabel!!)
         uiStage.addActor(rootTable)
     }
 
@@ -143,6 +178,14 @@ class GameScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
     }
 
     private fun update(delta: Float) {
+        if (isDead) {
+            deathTimer += delta
+            if (deathTimer >= 1f) {
+                resetPlayer()
+            }
+            return
+        }
+
         // Horizontal Movement
         if (isLeftPressed) playerX -= moveSpeed * delta
         if (isRightPressed) playerX += moveSpeed * delta
@@ -170,7 +213,41 @@ class GameScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
             }
         }
 
+        // Update Collision Rects
+        playerRect.setPosition(playerX, playerY)
+        // Shark dimensions must match drawing (width=200, height=100 approx)
+        sharkTexture?.let {
+             val ratio = it.height.toFloat() / it.width.toFloat()
+             val width = 200f
+             val height = width * ratio
+             sharkRect.set(sharkX, sharkY, width, height)
+        }
+
+        // Check Collisions
+        if (Intersector.overlaps(playerRect, sharkRect)) {
+            die()
+        }
+
+        if (Intersector.overlaps(playerRect, maskRect)) {
+            println("CHUNK COMPLETE")
+            resetPlayer()
+        }
+
         uiStage.act(delta)
+    }
+
+    private fun die() {
+        isDead = true
+        deathTimer = 0f
+        messageLabel?.isVisible = true
+    }
+
+    private fun resetPlayer() {
+        playerX = 100f
+        playerY = 200f
+        velocityY = 0f
+        isDead = false
+        messageLabel?.isVisible = false
     }
 
     private fun draw() {
@@ -183,46 +260,42 @@ class GameScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
         game.batch.projectionMatrix = gameViewport.camera.combined
         game.batch.begin()
         sharkTexture?.let {
-            // Resize to 200px width, maintain aspect ratio
             val ratio = it.height.toFloat() / it.width.toFloat()
             val width = 200f
             val height = width * ratio
-
-            // Standard drawing: game.batch.draw(it, sharkX, sharkY, width, height)
-            // With flip: draw(texture, x, y, width, height, srcX, srcY, srcWidth, srcHeight, flipX, flipY)
-            // Note: If sharkFacingRight is TRUE, we want the shark to look right.
-            // If the original image faces left, then we flipX when facingRight is true.
-            // If the original image faces right, then we flipX when facingRight is false.
-            // Standard convention is often facing Left or Right. Let's assume original faces Left.
-            // So if sharkFacingRight is true, we flipX.
 
             game.batch.draw(it, sharkX, sharkY, width, height, 0, 0, it.width, it.height, sharkFacingRight, false)
         }
         game.batch.end()
 
-        // Draw Player (Stickman)
+        // Draw Player & Mask (ShapeRenderer)
         shapeRenderer.projectionMatrix = gameViewport.camera.combined
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled)
+
+        // Draw Mask
+        // White Circle
+        shapeRenderer.color = Color.WHITE
+        shapeRenderer.circle(maskX + maskWidth/2, maskY + maskHeight/2, maskWidth/2)
+        // Cyan details (Strap/Line)
+        shapeRenderer.color = Color.CYAN
+        shapeRenderer.rect(maskX, maskY + maskHeight/2 - 2, maskWidth, 4f)
+
+        // Draw Player (Stickman)
         shapeRenderer.color = Color.BLACK
 
-        // Player stats: Width 40, Height 80. Bottom-left at playerX, playerY.
-        // Center X = playerX + 20
         val centerX = playerX + 20f
 
-        // Head: Circle Radius 10. Center Y = Top (playerY + 80) - 10 = playerY + 70
+        // Head
         val headY = playerY + 70f
         shapeRenderer.circle(centerX, headY, 10f)
 
-        // Body: Line from Neck (playerY + 60) to Waist (playerY + 30)
-        // Thickness logic: rectLine gives thickness.
+        // Body
         shapeRenderer.rectLine(centerX, playerY + 60f, centerX, playerY + 30f, 4f)
 
-        // Arms: From Shoulders (playerY + 50) to Sides.
-        // Arm span: Let's say +/- 15px from center.
+        // Arms
         shapeRenderer.rectLine(centerX - 15f, playerY + 50f, centerX + 15f, playerY + 50f, 4f)
 
-        // Legs: From Waist (playerY + 30) to Feet (playerY).
-        // Feet spread: Let's say +/- 10px from center.
+        // Legs
         shapeRenderer.rectLine(centerX, playerY + 30f, centerX - 10f, playerY, 4f)
         shapeRenderer.rectLine(centerX, playerY + 30f, centerX + 10f, playerY, 4f)
 

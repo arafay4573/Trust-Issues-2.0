@@ -23,6 +23,9 @@ class MainMenuScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
     private val disposables = mutableListOf<Texture>()
     private val fonts = mutableListOf<BitmapFont>()
 
+    private var soundEnabled = true
+    private var soundLabel: Label? = null
+
     override fun show() {
         Gdx.input.inputProcessor = stage
         createBasicSkin()
@@ -51,16 +54,29 @@ class MainMenuScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
         val settingsButton = TextButton("SETTINGS", skin)
         settingsButton.addListener(object : ClickListener() {
             override fun clicked(event: InputEvent?, x: Float, y: Float) {
-                println("Settings Clicked")
+                soundEnabled = !soundEnabled
+                println("Muted the pain")
+                updateSoundLabel()
             }
         })
+
+        // Sound Label
+        val labelFont = game.generateFont(24)
+        fonts.add(labelFont)
+        val labelStyle = Label.LabelStyle(labelFont, Color.YELLOW)
+        soundLabel = Label("Sound: ON", labelStyle)
 
         // Layout
         table.add(titleLabel).padBottom(100f).row()
         table.add(playButton).size(300f, 100f).padBottom(20f).row()
-        table.add(settingsButton).size(200f, 60f).right()
+        table.add(settingsButton).size(200f, 60f).padBottom(10f).row()
+        table.add(soundLabel).padTop(10f)
 
         stage.addActor(table)
+    }
+
+    private fun updateSoundLabel() {
+        soundLabel?.setText(if (soundEnabled) "Sound: ON" else "Sound: OFF")
     }
 
     private fun createBasicSkin() {
