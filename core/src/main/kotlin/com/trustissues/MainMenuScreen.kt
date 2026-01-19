@@ -41,7 +41,10 @@ class MainMenuScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
         val playButton = TextButton("PLAY", skin)
         playButton.addListener(object : ClickListener() {
             override fun clicked(event: InputEvent?, x: Float, y: Float) {
-                println("Start Game")
+                Gdx.app.postRunnable {
+                    game.screen = GameScreen(game)
+                    dispose()
+                }
             }
         })
 
