@@ -8,11 +8,11 @@ import com.badlogic.gdx.graphics.Texture
 import com.badlogic.gdx.graphics.g2d.BitmapFont
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer
 import com.badlogic.gdx.math.Intersector
+import com.badlogic.gdx.math.MathUtils
 import com.badlogic.gdx.math.Rectangle
 import com.badlogic.gdx.scenes.scene2d.InputEvent
 import com.badlogic.gdx.scenes.scene2d.InputListener
 import com.badlogic.gdx.scenes.scene2d.Stage
-import com.badlogic.gdx.scenes.scene2d.actions.Actions
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.Skin
 import com.badlogic.gdx.scenes.scene2d.ui.Table
@@ -34,14 +34,21 @@ class GameScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
 
     // Player Stats
     private val playerWidth = 40f
-    private val playerHeight = 80f
+    private var playerHeight = 80f // Variable for crouching
+    private val normalHeight = 80f
+    private val crouchHeight = 40f
+
     private var playerX = 100f
     private var playerY = 200f
     private var velocityY = 0f
-    private val gravity = -800f
-    private val jumpStrength = 500f
+    private val gravity = -2500f // Tuned for snappier fall
+    private val jumpStrength = 900f // Tuned for snappier jump
     private val moveSpeed = 300f
     private val floorY = 100f
+
+    // Animation State
+    private var walkTime = 0f
+    private var isWalking = false
 
     // Game State
     private var isDead = false
@@ -52,7 +59,7 @@ class GameScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
 
     // Shark Stats
     private var sharkX = 800f
-    private val sharkY = 100f // Shark stays at the same height as player start floor roughly
+    private val sharkY = 100f
     private val sharkSpeed = 200f
     private val sharkPatrolRight = 1000f
     private val sharkPatrolLeft = 600f
@@ -64,6 +71,11 @@ class GameScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
     private val maskWidth = 30f
     private val maskHeight = 30f
 
+    // Atmosphere
+    private val bubbles = mutableListOf<Bubble>()
+    private val maxBubbles = 20
+    private var bubbleSpawnTimer = 0f
+
     // UI
     private val uiStage = Stage(FitViewport(1280f, 720f), game.batch)
     private var skin: Skin? = null
@@ -74,25 +86,35 @@ class GameScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
     // Controls
     private var isLeftPressed = false
     private var isRightPressed = false
+    private var isDownPressed = false
+
+    // Inner class for Bubble
+    data class Bubble(var x: Float, var y: Float, var speed: Float, var radius: Float)
 
     override fun show() {
-        // Load Game Assets
         sharkTexture = Texture(Gdx.files.internal("shark.png"))
-
-        // UI Setup
         Gdx.input.inputProcessor = uiStage
         createUi()
 
-        // Init Rects
         playerRect.set(playerX, playerY, playerWidth, playerHeight)
-        sharkRect.set(sharkX, sharkY, 200f, 100f) // Initial size, updated in loop
+        sharkRect.set(sharkX, sharkY, 200f, 100f)
         maskRect.set(maskX, maskY, maskWidth, maskHeight)
+
+        // Init Bubbles
+        for (i in 0 until 10) {
+            spawnBubble(MathUtils.random(720f))
+        }
+    }
+
+    private fun spawnBubble(startY: Float = -20f) {
+        val x = MathUtils.random(1280f)
+        val speed = MathUtils.random(50f, 150f)
+        val radius = MathUtils.random(2f, 8f)
+        bubbles.add(Bubble(x, startY, speed, radius))
     }
 
     private fun createUi() {
         skin = Skin()
-
-        // 1x1 White Texture for button backgrounds
         val pixmap = Pixmap(1, 1, Pixmap.Format.RGBA8888)
         pixmap.setColor(Color.WHITE)
         pixmap.fill()
@@ -100,11 +122,9 @@ class GameScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
         pixmap.dispose()
         skin!!.add("white", whiteTexture)
 
-        // Font
         buttonFont = game.generateFont(40)
         skin!!.add("default-font", buttonFont)
 
-        // Button Style
         val textButtonStyle = TextButton.TextButtonStyle()
         textButtonStyle.up = skin!!.newDrawable("white", Color.DARK_GRAY)
         textButtonStyle.down = skin!!.newDrawable("white", Color.GRAY)
@@ -112,16 +132,14 @@ class GameScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
         textButtonStyle.fontColor = Color.WHITE
         skin!!.add("default", textButtonStyle)
 
-        // Label Style
         val labelStyle = Label.LabelStyle(buttonFont, Color.RED)
         skin!!.add("default", labelStyle)
 
-        // Layout Table
         val rootTable = Table()
         rootTable.setFillParent(true)
         rootTable.bottom()
 
-        // Left Button
+        // Left
         val leftBtn = TextButton("<", skin)
         leftBtn.addListener(object : InputListener() {
             override fun touchDown(event: InputEvent?, x: Float, y: Float, pointer: Int, button: Int): Boolean {
@@ -133,7 +151,7 @@ class GameScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
             }
         })
 
-        // Right Button
+        // Right
         val rightBtn = TextButton(">", skin)
         rightBtn.addListener(object : InputListener() {
             override fun touchDown(event: InputEvent?, x: Float, y: Float, pointer: Int, button: Int): Boolean {
@@ -145,25 +163,41 @@ class GameScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
             }
         })
 
-        // Jump Button
-        val jumpBtn = TextButton("JUMP", skin)
+        // Down
+        val downBtn = TextButton("v", skin)
+        downBtn.addListener(object : InputListener() {
+             override fun touchDown(event: InputEvent?, x: Float, y: Float, pointer: Int, button: Int): Boolean {
+                isDownPressed = true
+                return true
+            }
+            override fun touchUp(event: InputEvent?, x: Float, y: Float, pointer: Int, button: Int) {
+                isDownPressed = false
+            }
+        })
+
+        // Jump
+        val jumpBtn = TextButton("UP", skin) // Changed text to UP for clarity or JUMP
+        jumpBtn.setText("JUMP")
         jumpBtn.addListener(object : ClickListener() {
             override fun clicked(event: InputEvent?, x: Float, y: Float) {
-                if (!isDead && playerY <= floorY + 1f) { // Simple ground check
+                if (!isDead && playerY <= floorY + 1f) {
                     velocityY = jumpStrength
                 }
             }
         })
 
-        // Controls Table
-        val controlsTable = Table()
-        controlsTable.add(leftBtn).size(100f, 100f).padRight(20f)
-        controlsTable.add(rightBtn).size(100f, 100f)
+        // New Layout: Left/Right on bottom-left. Down/Jump on bottom-right.
+        val leftControls = Table()
+        leftControls.add(leftBtn).size(100f, 100f).padRight(20f)
+        leftControls.add(rightBtn).size(100f, 100f)
 
-        rootTable.add(controlsTable).left().pad(20f).expandX()
-        rootTable.add(jumpBtn).size(150f, 100f).right().pad(20f)
+        val rightControls = Table()
+        rightControls.add(downBtn).size(100f, 100f).padRight(20f)
+        rightControls.add(jumpBtn).size(150f, 100f)
 
-        // Death Message Label (Hidden initially)
+        rootTable.add(leftControls).left().pad(20f).expandX()
+        rootTable.add(rightControls).right().pad(20f)
+
         messageLabel = Label("You fed the shark.", skin)
         messageLabel!!.isVisible = false
         messageLabel!!.setPosition(1280f / 2 - messageLabel!!.width / 2, 500f)
@@ -186,15 +220,40 @@ class GameScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
             return
         }
 
-        // Horizontal Movement
-        if (isLeftPressed) playerX -= moveSpeed * delta
-        if (isRightPressed) playerX += moveSpeed * delta
+        // Crouch Logic
+        if (isDownPressed) {
+            playerHeight = crouchHeight
+        } else {
+            // Only stand up if we don't implement ceiling check yet, assuming open air
+            playerHeight = normalHeight
+        }
+
+        // Movement & Physics
+        isWalking = false
+        if (isLeftPressed) {
+            playerX -= moveSpeed * delta
+            isWalking = true
+        }
+        if (isRightPressed) {
+            playerX += moveSpeed * delta
+            isWalking = true
+        }
+
+        // "Snappy" Stop (High Friction simulation): if no input, velocity is effectively 0 (position doesn't change)
+        // Since we modify position directly based on input, this is already "snappy".
+        // We just need to make sure we don't have residual velocity if we were using a velocity-based system.
+        // Current implementation is position-based for X, so it stops instantly on release. Correct.
+
+        if (isWalking) {
+            walkTime += delta * 15f // Animation speed
+        } else {
+            walkTime = 0f
+        }
 
         // Gravity
         velocityY += gravity * delta
         playerY += velocityY * delta
 
-        // Floor Collision
         if (playerY < floorY) {
             playerY = floorY
             velocityY = 0f
@@ -203,19 +262,28 @@ class GameScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
         // Shark AI
         if (sharkFacingRight) {
             sharkX += sharkSpeed * delta
-            if (sharkX > sharkPatrolRight) {
-                sharkFacingRight = false
-            }
+            if (sharkX > sharkPatrolRight) sharkFacingRight = false
         } else {
             sharkX -= sharkSpeed * delta
-            if (sharkX < sharkPatrolLeft) {
-                sharkFacingRight = true
-            }
+            if (sharkX < sharkPatrolLeft) sharkFacingRight = true
         }
 
-        // Update Collision Rects
-        playerRect.setPosition(playerX, playerY)
-        // Shark dimensions must match drawing (width=200, height=100 approx)
+        // Atmosphere: Bubbles
+        bubbleSpawnTimer += delta
+        if (bubbleSpawnTimer > 0.5f && bubbles.size < maxBubbles) {
+            spawnBubble()
+            bubbleSpawnTimer = 0f
+        }
+
+        val iter = bubbles.iterator()
+        while (iter.hasNext()) {
+            val b = iter.next()
+            b.y += b.speed * delta
+            if (b.y > 720f) iter.remove()
+        }
+
+        // Collisions
+        playerRect.set(playerX, playerY, playerWidth, playerHeight)
         sharkTexture?.let {
              val ratio = it.height.toFloat() / it.width.toFloat()
              val width = 200f
@@ -223,11 +291,7 @@ class GameScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
              sharkRect.set(sharkX, sharkY, width, height)
         }
 
-        // Check Collisions
-        if (Intersector.overlaps(playerRect, sharkRect)) {
-            die()
-        }
-
+        if (Intersector.overlaps(playerRect, sharkRect)) die()
         if (Intersector.overlaps(playerRect, maskRect)) {
             println("CHUNK COMPLETE")
             resetPlayer()
@@ -248,60 +312,83 @@ class GameScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
         velocityY = 0f
         isDead = false
         messageLabel?.isVisible = false
+        playerHeight = normalHeight
     }
 
     private fun draw() {
-        ScreenUtils.clear(Color.valueOf("006994")) // Deep Blue Ocean
+        // Gradient Background
+        shapeRenderer.projectionMatrix = uiStage.viewport.camera.combined // Use UI projection for full screen rect
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled)
+        // Vertical Gradient: Bottom #001f3f -> Top #0074D9
+        shapeRenderer.rect(0f, 0f, 1280f, 720f,
+            Color.valueOf("001f3f"), Color.valueOf("001f3f"),
+            Color.valueOf("0074D9"), Color.valueOf("0074D9"))
+        shapeRenderer.end()
 
-        // 1. Draw Game World
         gameViewport.apply()
 
-        // Draw Shark (SpriteBatch)
+        // Bubbles
+        shapeRenderer.projectionMatrix = gameViewport.camera.combined
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Line)
+        shapeRenderer.color = Color.WHITE
+        for (b in bubbles) {
+            shapeRenderer.circle(b.x, b.y, b.radius)
+        }
+        shapeRenderer.end()
+
+        // Sprites
         game.batch.projectionMatrix = gameViewport.camera.combined
         game.batch.begin()
         sharkTexture?.let {
             val ratio = it.height.toFloat() / it.width.toFloat()
             val width = 200f
             val height = width * ratio
-
             game.batch.draw(it, sharkX, sharkY, width, height, 0, 0, it.width, it.height, sharkFacingRight, false)
         }
         game.batch.end()
 
-        // Draw Player & Mask (ShapeRenderer)
-        shapeRenderer.projectionMatrix = gameViewport.camera.combined
+        // Procedural Shapes (Player & Mask)
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled)
 
-        // Draw Mask
-        // White Circle
+        // Mask
         shapeRenderer.color = Color.WHITE
         shapeRenderer.circle(maskX + maskWidth/2, maskY + maskHeight/2, maskWidth/2)
-        // Cyan details (Strap/Line)
         shapeRenderer.color = Color.CYAN
         shapeRenderer.rect(maskX, maskY + maskHeight/2 - 2, maskWidth, 4f)
 
-        // Draw Player (Stickman)
+        // Player (Stickman)
         shapeRenderer.color = Color.BLACK
-
         val centerX = playerX + 20f
 
+        // Crouch offsets
+        val isCrouching = playerHeight < normalHeight
+        val headOffset = if (isCrouching) 35f else 70f
+        val neckOffset = if (isCrouching) 25f else 60f
+        val waistOffset = if (isCrouching) 10f else 30f
+
         // Head
-        val headY = playerY + 70f
-        shapeRenderer.circle(centerX, headY, 10f)
+        shapeRenderer.circle(centerX, playerY + headOffset, 10f)
 
         // Body
-        shapeRenderer.rectLine(centerX, playerY + 60f, centerX, playerY + 30f, 4f)
+        shapeRenderer.rectLine(centerX, playerY + neckOffset, centerX, playerY + waistOffset, 4f)
 
         // Arms
-        shapeRenderer.rectLine(centerX - 15f, playerY + 50f, centerX + 15f, playerY + 50f, 4f)
+        if (isCrouching) {
+             // Arms held lower
+             shapeRenderer.rectLine(centerX - 15f, playerY + 20f, centerX + 15f, playerY + 20f, 4f)
+        } else {
+             shapeRenderer.rectLine(centerX - 15f, playerY + 50f, centerX + 15f, playerY + 50f, 4f)
+        }
 
-        // Legs
-        shapeRenderer.rectLine(centerX, playerY + 30f, centerX - 10f, playerY, 4f)
-        shapeRenderer.rectLine(centerX, playerY + 30f, centerX + 10f, playerY, 4f)
+        // Legs (Animated)
+        val legOffset = if (isCrouching) 0f else (Math.sin(walkTime.toDouble()).toFloat() * 10f)
+
+        shapeRenderer.rectLine(centerX, playerY + waistOffset, centerX - 10f - legOffset, playerY, 4f)
+        shapeRenderer.rectLine(centerX, playerY + waistOffset, centerX + 10f + legOffset, playerY, 4f)
 
         shapeRenderer.end()
 
-        // 2. Draw UI
+        // UI
         uiStage.viewport.apply()
         uiStage.draw()
     }
