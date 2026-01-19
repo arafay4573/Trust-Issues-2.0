@@ -37,6 +37,14 @@ class GameScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
     // Assets
     private var sharkTexture: Texture? = null
 
+    // Shark Stats
+    private var sharkX = 800f
+    private val sharkY = 100f // Shark stays at the same height as player start floor roughly
+    private val sharkSpeed = 200f
+    private val sharkPatrolRight = 1000f
+    private val sharkPatrolLeft = 600f
+    private var sharkFacingRight = false
+
     // UI
     private val uiStage = Stage(FitViewport(1280f, 720f), game.batch)
     private var skin: Skin? = null
@@ -49,11 +57,6 @@ class GameScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
 
     override fun show() {
         // Load Game Assets
-        // Assuming shark.png exists as per instructions.
-        // Ideally handled by AssetManager, but specific instruction said "Load shark.png into a Texture" locally or similar context implies simple loading.
-        // We will check if manager has it or load directly. To be safe, let's load directly as "AssetManager" wasn't explicitly mandated for this specific file in the prompt text ("Load shark.png into a Texture").
-        // But better practice is to use the manager if available.
-        // Let's lazy load it directly for simplicity as per "Implement The Shark" instruction.
         sharkTexture = Texture(Gdx.files.internal("shark.png"))
 
         // UI Setup
@@ -154,6 +157,19 @@ class GameScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
             velocityY = 0f
         }
 
+        // Shark AI
+        if (sharkFacingRight) {
+            sharkX += sharkSpeed * delta
+            if (sharkX > sharkPatrolRight) {
+                sharkFacingRight = false
+            }
+        } else {
+            sharkX -= sharkSpeed * delta
+            if (sharkX < sharkPatrolLeft) {
+                sharkFacingRight = true
+            }
+        }
+
         uiStage.act(delta)
     }
 
@@ -171,15 +187,45 @@ class GameScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
             val ratio = it.height.toFloat() / it.width.toFloat()
             val width = 200f
             val height = width * ratio
-            game.batch.draw(it, 800f, 100f, width, height)
+
+            // Standard drawing: game.batch.draw(it, sharkX, sharkY, width, height)
+            // With flip: draw(texture, x, y, width, height, srcX, srcY, srcWidth, srcHeight, flipX, flipY)
+            // Note: If sharkFacingRight is TRUE, we want the shark to look right.
+            // If the original image faces left, then we flipX when facingRight is true.
+            // If the original image faces right, then we flipX when facingRight is false.
+            // Standard convention is often facing Left or Right. Let's assume original faces Left.
+            // So if sharkFacingRight is true, we flipX.
+
+            game.batch.draw(it, sharkX, sharkY, width, height, 0, 0, it.width, it.height, sharkFacingRight, false)
         }
         game.batch.end()
 
-        // Draw Player (ShapeRenderer)
+        // Draw Player (Stickman)
         shapeRenderer.projectionMatrix = gameViewport.camera.combined
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled)
         shapeRenderer.color = Color.BLACK
-        shapeRenderer.rect(playerX, playerY, playerWidth, playerHeight)
+
+        // Player stats: Width 40, Height 80. Bottom-left at playerX, playerY.
+        // Center X = playerX + 20
+        val centerX = playerX + 20f
+
+        // Head: Circle Radius 10. Center Y = Top (playerY + 80) - 10 = playerY + 70
+        val headY = playerY + 70f
+        shapeRenderer.circle(centerX, headY, 10f)
+
+        // Body: Line from Neck (playerY + 60) to Waist (playerY + 30)
+        // Thickness logic: rectLine gives thickness.
+        shapeRenderer.rectLine(centerX, playerY + 60f, centerX, playerY + 30f, 4f)
+
+        // Arms: From Shoulders (playerY + 50) to Sides.
+        // Arm span: Let's say +/- 15px from center.
+        shapeRenderer.rectLine(centerX - 15f, playerY + 50f, centerX + 15f, playerY + 50f, 4f)
+
+        // Legs: From Waist (playerY + 30) to Feet (playerY).
+        // Feet spread: Let's say +/- 10px from center.
+        shapeRenderer.rectLine(centerX, playerY + 30f, centerX - 10f, playerY, 4f)
+        shapeRenderer.rectLine(centerX, playerY + 30f, centerX + 10f, playerY, 4f)
+
         shapeRenderer.end()
 
         // 2. Draw UI
