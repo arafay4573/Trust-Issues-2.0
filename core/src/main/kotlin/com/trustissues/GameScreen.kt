@@ -33,17 +33,17 @@ class GameScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
     private val maskRect = Rectangle()
 
     // Player Stats
-    private val playerWidth = 40f
-    private var playerHeight = 80f // Variable for crouching
-    private val normalHeight = 80f
-    private val crouchHeight = 40f
+    private val playerWidth = 25f
+    private var playerHeight = 50f // Variable for crouching
+    private val normalHeight = 50f
+    private val crouchHeight = 25f
 
     private var playerX = 100f
     private var playerY = 200f
     private var velocityY = 0f
-    private val gravity = -2500f // Tuned for snappier fall
-    private val jumpStrength = 900f // Tuned for snappier jump
-    private val moveSpeed = 300f
+    private val gravity = -3200f // Tuned for snappier fall
+    private val jumpStrength = 1050f // Tuned for snappier jump
+    private val moveSpeed = 350f
     private val floorY = 100f
 
     // Animation State
@@ -58,7 +58,7 @@ class GameScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
     private var sharkTexture: Texture? = null
 
     // Shark Stats
-    private var sharkX = 800f
+    private var sharkX = 700f
     private val sharkY = 100f
     private val sharkSpeed = 200f
     private val sharkPatrolRight = 1000f
@@ -97,7 +97,7 @@ class GameScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
         createUi()
 
         playerRect.set(playerX, playerY, playerWidth, playerHeight)
-        sharkRect.set(sharkX, sharkY, 200f, 100f)
+        sharkRect.set(sharkX, sharkY, 120f, 60f)
         maskRect.set(maskX, maskY, maskWidth, maskHeight)
 
         // Init Bubbles
@@ -163,18 +163,6 @@ class GameScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
             }
         })
 
-        // Down
-        val downBtn = TextButton("v", skin)
-        downBtn.addListener(object : InputListener() {
-             override fun touchDown(event: InputEvent?, x: Float, y: Float, pointer: Int, button: Int): Boolean {
-                isDownPressed = true
-                return true
-            }
-            override fun touchUp(event: InputEvent?, x: Float, y: Float, pointer: Int, button: Int) {
-                isDownPressed = false
-            }
-        })
-
         // Jump
         val jumpBtn = TextButton("UP", skin) // Changed text to UP for clarity or JUMP
         jumpBtn.setText("JUMP")
@@ -186,13 +174,13 @@ class GameScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
             }
         })
 
-        // New Layout: Left/Right on bottom-left. Down/Jump on bottom-right.
+        // New Layout: Left/Right on bottom-left. Jump on bottom-right.
         val leftControls = Table()
         leftControls.add(leftBtn).size(100f, 100f).padRight(20f)
         leftControls.add(rightBtn).size(100f, 100f)
 
         val rightControls = Table()
-        rightControls.add(downBtn).size(100f, 100f).padRight(20f)
+        // Removed Down Button for Level 1
         rightControls.add(jumpBtn).size(150f, 100f)
 
         rootTable.add(leftControls).left().pad(20f).expandX()
@@ -286,7 +274,7 @@ class GameScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
         playerRect.set(playerX, playerY, playerWidth, playerHeight)
         sharkTexture?.let {
              val ratio = it.height.toFloat() / it.width.toFloat()
-             val width = 200f
+             val width = 120f
              val height = width * ratio
              sharkRect.set(sharkX, sharkY, width, height)
         }
@@ -341,7 +329,7 @@ class GameScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
         game.batch.begin()
         sharkTexture?.let {
             val ratio = it.height.toFloat() / it.width.toFloat()
-            val width = 200f
+            val width = 120f
             val height = width * ratio
             game.batch.draw(it, sharkX, sharkY, width, height, 0, 0, it.width, it.height, sharkFacingRight, false)
         }
@@ -358,33 +346,34 @@ class GameScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
 
         // Player (Stickman)
         shapeRenderer.color = Color.BLACK
-        val centerX = playerX + 20f
+        val centerX = playerX + 12.5f
 
         // Crouch offsets
         val isCrouching = playerHeight < normalHeight
-        val headOffset = if (isCrouching) 35f else 70f
-        val neckOffset = if (isCrouching) 25f else 60f
-        val waistOffset = if (isCrouching) 10f else 30f
+        // Tuned for 50f height: Head ~44, Neck ~38, Waist ~18. Radius 6.
+        val headOffset = if (isCrouching) 22f else 44f
+        val neckOffset = if (isCrouching) 15f else 38f
+        val waistOffset = if (isCrouching) 5f else 18f
 
         // Head
-        shapeRenderer.circle(centerX, playerY + headOffset, 10f)
+        shapeRenderer.circle(centerX, playerY + headOffset, 6f)
 
         // Body
-        shapeRenderer.rectLine(centerX, playerY + neckOffset, centerX, playerY + waistOffset, 4f)
+        shapeRenderer.rectLine(centerX, playerY + neckOffset, centerX, playerY + waistOffset, 3f)
 
         // Arms
         if (isCrouching) {
              // Arms held lower
-             shapeRenderer.rectLine(centerX - 15f, playerY + 20f, centerX + 15f, playerY + 20f, 4f)
+             shapeRenderer.rectLine(centerX - 10f, playerY + 12f, centerX + 10f, playerY + 12f, 3f)
         } else {
-             shapeRenderer.rectLine(centerX - 15f, playerY + 50f, centerX + 15f, playerY + 50f, 4f)
+             shapeRenderer.rectLine(centerX - 10f, playerY + 30f, centerX + 10f, playerY + 30f, 3f)
         }
 
         // Legs (Animated)
-        val legOffset = if (isCrouching) 0f else (Math.sin(walkTime.toDouble()).toFloat() * 10f)
+        val legOffset = if (isCrouching) 0f else (Math.sin(walkTime.toDouble()).toFloat() * 6f)
 
-        shapeRenderer.rectLine(centerX, playerY + waistOffset, centerX - 10f - legOffset, playerY, 4f)
-        shapeRenderer.rectLine(centerX, playerY + waistOffset, centerX + 10f + legOffset, playerY, 4f)
+        shapeRenderer.rectLine(centerX, playerY + waistOffset, centerX - 6f - legOffset, playerY, 3f)
+        shapeRenderer.rectLine(centerX, playerY + waistOffset, centerX + 6f + legOffset, playerY, 3f)
 
         shapeRenderer.end()
 
