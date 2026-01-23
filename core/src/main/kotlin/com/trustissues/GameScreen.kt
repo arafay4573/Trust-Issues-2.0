@@ -10,6 +10,7 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer
 import com.badlogic.gdx.math.Intersector
 import com.badlogic.gdx.math.MathUtils
 import com.badlogic.gdx.math.Rectangle
+import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.InputEvent
 import com.badlogic.gdx.scenes.scene2d.InputListener
 import com.badlogic.gdx.scenes.scene2d.Stage
@@ -17,11 +18,14 @@ import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.Skin
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
-import com.badlogic.gdx.scenes.scene2d.utils.ClickListener
 import com.badlogic.gdx.utils.ScreenUtils
 import com.badlogic.gdx.utils.viewport.FitViewport
 
-class GameScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
+class GameScreen(
+    private val game: TrustIssuesGame,
+    private val currentLevel: Int = 1,
+    private val currentChunk: Int = 1
+) : ScreenAdapter() {
 
     // Game World
     private val gameViewport = FitViewport(1280f, 720f)
@@ -82,6 +86,7 @@ class GameScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
     private var buttonFont: BitmapFont? = null
     private var whiteTexture: Texture? = null
     private var messageLabel: Label? = null
+    private var levelLabel: Label? = null
 
     // Controls
     private var isLeftPressed = false
@@ -135,6 +140,26 @@ class GameScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
         val labelStyle = Label.LabelStyle(buttonFont, Color.RED)
         skin!!.add("default", labelStyle)
 
+        // HUD: Level Info
+        val hudStyle = Label.LabelStyle(buttonFont, Color.YELLOW)
+        levelLabel = Label("Level $currentLevel-$currentChunk", hudStyle)
+        levelLabel!!.setPosition(20f, 720f - 50f)
+        uiStage.addActor(levelLabel!!)
+
+        // Big Jump Zone (Right Half of Screen)
+        val jumpZone = Actor()
+        jumpZone.setBounds(640f, 0f, 640f, 720f)
+        jumpZone.addListener(object : InputListener() {
+            override fun touchDown(event: InputEvent?, x: Float, y: Float, pointer: Int, button: Int): Boolean {
+                if (!isDead && playerY <= floorY + 1f) {
+                    velocityY = jumpStrength
+                }
+                return true
+            }
+        })
+        uiStage.addActor(jumpZone)
+
+        // Button Controls
         val rootTable = Table()
         rootTable.setFillParent(true)
         rootTable.bottom()
@@ -163,28 +188,13 @@ class GameScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
             }
         })
 
-        // Jump
-        val jumpBtn = TextButton("UP", skin) // Changed text to UP for clarity or JUMP
-        jumpBtn.setText("JUMP")
-        jumpBtn.addListener(object : ClickListener() {
-            override fun clicked(event: InputEvent?, x: Float, y: Float) {
-                if (!isDead && playerY <= floorY + 1f) {
-                    velocityY = jumpStrength
-                }
-            }
-        })
-
-        // New Layout: Left/Right on bottom-left. Jump on bottom-right.
+        // New Layout: Left/Right on bottom-left.
         val leftControls = Table()
         leftControls.add(leftBtn).size(100f, 100f).padRight(20f)
         leftControls.add(rightBtn).size(100f, 100f)
 
-        val rightControls = Table()
-        // Removed Down Button for Level 1
-        rightControls.add(jumpBtn).size(150f, 100f)
-
         rootTable.add(leftControls).left().pad(20f).expandX()
-        rootTable.add(rightControls).right().pad(20f)
+        // No visual controls on the right (handled by jumpZone)
 
         messageLabel = Label("You fed the shark.", skin)
         messageLabel!!.isVisible = false

@@ -45,7 +45,7 @@ class MainMenuScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
         playButton.addListener(object : ClickListener() {
             override fun clicked(event: InputEvent?, x: Float, y: Float) {
                 Gdx.app.postRunnable {
-                    game.screen = GameScreen(game)
+                    game.screen = LevelSelectScreen(game)
                     dispose()
                 }
             }
