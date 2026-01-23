@@ -33,20 +33,20 @@ class GameScreen(
 
     // Collision Rects
     private val playerRect = Rectangle()
-    private val sharkRect = Rectangle()
     private val maskRect = Rectangle()
+    private val sharkRect = Rectangle() // Temp rect for calculations
 
     // Player Stats
     private val playerWidth = 25f
-    private var playerHeight = 50f // Variable for crouching
+    private var playerHeight = 50f
     private val normalHeight = 50f
     private val crouchHeight = 25f
 
     private var playerX = 100f
     private var playerY = 200f
     private var velocityY = 0f
-    private val gravity = -3200f // Tuned for snappier fall
-    private val jumpStrength = 1050f // Tuned for snappier jump
+    private val gravity = -3200f
+    private val jumpStrength = 1050f
     private val moveSpeed = 350f
     private val floorY = 100f
 
@@ -56,22 +56,29 @@ class GameScreen(
 
     // Game State
     private var isDead = false
-    private var deathTimer = 0f
+    private var isLevelComplete = false
+    private var stateTimer = 0f
 
     // Assets
     private var sharkTexture: Texture? = null
 
     // Shark Stats
-    private var sharkX = 700f
-    private val sharkY = 100f
-    private val sharkSpeed = 200f
-    private val sharkPatrolRight = 1000f
-    private val sharkPatrolLeft = 600f
-    private var sharkFacingRight = false
+    data class Shark(
+        var x: Float,
+        var y: Float,
+        var speed: Float,
+        val patrolLeft: Float,
+        val patrolRight: Float,
+        var facingRight: Boolean = false,
+        var isSleeper: Boolean = false,
+        var isAwake: Boolean = false
+    )
+
+    private val sharks = mutableListOf<Shark>()
 
     // Mask Stats
-    private val maskX = 1100f
-    private val maskY = 200f
+    private var maskX = 1100f
+    private var maskY = 200f
     private val maskWidth = 30f
     private val maskHeight = 30f
 
@@ -79,6 +86,22 @@ class GameScreen(
     private val bubbles = mutableListOf<Bubble>()
     private val maxBubbles = 20
     private var bubbleSpawnTimer = 0f
+
+    // Roasts
+    private val deathRoasts = listOf(
+        "You fed the shark.",
+        "Ocean's tax collector.",
+        "He smelled confidence.",
+        "Sharp teeth, bad trust.",
+        "That wasn't a dolphin."
+    )
+
+    private val winRoasts = listOf(
+        "Don't relax.",
+        "That was bait.",
+        "One step closer to regret.",
+        "Still breathing? Weird."
+    )
 
     // UI
     private val uiStage = Stage(FitViewport(1280f, 720f), game.batch)
@@ -101,14 +124,67 @@ class GameScreen(
         Gdx.input.inputProcessor = uiStage
         createUi()
 
-        playerRect.set(playerX, playerY, playerWidth, playerHeight)
-        sharkRect.set(sharkX, sharkY, 120f, 60f)
-        maskRect.set(maskX, maskY, maskWidth, maskHeight)
+        setupChunk(currentChunk)
 
         // Init Bubbles
         for (i in 0 until 10) {
             spawnBubble(MathUtils.random(720f))
         }
+    }
+
+    private fun setupChunk(chunk: Int) {
+        sharks.clear()
+        playerX = 100f
+        playerY = 200f
+        velocityY = 0f
+        isDead = false
+        isLevelComplete = false
+        stateTimer = 0f
+        messageLabel?.isVisible = false
+
+        if (levelLabel != null) {
+            levelLabel!!.setText("Level $currentLevel-$chunk")
+        }
+
+        // Logic for Level 1 Chunks
+        if (currentLevel == 1) {
+            when (chunk) {
+                1 -> {
+                    // One normal shark
+                    sharks.add(Shark(600f, 100f, 250f, 300f, 900f))
+                    maskX = 1100f
+                }
+                2 -> {
+                    // Two sharks
+                    sharks.add(Shark(500f, 100f, 200f, 300f, 700f))
+                    sharks.add(Shark(900f, 100f, 280f, 800f, 1100f))
+                    maskX = 1150f
+                }
+                3 -> {
+                    // Sleeper shark
+                    sharks.add(Shark(800f, 100f, 0f, 0f, 1280f, isSleeper = true, facingRight = false))
+                    maskX = 1200f
+                }
+                else -> {
+                    // Level Completed
+                    completeLevel()
+                }
+            }
+        } else {
+             // Placeholder for other levels
+             sharks.add(Shark(600f, 100f, 250f, 300f, 900f))
+        }
+
+        maskRect.set(maskX, maskY, maskWidth, maskHeight)
+    }
+
+    private fun completeLevel() {
+        // Unlock next level (2) if we just beat Level 1
+        val unlocked = Gdx.app.getPreferences("TrustIssues").getInteger("unlockedLevel", 1)
+        if (currentLevel >= unlocked && currentLevel < 11) {
+            Gdx.app.getPreferences("TrustIssues").putInteger("unlockedLevel", currentLevel + 1).flush()
+        }
+        game.screen = LevelSelectScreen(game)
     }
 
     private fun spawnBubble(startY: Float = -20f) {
@@ -151,7 +227,7 @@ class GameScreen(
         jumpZone.setBounds(640f, 0f, 640f, 720f)
         jumpZone.addListener(object : InputListener() {
             override fun touchDown(event: InputEvent?, x: Float, y: Float, pointer: Int, button: Int): Boolean {
-                if (!isDead && playerY <= floorY + 1f) {
+                if (!isDead && !isLevelComplete && playerY <= floorY + 1f) {
                     velocityY = jumpStrength
                 }
                 return true
@@ -188,17 +264,16 @@ class GameScreen(
             }
         })
 
-        // New Layout: Left/Right on bottom-left.
         val leftControls = Table()
         leftControls.add(leftBtn).size(100f, 100f).padRight(20f)
         leftControls.add(rightBtn).size(100f, 100f)
 
         rootTable.add(leftControls).left().pad(20f).expandX()
-        // No visual controls on the right (handled by jumpZone)
 
         messageLabel = Label("You fed the shark.", skin)
         messageLabel!!.isVisible = false
         messageLabel!!.setPosition(1280f / 2 - messageLabel!!.width / 2, 500f)
+        messageLabel!!.setAlignment(com.badlogic.gdx.utils.Align.center)
 
         uiStage.addActor(messageLabel!!)
         uiStage.addActor(rootTable)
@@ -210,10 +285,23 @@ class GameScreen(
     }
 
     private fun update(delta: Float) {
-        if (isDead) {
-            deathTimer += delta
-            if (deathTimer >= 1f) {
-                resetPlayer()
+        // Handle transitions for Death or Win
+        if (isDead || isLevelComplete) {
+            stateTimer += delta
+            if (stateTimer >= 2.0f) {
+                if (isDead) {
+                    setupChunk(currentChunk) // Restart same chunk
+                } else {
+                    // Go to next chunk
+                    if (currentLevel == 1 && currentChunk >= 3) {
+                         completeLevel()
+                    } else {
+                         // We can't simply replace the screen easily without potentially passing data.
+                         // But we can just create a new screen.
+                         game.screen = GameScreen(game, currentLevel, currentChunk + 1)
+                         dispose()
+                    }
+                }
             }
             return
         }
@@ -222,7 +310,6 @@ class GameScreen(
         if (isDownPressed) {
             playerHeight = crouchHeight
         } else {
-            // Only stand up if we don't implement ceiling check yet, assuming open air
             playerHeight = normalHeight
         }
 
@@ -237,13 +324,8 @@ class GameScreen(
             isWalking = true
         }
 
-        // "Snappy" Stop (High Friction simulation): if no input, velocity is effectively 0 (position doesn't change)
-        // Since we modify position directly based on input, this is already "snappy".
-        // We just need to make sure we don't have residual velocity if we were using a velocity-based system.
-        // Current implementation is position-based for X, so it stops instantly on release. Correct.
-
         if (isWalking) {
-            walkTime += delta * 15f // Animation speed
+            walkTime += delta * 15f
         } else {
             walkTime = 0f
         }
@@ -258,12 +340,32 @@ class GameScreen(
         }
 
         // Shark AI
-        if (sharkFacingRight) {
-            sharkX += sharkSpeed * delta
-            if (sharkX > sharkPatrolRight) sharkFacingRight = false
-        } else {
-            sharkX -= sharkSpeed * delta
-            if (sharkX < sharkPatrolLeft) sharkFacingRight = true
+        for (shark in sharks) {
+            if (shark.isSleeper) {
+                if (!shark.isAwake) {
+                    // Check trigger
+                    if (playerX > 400f) {
+                        shark.isAwake = true
+                        shark.speed = 600f // Lunges
+                    }
+                }
+
+                if (shark.isAwake) {
+                    // Moves left towards player area generally, but here just simple logic
+                    // The prompt says "Lunges". Let's assume it charges Left.
+                    shark.x -= shark.speed * delta
+                    shark.facingRight = false
+                }
+            } else {
+                // Normal Patrol
+                if (shark.facingRight) {
+                    shark.x += shark.speed * delta
+                    if (shark.x > shark.patrolRight) shark.facingRight = false
+                } else {
+                    shark.x -= shark.speed * delta
+                    if (shark.x < shark.patrolLeft) shark.facingRight = true
+                }
+            }
         }
 
         // Atmosphere: Bubbles
@@ -282,42 +384,58 @@ class GameScreen(
 
         // Collisions
         playerRect.set(playerX, playerY, playerWidth, playerHeight)
+
         sharkTexture?.let {
              val ratio = it.height.toFloat() / it.width.toFloat()
              val width = 120f
              val height = width * ratio
-             sharkRect.set(sharkX, sharkY, width, height)
+
+             for (shark in sharks) {
+                 sharkRect.set(shark.x, shark.y, width, height)
+                 if (Intersector.overlaps(playerRect, sharkRect)) {
+                     die()
+                     break
+                 }
+             }
         }
 
-        if (Intersector.overlaps(playerRect, sharkRect)) die()
-        if (Intersector.overlaps(playerRect, maskRect)) {
-            println("CHUNK COMPLETE")
-            resetPlayer()
+        if (!isDead && Intersector.overlaps(playerRect, maskRect)) {
+            win()
         }
 
         uiStage.act(delta)
     }
 
     private fun die() {
+        if (isDead) return
         isDead = true
-        deathTimer = 0f
+        val roast = deathRoasts.random()
+        messageLabel?.setText(roast)
+        messageLabel?.color = Color.RED
         messageLabel?.isVisible = true
+
+        // Recenter label
+        messageLabel?.pack()
+        messageLabel?.setPosition(1280f / 2 - messageLabel!!.width / 2, 500f)
     }
 
-    private fun resetPlayer() {
-        playerX = 100f
-        playerY = 200f
-        velocityY = 0f
-        isDead = false
-        messageLabel?.isVisible = false
-        playerHeight = normalHeight
+    private fun win() {
+        if (isLevelComplete) return
+        isLevelComplete = true
+        val roast = winRoasts.random()
+        messageLabel?.setText(roast)
+        messageLabel?.color = Color.GREEN
+        messageLabel?.isVisible = true
+
+        // Recenter label
+        messageLabel?.pack()
+        messageLabel?.setPosition(1280f / 2 - messageLabel!!.width / 2, 500f)
     }
 
     private fun draw() {
         // Gradient Background
-        shapeRenderer.projectionMatrix = uiStage.viewport.camera.combined // Use UI projection for full screen rect
+        shapeRenderer.projectionMatrix = uiStage.viewport.camera.combined
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled)
-        // Vertical Gradient: Bottom #001f3f -> Top #0074D9
         shapeRenderer.rect(0f, 0f, 1280f, 720f,
             Color.valueOf("001f3f"), Color.valueOf("001f3f"),
             Color.valueOf("0074D9"), Color.valueOf("0074D9"))
@@ -334,14 +452,17 @@ class GameScreen(
         }
         shapeRenderer.end()
 
-        // Sprites
+        // Sprites (Sharks)
         game.batch.projectionMatrix = gameViewport.camera.combined
         game.batch.begin()
-        sharkTexture?.let {
-            val ratio = it.height.toFloat() / it.width.toFloat()
+        sharkTexture?.let { tex ->
+            val ratio = tex.height.toFloat() / tex.width.toFloat()
             val width = 120f
             val height = width * ratio
-            game.batch.draw(it, sharkX, sharkY, width, height, 0, 0, it.width, it.height, sharkFacingRight, false)
+
+            for (shark in sharks) {
+                game.batch.draw(tex, shark.x, shark.y, width, height, 0, 0, tex.width, tex.height, shark.facingRight, false)
+            }
         }
         game.batch.end()
 
@@ -360,7 +481,6 @@ class GameScreen(
 
         // Crouch offsets
         val isCrouching = playerHeight < normalHeight
-        // Tuned for 50f height: Head ~44, Neck ~38, Waist ~18. Radius 6.
         val headOffset = if (isCrouching) 22f else 44f
         val neckOffset = if (isCrouching) 15f else 38f
         val waistOffset = if (isCrouching) 5f else 18f
@@ -373,7 +493,6 @@ class GameScreen(
 
         // Arms
         if (isCrouching) {
-             // Arms held lower
              shapeRenderer.rectLine(centerX - 10f, playerY + 12f, centerX + 10f, playerY + 12f, 3f)
         } else {
              shapeRenderer.rectLine(centerX - 10f, playerY + 30f, centerX + 10f, playerY + 30f, 3f)

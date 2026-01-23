@@ -6,6 +6,7 @@ import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.Pixmap
 import com.badlogic.gdx.graphics.Texture
 import com.badlogic.gdx.graphics.g2d.BitmapFont
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer
 import com.badlogic.gdx.scenes.scene2d.InputEvent
 import com.badlogic.gdx.scenes.scene2d.Stage
 import com.badlogic.gdx.scenes.scene2d.ui.Label
@@ -18,6 +19,7 @@ import com.badlogic.gdx.utils.viewport.FitViewport
 
 class LevelSelectScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
     private val stage = Stage(FitViewport(1280f, 720f), game.batch)
+    private val shapeRenderer = ShapeRenderer()
     private var skin: Skin? = null
 
     // Manage assets
@@ -35,27 +37,35 @@ class LevelSelectScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
         // Title
         val titleFont = game.generateFont(50)
         fonts.add(titleFont)
-        val titleStyle = Label.LabelStyle(titleFont, Color.WHITE)
+        val titleStyle = Label.LabelStyle(titleFont, Color.CYAN) // Cyan title
         val titleLabel = Label("SELECT LEVEL", titleStyle)
         rootTable.add(titleLabel).colspan(5).padBottom(50f).row()
 
         // Levels Logic
         val unlockedLevel = Gdx.app.getPreferences("TrustIssues").getInteger("unlockedLevel", 1)
 
-        // Grid Layout: 5 columns
-        // Row 1: 1-5
-        // Row 2: 6-10
-        // Row 3: 11 (Boss)
+        // Staggered Layout
+        // Row 1: Left aligned (padRight)
+        // Row 2: Right aligned (padLeft)
+        // Row 3: Center
 
         for (i in 1..10) {
             val btn = createLevelButton(i, i <= unlockedLevel)
-            rootTable.add(btn).size(100f, 100f).pad(20f)
+
+            // Stagger logic:
+            // Odd numbers (1, 3, 5): "Left"
+            // Even numbers (2, 4, 6): "Right"
+            // Actually, let's do 3 columns per row, but shift the whole row.
+
+            val cell = rootTable.add(btn).size(120f, 120f).pad(15f)
+
+            // Layout logic: 5 columns max
             if (i % 5 == 0) rootTable.row()
         }
 
-        // Boss Level
+        // Boss Level (Bubble)
         val bossBtn = createLevelButton(11, 11 <= unlockedLevel, isBoss = true)
-        rootTable.add(bossBtn).colspan(5).size(300f, 100f).padTop(20f)
+        rootTable.add(bossBtn).colspan(5).size(150f, 150f).padTop(30f)
 
         stage.addActor(rootTable)
     }
@@ -74,13 +84,6 @@ class LevelSelectScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
                     }
                 }
             })
-        } else {
-            // Optional: Add toast or visual feedback for locked levels
-             btn.addListener(object : ClickListener() {
-                override fun clicked(event: InputEvent?, x: Float, y: Float) {
-                    println("Level $level is locked!")
-                }
-            })
         }
 
         return btn
@@ -89,39 +92,52 @@ class LevelSelectScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
     private fun createSkin() {
         skin = Skin()
 
-        // White pixel for button backgrounds
-        val pixmap = Pixmap(1, 1, Pixmap.Format.RGBA8888)
-        pixmap.setColor(Color.WHITE)
+        // Create Circular Bubble Texture
+        val size = 64
+        val pixmap = Pixmap(size, size, Pixmap.Format.RGBA8888)
+        pixmap.setColor(Color.CLEAR)
         pixmap.fill()
-        val whiteTexture = Texture(pixmap)
+
+        // Draw Circle
+        pixmap.setColor(Color.WHITE)
+        pixmap.fillCircle(size/2, size/2, size/2 - 2)
+
+        val bubbleTexture = Texture(pixmap)
         pixmap.dispose()
-        disposables.add(whiteTexture)
-        skin!!.add("white", whiteTexture)
+        disposables.add(bubbleTexture)
+        skin!!.add("bubble", bubbleTexture)
 
         val buttonFont = game.generateFont(32)
         fonts.add(buttonFont)
         skin!!.add("default-font", buttonFont)
 
-        // Unlocked Style (Green/Orange)
+        // Unlocked Style (Cyan Bubble)
         val unlockedStyle = TextButton.TextButtonStyle()
-        unlockedStyle.up = skin!!.newDrawable("white", Color.valueOf("4CAF50")) // Green
-        unlockedStyle.down = skin!!.newDrawable("white", Color.valueOf("388E3C"))
+        unlockedStyle.up = skin!!.newDrawable("bubble", Color.CYAN)
+        unlockedStyle.down = skin!!.newDrawable("bubble", Color.TEAL)
         unlockedStyle.font = buttonFont
-        unlockedStyle.fontColor = Color.WHITE
+        unlockedStyle.fontColor = Color.BLACK
         skin!!.add("default", unlockedStyle)
 
-        // Locked Style (Grey)
+        // Locked Style (Dark Blue/Grey Bubble)
         val lockedStyle = TextButton.TextButtonStyle()
-        lockedStyle.up = skin!!.newDrawable("white", Color.GRAY)
-        lockedStyle.down = skin!!.newDrawable("white", Color.DARK_GRAY)
+        lockedStyle.up = skin!!.newDrawable("bubble", Color.valueOf("455A64")) // Blue Grey
+        lockedStyle.down = skin!!.newDrawable("bubble", Color.DARK_GRAY)
         lockedStyle.font = buttonFont
-        lockedStyle.fontColor = Color.LIGHT_GRAY
+        lockedStyle.fontColor = Color.GRAY
         skin!!.add("locked", lockedStyle)
     }
 
     override fun render(delta: Float) {
-        // Dark Blue Gradient Background
-        ScreenUtils.clear(Color.valueOf("000033")) // Deep dark blue
+        // Gradient Background
+        shapeRenderer.projectionMatrix = stage.viewport.camera.combined
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled)
+        // Light Blue to Deep Abyss
+        shapeRenderer.rect(0f, 0f, 1280f, 720f,
+            Color.valueOf("000033"), Color.valueOf("000033"), // Bottom (Abyss)
+            Color.valueOf("4FC3F7"), Color.valueOf("4FC3F7")) // Top (Light Blue)
+        shapeRenderer.end()
+
         stage.act(delta)
         stage.draw()
     }
@@ -132,6 +148,7 @@ class LevelSelectScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
 
     override fun dispose() {
         stage.dispose()
+        shapeRenderer.dispose()
         skin?.dispose()
         disposables.forEach { it.dispose() }
         fonts.forEach { it.dispose() }
