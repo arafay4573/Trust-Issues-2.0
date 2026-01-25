@@ -583,44 +583,22 @@ class GameScreen(
 
         // Shark AI
         for (shark in sharks) {
-            // Special Level 1-3 Ambush Logic
-            if (currentLevel == 1 && currentChunk == 3 && shark.isStalker) {
-                // Ambush Wrap: Vanish Left -> Appear Right (Charging)
-                if (shark.x + 120f < 0f) { // Fully entered Left Wall (120 is width)
-                    shark.x = 1280f // Appear Right
-                    shark.speed = 850f // Sprint
-                    shark.facingRight = false // Charge Left
-                } else if (shark.x > 1280f) {
-                    shark.x = -120f
-                    shark.speed = 850f
-                    shark.facingRight = true
-                }
+            if (shark.isStalker) {
+                // 1. Always chase the player on X axis
+                val direction = if (playerX > shark.x) 1 else -1
+                shark.x += shark.speed * delta * direction
+                shark.facingRight = direction > 0
 
-                // Move based on current facing (which is set by the wrap) or initial chase
-                // If sprinting, just keep going direction until wrap?
-                // The prompt says "INSTANTLY appear from Right wall, charging".
-                // If we use standard chase logic, it might turn around if player is behind.
-                // Let's force move Left if we just wrapped from Right.
-                // But generally Stalker chases X.
-                // If player is at x=100, and shark wraps to 1280, Stalker logic says "Player < Shark", so move Left.
-                // This is consistent.
-                val dir = if (playerX > shark.x) 1 else -1
-                shark.x += shark.speed * delta * dir
-                shark.facingRight = dir > 0
-
-            } else if (shark.isStalker) {
-                // Standard Infinite Wrap Logic (Level 2+)
-                if (shark.x < -150f) {
+                // 2. FORCE WRAP (Teleport Logic)
+                // If he runs into the Left Wall -> Pop out of the Right Wall
+                val width = 120f
+                if (shark.x < -width) {
                     shark.x = 1280f
-                } else if (shark.x > 1330f) {
-                    shark.x = -120f
                 }
-
-                // Chase Logic
-                val dir = if (playerX > shark.x) 1 else -1
-                shark.x += shark.speed * delta * dir
-                shark.facingRight = dir > 0
-
+                // If he runs into the Right Wall -> Pop out of the Left Wall
+                if (shark.x > 1280f) {
+                    shark.x = -width
+                }
             } else if (shark.isSleeper) {
                 if (!shark.isAwake) {
                     if (playerX > 400f) {
