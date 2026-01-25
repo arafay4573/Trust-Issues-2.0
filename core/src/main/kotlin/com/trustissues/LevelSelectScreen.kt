@@ -69,23 +69,17 @@ class LevelSelectScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
         popupTable!!.setFillParent(true)
         popupTable!!.isVisible = false
 
-        // Dim Background
+        // Dark Blue Semi-Transparent Background
         val dimPix = Pixmap(1, 1, Pixmap.Format.RGBA8888)
-        dimPix.setColor(0f, 0f, 0f, 0.8f)
+        dimPix.setColor(0f, 0f, 0.2f, 0.9f) // Dark Blue
         dimPix.fill()
         val dimTex = Texture(dimPix)
         dimPix.dispose()
         disposables.add(dimTex)
         popupTable!!.background = com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable(com.badlogic.gdx.graphics.g2d.TextureRegion(dimTex))
 
-        // Click background to close
-        popupTable!!.addListener(object : ClickListener() {
-            override fun clicked(event: InputEvent?, x: Float, y: Float) {
-                // Only close if clicked outside the inner content table?
-                // For simplicity, just close if they click anywhere not on a button (buttons consume events)
-                // Actually, let's add a close button.
-            }
-        })
+        // Centered alignment by default for table children
+        popupTable!!.center()
 
         stage.addActor(popupTable!!)
     }
@@ -96,19 +90,13 @@ class LevelSelectScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
 
         val titleFont = game.generateFont(40)
         fonts.add(titleFont)
-        val titleLabel = Label("LEVEL $level", Label.LabelStyle(titleFont, Color.WHITE))
-        popupTable!!.add(titleLabel).padBottom(40f).row()
+        val titleLabel = Label("LEVEL $level", Label.LabelStyle(titleFont, Color.CYAN))
+        popupTable!!.add(titleLabel).padBottom(20f).row()
 
         val chunkTable = Table()
 
-        // Determine max unlocked chunk for this level
         val prefs = Gdx.app.getPreferences("TrustIssues")
         val unlockedLevel = prefs.getInteger("unlockedLevel", 1)
-
-        // Default max chunk logic
-        // If level < unlockedLevel, then all chunks (3) are unlocked.
-        // If level == unlockedLevel, check granular pref.
-        // If level > unlockedLevel, 0.
 
         var maxChunk = 0
         if (level < unlockedLevel) {
@@ -119,7 +107,7 @@ class LevelSelectScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
 
         for (c in 1..3) {
             val unlocked = c <= maxChunk
-            val btn = TextButton("Chunk $c", skin, if (unlocked) "rect-default" else "rect-locked")
+            val btn = TextButton("$c", skin, if (unlocked) "rect-default" else "rect-locked") // Smaller text
 
             if (unlocked) {
                 btn.addListener(object : ClickListener() {
@@ -132,18 +120,19 @@ class LevelSelectScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
                 })
             }
 
-            chunkTable.add(btn).size(200f, 80f).pad(20f)
+            // Smaller buttons: 100x80
+            chunkTable.add(btn).size(100f, 80f).pad(15f)
         }
 
         popupTable!!.add(chunkTable).row()
 
-        val closeBtn = TextButton("CLOSE", skin)
+        val closeBtn = TextButton("X", skin, "default") // Use bubble style for close
         closeBtn.addListener(object : ClickListener() {
             override fun clicked(event: InputEvent?, x: Float, y: Float) {
                 popupTable!!.isVisible = false
             }
         })
-        popupTable!!.add(closeBtn).size(150f, 60f).padTop(40f)
+        popupTable!!.add(closeBtn).size(80f, 80f).padTop(30f)
     }
 
     private fun createLevelButton(level: Int, unlocked: Boolean, isBoss: Boolean = false): TextButton {

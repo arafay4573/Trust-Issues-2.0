@@ -14,11 +14,13 @@ import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.InputEvent
 import com.badlogic.gdx.scenes.scene2d.InputListener
 import com.badlogic.gdx.scenes.scene2d.Stage
+import com.badlogic.gdx.scenes.scene2d.ui.ImageButton
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.Skin
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener
+import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable
 import com.badlogic.gdx.utils.Align
 import com.badlogic.gdx.utils.ScreenUtils
 import com.badlogic.gdx.utils.viewport.FitViewport
@@ -219,7 +221,6 @@ class GameScreen(
     private fun completeChunk() {
         val nextChunk = currentChunk + 1
 
-        // Save Progress
         val prefs = Gdx.app.getPreferences("TrustIssues")
         val savedMaxChunk = prefs.getInteger("level_${currentLevel}_maxChunk", 1)
         if (nextChunk > savedMaxChunk && nextChunk <= 3) {
@@ -227,12 +228,10 @@ class GameScreen(
         }
 
         if (nextChunk > 3) {
-            // Level Complete
             val nextLevel = currentLevel + 1
             val unlocked = prefs.getInteger("unlockedLevel", 1)
             if (nextLevel > unlocked) {
                 prefs.putInteger("unlockedLevel", nextLevel).flush()
-                // Also unlock chunk 1 of next level
                 prefs.putInteger("level_${nextLevel}_maxChunk", 1).flush()
             }
 
@@ -253,6 +252,61 @@ class GameScreen(
         val radius = MathUtils.random(2f, 8f)
         val actualY = if (startY == -20f) MathUtils.random(-50f, 280f) else startY
         bubbles.add(Bubble(x, actualY, speed, radius))
+    }
+
+    private fun createProceduralTexture(type: String): Texture {
+        val size = 120
+        val pixmap = Pixmap(size, size, Pixmap.Format.RGBA8888)
+        pixmap.setColor(Color.CLEAR)
+        pixmap.fill()
+
+        // White Circle
+        pixmap.setColor(Color.WHITE)
+        pixmap.fillCircle(size/2, size/2, size/2 - 2)
+
+        // Content
+        pixmap.setColor(Color.BLACK)
+        when(type) {
+            "LEFT" -> {
+                // <
+                // Draw lines for triangle pointing left
+                val cx = size/2
+                val cy = size/2
+                val offset = 20
+
+                // Manually draw simple arrow lines since fillTriangle isn't guaranteed
+                // Top leg
+                for(i in 0..5) pixmap.drawLine(cx + offset - i, cy - offset, cx - offset - i, cy)
+                // Bottom leg
+                for(i in 0..5) pixmap.drawLine(cx - offset - i, cy, cx + offset - i, cy + offset)
+            }
+            "RIGHT" -> {
+                // >
+                val cx = size/2
+                val cy = size/2
+                val offset = 20
+
+                // Top leg
+                for(i in 0..5) pixmap.drawLine(cx - offset + i, cy - offset, cx + offset + i, cy)
+                // Bottom leg
+                for(i in 0..5) pixmap.drawLine(cx + offset + i, cy, cx - offset + i, cy + offset)
+            }
+            "PAUSE" -> {
+                // ||
+                val cx = size/2
+                val cy = size/2
+                val w = 10
+                val h = 30
+                val gap = 10
+
+                pixmap.fillRectangle(cx - gap - w, cy - h/2, w, h)
+                pixmap.fillRectangle(cx + gap, cy - h/2, w, h)
+            }
+        }
+
+        val tex = Texture(pixmap)
+        pixmap.dispose()
+        return tex
     }
 
     private fun createUi() {
@@ -277,6 +331,26 @@ class GameScreen(
         val labelStyle = Label.LabelStyle(buttonFont, Color.RED)
         skin!!.add("default", labelStyle)
 
+        // Generate Textures
+        val leftTex = createProceduralTexture("LEFT")
+        val rightTex = createProceduralTexture("RIGHT")
+        val pauseTex = createProceduralTexture("PAUSE")
+
+        val imageBtnStyle = ImageButton.ImageButtonStyle()
+        imageBtnStyle.up = TextureRegionDrawable(leftTex)
+        imageBtnStyle.down = TextureRegionDrawable(leftTex).tint(Color.GRAY)
+        skin!!.add("left", imageBtnStyle)
+
+        val rightStyle = ImageButton.ImageButtonStyle()
+        rightStyle.up = TextureRegionDrawable(rightTex)
+        rightStyle.down = TextureRegionDrawable(rightTex).tint(Color.GRAY)
+        skin!!.add("right", rightStyle)
+
+        val pauseStyle = ImageButton.ImageButtonStyle()
+        pauseStyle.up = TextureRegionDrawable(pauseTex)
+        pauseStyle.down = TextureRegionDrawable(pauseTex).tint(Color.GRAY)
+        skin!!.add("pause", pauseStyle)
+
         // HUD
         val hudStyle = Label.LabelStyle(buttonFont, Color.YELLOW)
         levelLabel = Label("Level $currentLevel-$currentChunk", hudStyle)
@@ -284,7 +358,7 @@ class GameScreen(
         uiStage.addActor(levelLabel!!)
 
         // Pause Button
-        val pauseBtn = TextButton("||", skin)
+        val pauseBtn = ImageButton(skin!!.get("pause", ImageButton.ImageButtonStyle::class.java))
         pauseBtn.addListener(object : ClickListener() {
             override fun clicked(event: InputEvent?, x: Float, y: Float) {
                 if (!isDead && !isLevelComplete) {
@@ -293,7 +367,7 @@ class GameScreen(
                 }
             }
         })
-        pauseBtn.setPosition(20f, 720f - 120f) // Below level label
+        pauseBtn.setPosition(20f, 720f - 120f)
         pauseBtn.setSize(60f, 60f)
         uiStage.addActor(pauseBtn)
 
@@ -302,13 +376,12 @@ class GameScreen(
         pauseGroup!!.setFillParent(true)
         pauseGroup!!.isVisible = false
 
-        // Semi-transparent background for pause
         val dimPix = Pixmap(1, 1, Pixmap.Format.RGBA8888)
         dimPix.setColor(0f, 0f, 0f, 0.7f)
         dimPix.fill()
         val dimTex = Texture(dimPix)
         dimPix.dispose()
-        pauseGroup!!.background = com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable(com.badlogic.gdx.graphics.g2d.TextureRegion(dimTex))
+        pauseGroup!!.background = TextureRegionDrawable(com.badlogic.gdx.graphics.g2d.TextureRegion(dimTex))
 
         val resumeBtn = TextButton("RESUME", skin)
         resumeBtn.addListener(object : ClickListener() {
@@ -355,7 +428,7 @@ class GameScreen(
         rootTable.setFillParent(true)
         rootTable.bottom()
 
-        val leftBtn = TextButton("<", skin)
+        val leftBtn = ImageButton(skin!!.get("left", ImageButton.ImageButtonStyle::class.java))
         leftBtn.addListener(object : InputListener() {
             override fun touchDown(event: InputEvent?, x: Float, y: Float, pointer: Int, button: Int): Boolean {
                 isLeftPressed = true
@@ -366,7 +439,7 @@ class GameScreen(
             }
         })
 
-        val rightBtn = TextButton(">", skin)
+        val rightBtn = ImageButton(skin!!.get("right", ImageButton.ImageButtonStyle::class.java))
         rightBtn.addListener(object : InputListener() {
             override fun touchDown(event: InputEvent?, x: Float, y: Float, pointer: Int, button: Int): Boolean {
                 isRightPressed = true
@@ -378,7 +451,6 @@ class GameScreen(
         })
 
         val leftControls = Table()
-        // Resized controls: 120x120, 60 padding
         leftControls.add(leftBtn).size(120f, 120f).padRight(60f)
         leftControls.add(rightBtn).size(120f, 120f)
 
@@ -397,11 +469,12 @@ class GameScreen(
         if (!isPaused) {
             update(delta)
         }
+
         draw()
-        // Draw Pause overlay on top if paused
-        if (isPaused) {
-            // Stage draw handles it if actors are in stage
-        }
+
+        // Always act the stage to ensure buttons work (e.g., Resume)
+        uiStage.act(delta)
+        uiStage.draw()
     }
 
     private fun update(delta: Float) {
@@ -498,17 +571,11 @@ class GameScreen(
         // Shark AI
         for (shark in sharks) {
             if (shark.isStalker) {
-                // Aggressive Bounce Logic
-                val sharkWidth = 120f
-                if (shark.x <= 0f) {
-                    shark.x = 0f
-                    shark.speed = 800f
-                    // Force facing handled by logic below if we don't override dir
-                    // But to bounce aggressively, we override the chase logic?
-                    // Let's just let it be strictly clamped and fast.
-                } else if (shark.x >= 1280f - sharkWidth) {
-                    shark.x = 1280f - sharkWidth
-                    shark.speed = 800f
+                // Infinite Wrap Logic
+                if (shark.x < -150f) {
+                    shark.x = 1280f
+                } else if (shark.x > 1330f) {
+                    shark.x = -120f
                 }
 
                 // Chase Logic
@@ -571,7 +638,7 @@ class GameScreen(
             win()
         }
 
-        uiStage.act(delta)
+        // Note: Act moved to render() to support pausing
     }
 
     private fun die(customMessage: String? = null) {
@@ -666,8 +733,7 @@ class GameScreen(
 
         shapeRenderer.end()
 
-        uiStage.viewport.apply()
-        uiStage.draw()
+        // UI Drawing handled in render()
     }
 
     override fun resize(width: Int, height: Int) {
