@@ -180,23 +180,24 @@ class GameScreen(
         } else if (currentLevel == 2) {
             when (chunk) {
                 1 -> {
-                    // Shark on floor, Platform (CRUMBLE_SLOW) safety
-                    sharks.add(Shark(800f, 280f, 250f, 500f, 1000f))
-                    platforms.add(Platform(Rectangle(600f, 450f, 150f, 20f), PlatformType.CRUMBLE_SLOW))
+                    // 2 Sharks Overlapping, 1 Platform (CRUMBLE_SLOW) Low
+                    sharks.add(Shark(400f, 280f, 350f, 200f, 800f))
+                    sharks.add(Shark(700f, 280f, 350f, 500f, 1100f))
+                    platforms.add(Platform(Rectangle(600f, 360f, 150f, 20f), PlatformType.CRUMBLE_SLOW))
                     maskX = 1100f
                 }
                 2 -> {
-                    // 2 Sharks, 2 Crumble Fast Platforms over pit (simulated by sharks being below)
-                    sharks.add(Shark(500f, 280f, 250f, 400f, 800f))
-                    sharks.add(Shark(900f, 280f, 300f, 800f, 1100f))
-                    platforms.add(Platform(Rectangle(500f, 450f, 100f, 20f), PlatformType.CRUMBLE_FAST))
-                    platforms.add(Platform(Rectangle(800f, 450f, 100f, 20f), PlatformType.CRUMBLE_FAST))
+                    // 2 Fast Sharks, 2 Crumble Fast Platforms
+                    sharks.add(Shark(500f, 280f, 400f, 300f, 900f))
+                    sharks.add(Shark(900f, 280f, 400f, 700f, 1200f))
+                    platforms.add(Platform(Rectangle(400f, 380f, 100f, 20f), PlatformType.CRUMBLE_FAST))
+                    platforms.add(Platform(Rectangle(800f, 380f, 100f, 20f), PlatformType.CRUMBLE_FAST))
                     maskX = 1150f
                 }
                 3 -> {
-                    // Stalker Shark, Ghost Platform
-                    sharks.add(Shark(600f, 280f, 150f, 0f, 1280f, isStalker = true))
-                    platforms.add(Platform(Rectangle(600f, 450f, 150f, 20f), PlatformType.GHOST))
+                    // Stalker Shark (320 Speed), 1 Platform (CRUMBLE_FAST) The Trap
+                    sharks.add(Shark(600f, 280f, 320f, 0f, 1280f, isStalker = true))
+                    platforms.add(Platform(Rectangle(700f, 350f, 150f, 20f), PlatformType.CRUMBLE_FAST))
                     maskX = 1150f
                 }
             }
@@ -448,6 +449,11 @@ class GameScreen(
                 val dir = if (playerX > shark.x) 1 else -1
                 shark.x += shark.speed * delta * dir
                 shark.facingRight = dir > 0
+
+                // Clamp Logic: Must hit wall and turn back if player is behind it
+                // We clamp position within screen bounds accounting for width (120f)
+                if (shark.x < 0f) shark.x = 0f
+                if (shark.x > 1280f - 120f) shark.x = 1280f - 120f
 
             } else if (shark.isSleeper) {
                 if (!shark.isAwake) {
