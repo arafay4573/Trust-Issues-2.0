@@ -183,7 +183,8 @@ class GameScreen(
                     maskX = 1150f
                 }
                 3 -> {
-                    sharks.add(Shark(800f, 280f, 0f, 0f, 1280f, isSleeper = true, facingRight = false))
+                    // Stalker Shark for Ambush - Initial speed 300 to let player get close
+                    sharks.add(Shark(800f, 280f, 300f, 0f, 1280f, isStalker = true))
                     maskX = 1200f
                 }
             }
@@ -470,14 +471,22 @@ class GameScreen(
     }
 
     override fun render(delta: Float) {
+        ScreenUtils.clear(0f, 0f, 0.2f, 1f)
+
+        // Always act and draw UI (fix unresponsive pause buttons)
+        uiStage.act(delta)
+
         if (!isPaused) {
             update(delta)
+            draw()
+        } else {
+            // Even when paused, we might want to draw the game world FROZEN behind the UI
+            // But the user requested "Game Logic (Only runs if the game is NOT paused)" and structured drawing inside.
+            // However, typical pause screens show the game.
+            // I will draw it here too, just not update it.
+            draw()
         }
 
-        draw()
-
-        // Always act the stage to ensure buttons work (e.g., Resume)
-        uiStage.act(delta)
         uiStage.draw()
     }
 
