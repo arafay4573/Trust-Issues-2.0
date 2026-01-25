@@ -18,6 +18,8 @@ import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.Skin
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
+import com.badlogic.gdx.scenes.scene2d.utils.ClickListener
+import com.badlogic.gdx.utils.Align
 import com.badlogic.gdx.utils.ScreenUtils
 import com.badlogic.gdx.utils.viewport.FitViewport
 
@@ -59,6 +61,7 @@ class GameScreen(
     private var isLevelComplete = false
     private var stateTimer = 0f
     private var allowScreenWrap = false
+    private var isPaused = false
 
     // Assets
     private var sharkTexture: Texture? = null
@@ -124,6 +127,7 @@ class GameScreen(
     private var whiteTexture: Texture? = null
     private var messageLabel: Label? = null
     private var levelLabel: Label? = null
+    private var pauseGroup: Table? = null
 
     // Controls
     private var isLeftPressed = false
@@ -156,6 +160,8 @@ class GameScreen(
         isLevelComplete = false
         stateTimer = 0f
         allowScreenWrap = false
+        isPaused = false
+        pauseGroup?.isVisible = false
         messageLabel?.isVisible = false
 
         if (levelLabel != null) {
@@ -182,14 +188,12 @@ class GameScreen(
         } else if (currentLevel == 2) {
             when (chunk) {
                 1 -> {
-                    // 2 Sharks Overlapping, 1 Platform (CRUMBLE_SLOW) Low
                     sharks.add(Shark(400f, 280f, 350f, 200f, 800f))
                     sharks.add(Shark(700f, 280f, 350f, 500f, 1100f))
                     platforms.add(Platform(Rectangle(600f, 360f, 150f, 20f), PlatformType.CRUMBLE_SLOW))
                     maskX = 1100f
                 }
                 2 -> {
-                    // 2 Fast Sharks, 2 Crumble Fast Platforms
                     sharks.add(Shark(500f, 280f, 400f, 300f, 900f))
                     sharks.add(Shark(900f, 280f, 400f, 700f, 1200f))
                     platforms.add(Platform(Rectangle(400f, 380f, 100f, 20f), PlatformType.CRUMBLE_FAST))
@@ -197,8 +201,6 @@ class GameScreen(
                     maskX = 1150f
                 }
                 3 -> {
-                    // Screen Wrap Puzzle
-                    // Mask at 1150, Ghost at 600, Stalker in middle
                     allowScreenWrap = true
                     sharks.add(Shark(640f, 280f, 320f, 0f, 1280f, isStalker = true))
                     platforms.add(Platform(Rectangle(600f, 350f, 150f, 20f), PlatformType.GHOST))
@@ -206,12 +208,10 @@ class GameScreen(
                 }
             }
         } else {
-             // Placeholder for other levels
              sharks.add(Shark(600f, 280f, 250f, 300f, 900f))
              maskX = 1100f
         }
 
-        // Adjust Mask Y to be slightly above floor or floating
         maskY = 280f + 50f
         maskRect.set(maskX, maskY, maskWidth, maskHeight)
     }
@@ -219,25 +219,29 @@ class GameScreen(
     private fun completeChunk() {
         val nextChunk = currentChunk + 1
 
+        // Save Progress
+        val prefs = Gdx.app.getPreferences("TrustIssues")
+        val savedMaxChunk = prefs.getInteger("level_${currentLevel}_maxChunk", 1)
+        if (nextChunk > savedMaxChunk && nextChunk <= 3) {
+            prefs.putInteger("level_${currentLevel}_maxChunk", nextChunk).flush()
+        }
+
         if (nextChunk > 3) {
             // Level Complete
             val nextLevel = currentLevel + 1
-            // Unlock next level in preferences
-            val unlocked = Gdx.app.getPreferences("TrustIssues").getInteger("unlockedLevel", 1)
+            val unlocked = prefs.getInteger("unlockedLevel", 1)
             if (nextLevel > unlocked) {
-                Gdx.app.getPreferences("TrustIssues").putInteger("unlockedLevel", nextLevel).flush()
+                prefs.putInteger("unlockedLevel", nextLevel).flush()
+                // Also unlock chunk 1 of next level
+                prefs.putInteger("level_${nextLevel}_maxChunk", 1).flush()
             }
 
             if (nextLevel > 10) {
-                 // Boss logic later
-                 // For now loop or go to selection
                  game.screen = LevelSelectScreen(game)
             } else {
-                 // Start next level chunk 1
                  game.screen = GameScreen(game, nextLevel, 1)
             }
         } else {
-            // Next Chunk
             game.screen = GameScreen(game, currentLevel, nextChunk)
         }
         dispose()
@@ -247,8 +251,6 @@ class GameScreen(
         val x = MathUtils.random(1280f)
         val speed = MathUtils.random(50f, 150f)
         val radius = MathUtils.random(2f, 8f)
-
-        // Allow bubbles to spawn higher up to fill the deep gap
         val actualY = if (startY == -20f) MathUtils.random(-50f, 280f) else startY
         bubbles.add(Bubble(x, actualY, speed, radius))
     }
@@ -275,21 +277,70 @@ class GameScreen(
         val labelStyle = Label.LabelStyle(buttonFont, Color.RED)
         skin!!.add("default", labelStyle)
 
-        // HUD: Level Info
+        // HUD
         val hudStyle = Label.LabelStyle(buttonFont, Color.YELLOW)
         levelLabel = Label("Level $currentLevel-$currentChunk", hudStyle)
         levelLabel!!.setPosition(20f, 720f - 50f)
         uiStage.addActor(levelLabel!!)
 
-        // Big Jump Zone (Right Half of Screen)
+        // Pause Button
+        val pauseBtn = TextButton("||", skin)
+        pauseBtn.addListener(object : ClickListener() {
+            override fun clicked(event: InputEvent?, x: Float, y: Float) {
+                if (!isDead && !isLevelComplete) {
+                    isPaused = true
+                    pauseGroup?.isVisible = true
+                }
+            }
+        })
+        pauseBtn.setPosition(20f, 720f - 120f) // Below level label
+        pauseBtn.setSize(60f, 60f)
+        uiStage.addActor(pauseBtn)
+
+        // Pause Menu Group
+        pauseGroup = Table()
+        pauseGroup!!.setFillParent(true)
+        pauseGroup!!.isVisible = false
+
+        // Semi-transparent background for pause
+        val dimPix = Pixmap(1, 1, Pixmap.Format.RGBA8888)
+        dimPix.setColor(0f, 0f, 0f, 0.7f)
+        dimPix.fill()
+        val dimTex = Texture(dimPix)
+        dimPix.dispose()
+        pauseGroup!!.background = com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable(com.badlogic.gdx.graphics.g2d.TextureRegion(dimTex))
+
+        val resumeBtn = TextButton("RESUME", skin)
+        resumeBtn.addListener(object : ClickListener() {
+            override fun clicked(event: InputEvent?, x: Float, y: Float) {
+                isPaused = false
+                pauseGroup?.isVisible = false
+            }
+        })
+
+        val homeBtn = TextButton("HOME", skin)
+        homeBtn.addListener(object : ClickListener() {
+            override fun clicked(event: InputEvent?, x: Float, y: Float) {
+                Gdx.app.postRunnable {
+                    game.screen = LevelSelectScreen(game)
+                    dispose()
+                }
+            }
+        })
+
+        pauseGroup!!.add(Label("PAUSED", hudStyle)).padBottom(50f).row()
+        pauseGroup!!.add(resumeBtn).size(200f, 80f).padBottom(20f).row()
+        pauseGroup!!.add(homeBtn).size(200f, 80f)
+        uiStage.addActor(pauseGroup!!)
+
+        // Big Jump Zone
         val jumpZone = Actor()
         jumpZone.setBounds(640f, 0f, 640f, 720f)
         jumpZone.addListener(object : InputListener() {
             override fun touchDown(event: InputEvent?, x: Float, y: Float, pointer: Int, button: Int): Boolean {
-                if (!isDead && !isLevelComplete && playerY <= floorY + 1f) {
+                if (!isPaused && !isDead && !isLevelComplete && playerY <= floorY + 1f) {
                     velocityY = jumpStrength
-                } else if (!isDead && !isLevelComplete) {
-                     // Check if on a platform (approximate)
+                } else if (!isPaused && !isDead && !isLevelComplete) {
                      if (Math.abs(velocityY) < 10f) {
                          velocityY = jumpStrength
                      }
@@ -299,12 +350,11 @@ class GameScreen(
         })
         uiStage.addActor(jumpZone)
 
-        // Button Controls
+        // Controls
         val rootTable = Table()
         rootTable.setFillParent(true)
         rootTable.bottom()
 
-        // Left
         val leftBtn = TextButton("<", skin)
         leftBtn.addListener(object : InputListener() {
             override fun touchDown(event: InputEvent?, x: Float, y: Float, pointer: Int, button: Int): Boolean {
@@ -316,7 +366,6 @@ class GameScreen(
             }
         })
 
-        // Right
         val rightBtn = TextButton(">", skin)
         rightBtn.addListener(object : InputListener() {
             override fun touchDown(event: InputEvent?, x: Float, y: Float, pointer: Int, button: Int): Boolean {
@@ -329,35 +378,40 @@ class GameScreen(
         })
 
         val leftControls = Table()
-        leftControls.add(leftBtn).size(100f, 100f).padRight(20f)
-        leftControls.add(rightBtn).size(100f, 100f)
+        // Resized controls: 120x120, 60 padding
+        leftControls.add(leftBtn).size(120f, 120f).padRight(60f)
+        leftControls.add(rightBtn).size(120f, 120f)
 
         rootTable.add(leftControls).left().pad(20f).expandX()
 
         messageLabel = Label("You fed the shark.", skin)
         messageLabel!!.isVisible = false
         messageLabel!!.setPosition(1280f / 2 - messageLabel!!.width / 2, 500f)
-        messageLabel!!.setAlignment(com.badlogic.gdx.utils.Align.center)
+        messageLabel!!.setAlignment(Align.center)
 
         uiStage.addActor(messageLabel!!)
         uiStage.addActor(rootTable)
     }
 
     override fun render(delta: Float) {
-        update(delta)
+        if (!isPaused) {
+            update(delta)
+        }
         draw()
+        // Draw Pause overlay on top if paused
+        if (isPaused) {
+            // Stage draw handles it if actors are in stage
+        }
     }
 
     private fun update(delta: Float) {
-        // Handle transitions for Death or Win
         if (isDead || isLevelComplete) {
             stateTimer += delta
             if (stateTimer >= 2.0f) {
                 Gdx.app.postRunnable {
                     if (isDead) {
-                        setupChunk(currentChunk) // Restart same chunk
+                        setupChunk(currentChunk)
                     } else {
-                        // Go to next chunk/level logic
                         completeChunk()
                     }
                 }
@@ -365,14 +419,12 @@ class GameScreen(
             return
         }
 
-        // Crouch Logic
         if (isDownPressed) {
             playerHeight = crouchHeight
         } else {
             playerHeight = normalHeight
         }
 
-        // Movement & Physics
         isWalking = false
         if (isLeftPressed) {
             playerX -= moveSpeed * delta
@@ -383,20 +435,16 @@ class GameScreen(
             isWalking = true
         }
 
-        // Boundary Check
         if (allowScreenWrap) {
              if (playerX < -40f) {
-                 // Teleport to Right & Enrage Stalker
                  playerX = 1280f
                  for (shark in sharks) {
                      if (shark.isStalker) shark.speed = 600f
                  }
              } else if (playerX > 1320f) {
-                 // Teleport to Left
                  playerX = 0f
              }
         } else {
-            // Death Walls
             if (playerX < 0f || playerX > 1280f) {
                 die(customMessage = "There is no escape.")
             }
@@ -408,44 +456,35 @@ class GameScreen(
             walkTime = 0f
         }
 
-        // Gravity
         velocityY += gravity * delta
         playerY += velocityY * delta
 
-        // Floor Collision
         if (playerY < floorY) {
             playerY = floorY
             velocityY = 0f
         }
 
-        // Platform Collision
         playerRect.set(playerX, playerY, playerWidth, playerHeight)
 
         for (plat in platforms) {
             if (plat.state == "BROKEN") continue
 
-            // Logic for crumbling
             if (plat.state == "CRUMBLING") {
                 plat.timer -= delta
                 if (plat.timer <= 0f) {
                     plat.state = "BROKEN"
-                    continue // No collision if broken just now
+                    continue
                 }
             }
 
-            // Check collision only if falling and above the platform
-            // We use a slightly offset Y to check feet
             if (velocityY <= 0 && plat.type != PlatformType.GHOST) {
-                // Check if we are landing on it
-                if (playerY >= plat.rect.y + plat.rect.height - 10f && // was above
-                    playerX + playerWidth > plat.rect.x && playerX < plat.rect.x + plat.rect.width) { // within X bounds
+                if (playerY >= plat.rect.y + plat.rect.height - 10f &&
+                    playerX + playerWidth > plat.rect.x && playerX < plat.rect.x + plat.rect.width) {
 
-                    // Simple AABB check for vertical overlap "entering" the platform from top
                      if (playerY + velocityY * delta <= plat.rect.y + plat.rect.height) {
                          playerY = plat.rect.y + plat.rect.height
                          velocityY = 0f
 
-                         // Trigger Crumble
                          if ((plat.type == PlatformType.CRUMBLE_SLOW || plat.type == PlatformType.CRUMBLE_FAST)
                              && plat.state == "ACTIVE") {
                              plat.state = "CRUMBLING"
@@ -459,45 +498,36 @@ class GameScreen(
         // Shark AI
         for (shark in sharks) {
             if (shark.isStalker) {
-                // Stalker Logic: Chase Player X
+                // Aggressive Bounce Logic
+                val sharkWidth = 120f
+                if (shark.x <= 0f) {
+                    shark.x = 0f
+                    shark.speed = 800f
+                    // Force facing handled by logic below if we don't override dir
+                    // But to bounce aggressively, we override the chase logic?
+                    // Let's just let it be strictly clamped and fast.
+                } else if (shark.x >= 1280f - sharkWidth) {
+                    shark.x = 1280f - sharkWidth
+                    shark.speed = 800f
+                }
+
+                // Chase Logic
                 val dir = if (playerX > shark.x) 1 else -1
                 shark.x += shark.speed * delta * dir
                 shark.facingRight = dir > 0
 
-                // Strict Clamp Logic
-                val maxX = 1280f - 120f // 120 is shark width
-                shark.x = MathUtils.clamp(shark.x, 0f, maxX)
-
-                // If hit boundary, force turn (visual only since logic is chase)
-                // Actually, if we hit the wall, we are stopped. The facing direction is already correct based on player chase.
-                // But prompt said: "If shark.x == 0 or shark.x == 1280 - width: Flip facingRight (Force turn)."
-                // However, Stalker logic dictates direction based on player. If player is Right, shark faces Right.
-                // If shark hits Right Wall, it stops. Player is still Right (or wrapping).
-                // Let's implement the request strictly, though it might flicker if player is still on that side.
-                // But usually, player wraps around, so player becomes Left. Stalker logic will naturally flip it.
-                // Let's stick to the natural chase logic + clamp, but ensure clamp is strictly applied.
-                // Re-reading request: "If shark.x == 0 or shark.x == 1280 - width: Flip facingRight (Force turn)."
-                // This implies a behavior change? Or just visual?
-                // If I am chasing Right, hit Right Wall. Player is Right (off screen). I stop.
-                // If Player wraps, Player is Left. Next frame, dir becomes -1. Shark turns Left.
-                // So the "Force Turn" is naturally handled by the chase logic when player wraps.
-                // I will stick to the chase logic which updates facingRight every frame.
-
             } else if (shark.isSleeper) {
                 if (!shark.isAwake) {
-                    // Check trigger
                     if (playerX > 400f) {
                         shark.isAwake = true
-                        shark.speed = 600f // Lunges
+                        shark.speed = 600f
                     }
                 }
-
                 if (shark.isAwake) {
                     shark.x -= shark.speed * delta
                     shark.facingRight = false
                 }
             } else {
-                // Normal Patrol
                 if (shark.facingRight) {
                     shark.x += shark.speed * delta
                     if (shark.x > shark.patrolRight) shark.facingRight = false
@@ -508,7 +538,6 @@ class GameScreen(
             }
         }
 
-        // Atmosphere: Bubbles
         bubbleSpawnTimer += delta
         if (bubbleSpawnTimer > 0.5f && bubbles.size < maxBubbles) {
             spawnBubble()
@@ -522,7 +551,6 @@ class GameScreen(
             if (b.y > 720f) iter.remove()
         }
 
-        // Collisions
         playerRect.set(playerX, playerY, playerWidth, playerHeight)
 
         sharkTexture?.let {
@@ -553,8 +581,6 @@ class GameScreen(
         messageLabel?.setText(roast)
         messageLabel?.color = Color.RED
         messageLabel?.isVisible = true
-
-        // Recenter label
         messageLabel?.pack()
         messageLabel?.setPosition(1280f / 2 - messageLabel!!.width / 2, 500f)
     }
@@ -566,14 +592,11 @@ class GameScreen(
         messageLabel?.setText(roast)
         messageLabel?.color = Color.GREEN
         messageLabel?.isVisible = true
-
-        // Recenter label
         messageLabel?.pack()
         messageLabel?.setPosition(1280f / 2 - messageLabel!!.width / 2, 500f)
     }
 
     private fun draw() {
-        // Gradient Background
         shapeRenderer.projectionMatrix = uiStage.viewport.camera.combined
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled)
         shapeRenderer.rect(0f, 0f, 1280f, 720f,
@@ -583,7 +606,6 @@ class GameScreen(
 
         gameViewport.apply()
 
-        // Bubbles
         shapeRenderer.projectionMatrix = gameViewport.camera.combined
         shapeRenderer.begin(ShapeRenderer.ShapeType.Line)
         shapeRenderer.color = Color.WHITE
@@ -592,18 +614,14 @@ class GameScreen(
         }
         shapeRenderer.end()
 
-        // Platforms
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled)
         for (plat in platforms) {
             if (plat.state == "BROKEN") continue
-
-            // "Green Lies": Always Green
             shapeRenderer.color = Color.GREEN
             shapeRenderer.rect(plat.rect.x, plat.rect.y, plat.rect.width, plat.rect.height)
         }
         shapeRenderer.end()
 
-        // Sprites (Sharks)
         game.batch.projectionMatrix = gameViewport.camera.combined
         game.batch.begin()
         sharkTexture?.let { tex ->
@@ -617,39 +635,30 @@ class GameScreen(
         }
         game.batch.end()
 
-        // Procedural Shapes (Player & Mask)
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled)
 
-        // Mask
         shapeRenderer.color = Color.WHITE
         shapeRenderer.circle(maskX + maskWidth/2, maskY + maskHeight/2, maskWidth/2)
         shapeRenderer.color = Color.CYAN
         shapeRenderer.rect(maskX, maskY + maskHeight/2 - 2, maskWidth, 4f)
 
-        // Player (Stickman)
         shapeRenderer.color = Color.BLACK
         val centerX = playerX + 12.5f
 
-        // Crouch offsets
         val isCrouching = playerHeight < normalHeight
         val headOffset = if (isCrouching) 22f else 44f
         val neckOffset = if (isCrouching) 15f else 38f
         val waistOffset = if (isCrouching) 5f else 18f
 
-        // Head
         shapeRenderer.circle(centerX, playerY + headOffset, 6f)
-
-        // Body
         shapeRenderer.rectLine(centerX, playerY + neckOffset, centerX, playerY + waistOffset, 3f)
 
-        // Arms
         if (isCrouching) {
              shapeRenderer.rectLine(centerX - 10f, playerY + 12f, centerX + 10f, playerY + 12f, 3f)
         } else {
              shapeRenderer.rectLine(centerX - 10f, playerY + 30f, centerX + 10f, playerY + 30f, 3f)
         }
 
-        // Legs (Animated)
         val legOffset = if (isCrouching) 0f else (Math.sin(walkTime.toDouble()).toFloat() * 6f)
 
         shapeRenderer.rectLine(centerX, playerY + waistOffset, centerX - 6f - legOffset, playerY, 3f)
@@ -657,7 +666,6 @@ class GameScreen(
 
         shapeRenderer.end()
 
-        // UI
         uiStage.viewport.apply()
         uiStage.draw()
     }

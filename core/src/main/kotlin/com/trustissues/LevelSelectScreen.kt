@@ -14,6 +14,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Skin
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener
+import com.badlogic.gdx.utils.Align
 import com.badlogic.gdx.utils.ScreenUtils
 import com.badlogic.gdx.utils.viewport.FitViewport
 
@@ -26,6 +27,9 @@ class LevelSelectScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
     private val disposables = mutableListOf<Texture>()
     private val fonts = mutableListOf<BitmapFont>()
 
+    // Popup
+    private var popupTable: Table? = null
+
     override fun show() {
         Gdx.input.inputProcessor = stage
         createSkin()
@@ -37,37 +41,109 @@ class LevelSelectScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
         // Title
         val titleFont = game.generateFont(50)
         fonts.add(titleFont)
-        val titleStyle = Label.LabelStyle(titleFont, Color.CYAN) // Cyan title
+        val titleStyle = Label.LabelStyle(titleFont, Color.CYAN)
         val titleLabel = Label("SELECT LEVEL", titleStyle)
         rootTable.add(titleLabel).colspan(5).padBottom(50f).row()
 
         // Levels Logic
         val unlockedLevel = Gdx.app.getPreferences("TrustIssues").getInteger("unlockedLevel", 1)
 
-        // Staggered Layout
-        // Row 1: Left aligned (padRight)
-        // Row 2: Right aligned (padLeft)
-        // Row 3: Center
-
         for (i in 1..10) {
             val btn = createLevelButton(i, i <= unlockedLevel)
-
-            // Stagger logic:
-            // Odd numbers (1, 3, 5): "Left"
-            // Even numbers (2, 4, 6): "Right"
-            // Actually, let's do 3 columns per row, but shift the whole row.
-
-            val cell = rootTable.add(btn).size(120f, 120f).pad(15f)
-
-            // Layout logic: 5 columns max
+            rootTable.add(btn).size(120f, 120f).pad(15f)
             if (i % 5 == 0) rootTable.row()
         }
 
-        // Boss Level (Bubble)
+        // Boss Level
         val bossBtn = createLevelButton(11, 11 <= unlockedLevel, isBoss = true)
         rootTable.add(bossBtn).colspan(5).size(150f, 150f).padTop(30f)
 
         stage.addActor(rootTable)
+
+        // Create Popup (Hidden)
+        createPopup()
+    }
+
+    private fun createPopup() {
+        popupTable = Table()
+        popupTable!!.setFillParent(true)
+        popupTable!!.isVisible = false
+
+        // Dim Background
+        val dimPix = Pixmap(1, 1, Pixmap.Format.RGBA8888)
+        dimPix.setColor(0f, 0f, 0f, 0.8f)
+        dimPix.fill()
+        val dimTex = Texture(dimPix)
+        dimPix.dispose()
+        disposables.add(dimTex)
+        popupTable!!.background = com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable(com.badlogic.gdx.graphics.g2d.TextureRegion(dimTex))
+
+        // Click background to close
+        popupTable!!.addListener(object : ClickListener() {
+            override fun clicked(event: InputEvent?, x: Float, y: Float) {
+                // Only close if clicked outside the inner content table?
+                // For simplicity, just close if they click anywhere not on a button (buttons consume events)
+                // Actually, let's add a close button.
+            }
+        })
+
+        stage.addActor(popupTable!!)
+    }
+
+    private fun showChunkSelection(level: Int) {
+        popupTable!!.clearChildren()
+        popupTable!!.isVisible = true
+
+        val titleFont = game.generateFont(40)
+        fonts.add(titleFont)
+        val titleLabel = Label("LEVEL $level", Label.LabelStyle(titleFont, Color.WHITE))
+        popupTable!!.add(titleLabel).padBottom(40f).row()
+
+        val chunkTable = Table()
+
+        // Determine max unlocked chunk for this level
+        val prefs = Gdx.app.getPreferences("TrustIssues")
+        val unlockedLevel = prefs.getInteger("unlockedLevel", 1)
+
+        // Default max chunk logic
+        // If level < unlockedLevel, then all chunks (3) are unlocked.
+        // If level == unlockedLevel, check granular pref.
+        // If level > unlockedLevel, 0.
+
+        var maxChunk = 0
+        if (level < unlockedLevel) {
+            maxChunk = 3
+        } else if (level == unlockedLevel) {
+            maxChunk = prefs.getInteger("level_${level}_maxChunk", 1)
+        }
+
+        for (c in 1..3) {
+            val unlocked = c <= maxChunk
+            val btn = TextButton("Chunk $c", skin, if (unlocked) "rect-default" else "rect-locked")
+
+            if (unlocked) {
+                btn.addListener(object : ClickListener() {
+                    override fun clicked(event: InputEvent?, x: Float, y: Float) {
+                        Gdx.app.postRunnable {
+                            game.screen = GameScreen(game, level, c)
+                            dispose()
+                        }
+                    }
+                })
+            }
+
+            chunkTable.add(btn).size(200f, 80f).pad(20f)
+        }
+
+        popupTable!!.add(chunkTable).row()
+
+        val closeBtn = TextButton("CLOSE", skin)
+        closeBtn.addListener(object : ClickListener() {
+            override fun clicked(event: InputEvent?, x: Float, y: Float) {
+                popupTable!!.isVisible = false
+            }
+        })
+        popupTable!!.add(closeBtn).size(150f, 60f).padTop(40f)
     }
 
     private fun createLevelButton(level: Int, unlocked: Boolean, isBoss: Boolean = false): TextButton {
@@ -78,10 +154,7 @@ class LevelSelectScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
         if (unlocked) {
             btn.addListener(object : ClickListener() {
                 override fun clicked(event: InputEvent?, x: Float, y: Float) {
-                     Gdx.app.postRunnable {
-                        game.screen = GameScreen(game, level, 1)
-                        dispose()
-                    }
+                     showChunkSelection(level)
                 }
             })
         }
@@ -92,26 +165,32 @@ class LevelSelectScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
     private fun createSkin() {
         skin = Skin()
 
-        // Create Circular Bubble Texture
+        // Bubble Texture
         val size = 64
         val pixmap = Pixmap(size, size, Pixmap.Format.RGBA8888)
         pixmap.setColor(Color.CLEAR)
         pixmap.fill()
-
-        // Draw Circle
         pixmap.setColor(Color.WHITE)
         pixmap.fillCircle(size/2, size/2, size/2 - 2)
-
         val bubbleTexture = Texture(pixmap)
         pixmap.dispose()
         disposables.add(bubbleTexture)
         skin!!.add("bubble", bubbleTexture)
 
+        // Rect Texture for chunk buttons
+        val rectPix = Pixmap(1, 1, Pixmap.Format.RGBA8888)
+        rectPix.setColor(Color.WHITE)
+        rectPix.fill()
+        val rectTex = Texture(rectPix)
+        rectPix.dispose()
+        disposables.add(rectTex)
+        skin!!.add("rect", rectTex)
+
         val buttonFont = game.generateFont(32)
         fonts.add(buttonFont)
         skin!!.add("default-font", buttonFont)
 
-        // Unlocked Style (Cyan Bubble)
+        // Bubble Styles
         val unlockedStyle = TextButton.TextButtonStyle()
         unlockedStyle.up = skin!!.newDrawable("bubble", Color.CYAN)
         unlockedStyle.down = skin!!.newDrawable("bubble", Color.TEAL)
@@ -119,23 +198,52 @@ class LevelSelectScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
         unlockedStyle.fontColor = Color.BLACK
         skin!!.add("default", unlockedStyle)
 
-        // Locked Style (Dark Blue/Grey Bubble)
         val lockedStyle = TextButton.TextButtonStyle()
-        lockedStyle.up = skin!!.newDrawable("bubble", Color.valueOf("455A64")) // Blue Grey
+        lockedStyle.up = skin!!.newDrawable("bubble", Color.valueOf("455A64"))
         lockedStyle.down = skin!!.newDrawable("bubble", Color.DARK_GRAY)
         lockedStyle.font = buttonFont
         lockedStyle.fontColor = Color.GRAY
         skin!!.add("locked", lockedStyle)
+
+        // Chunk Button Styles (Rectangular fallback if needed, or re-use bubble logic? Let's use rect for chunks)
+        // Oops, I used "default" and "locked" for chunks too in showChunkSelection.
+        // But "default" uses "bubble" drawable.
+        // Chunk buttons are TextButtons. 200x80. Bubble drawable is circular.
+        // It will stretch weirdly.
+        // Let's add specific styles for chunks (Rectangular).
+
+        val chunkUnlocked = TextButton.TextButtonStyle()
+        chunkUnlocked.up = skin!!.newDrawable("rect", Color.GREEN)
+        chunkUnlocked.down = skin!!.newDrawable("rect", Color.FOREST)
+        chunkUnlocked.font = buttonFont
+        skin!!.add("chunk-unlocked", chunkUnlocked) // Wait, I need to use these names in showChunkSelection
+
+        // Let's actually just update the names in showChunkSelection to use "rect-default" etc.
+        // Or better, redefine "default" to be circular ONLY for level buttons.
+        // But TextButton takes a style name.
+        // I'll add "rect-default" and "rect-locked".
+
+        val rectUnlocked = TextButton.TextButtonStyle()
+        rectUnlocked.up = skin!!.newDrawable("rect", Color.CYAN)
+        rectUnlocked.down = skin!!.newDrawable("rect", Color.TEAL)
+        rectUnlocked.font = buttonFont
+        rectUnlocked.fontColor = Color.BLACK
+        skin!!.add("rect-default", rectUnlocked)
+
+        val rectLocked = TextButton.TextButtonStyle()
+        rectLocked.up = skin!!.newDrawable("rect", Color.GRAY)
+        rectLocked.down = skin!!.newDrawable("rect", Color.DARK_GRAY)
+        rectLocked.font = buttonFont
+        rectLocked.fontColor = Color.LIGHT_GRAY
+        skin!!.add("rect-locked", rectLocked)
     }
 
     override fun render(delta: Float) {
-        // Gradient Background
         shapeRenderer.projectionMatrix = stage.viewport.camera.combined
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled)
-        // Light Blue to Deep Abyss
         shapeRenderer.rect(0f, 0f, 1280f, 720f,
-            Color.valueOf("000033"), Color.valueOf("000033"), // Bottom (Abyss)
-            Color.valueOf("4FC3F7"), Color.valueOf("4FC3F7")) // Top (Light Blue)
+            Color.valueOf("000033"), Color.valueOf("000033"),
+            Color.valueOf("4FC3F7"), Color.valueOf("4FC3F7"))
         shapeRenderer.end()
 
         stage.act(delta)
