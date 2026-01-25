@@ -43,12 +43,12 @@ class GameScreen(
     private val crouchHeight = 25f
 
     private var playerX = 100f
-    private var playerY = 200f
+    private var playerY = 280f
     private var velocityY = 0f
     private val gravity = -3200f
     private val jumpStrength = 1050f
     private val moveSpeed = 350f
-    private val floorY = 100f
+    private val floorY = 280f
 
     // Animation State
     private var walkTime = 0f
@@ -135,7 +135,7 @@ class GameScreen(
     private fun setupChunk(chunk: Int) {
         sharks.clear()
         playerX = 100f
-        playerY = 200f
+        playerY = 280f
         velocityY = 0f
         isDead = false
         isLevelComplete = false
@@ -151,18 +151,18 @@ class GameScreen(
             when (chunk) {
                 1 -> {
                     // One normal shark
-                    sharks.add(Shark(600f, 100f, 250f, 300f, 900f))
+                    sharks.add(Shark(600f, 280f, 250f, 300f, 900f))
                     maskX = 1100f
                 }
                 2 -> {
                     // Two sharks
-                    sharks.add(Shark(500f, 100f, 200f, 300f, 700f))
-                    sharks.add(Shark(900f, 100f, 280f, 800f, 1100f))
+                    sharks.add(Shark(500f, 280f, 200f, 300f, 700f))
+                    sharks.add(Shark(900f, 280f, 280f, 800f, 1100f))
                     maskX = 1150f
                 }
                 3 -> {
                     // Sleeper shark
-                    sharks.add(Shark(800f, 100f, 0f, 0f, 1280f, isSleeper = true, facingRight = false))
+                    sharks.add(Shark(800f, 280f, 0f, 0f, 1280f, isSleeper = true, facingRight = false))
                     maskX = 1200f
                 }
                 else -> {
@@ -172,9 +172,11 @@ class GameScreen(
             }
         } else {
              // Placeholder for other levels
-             sharks.add(Shark(600f, 100f, 250f, 300f, 900f))
+             sharks.add(Shark(600f, 280f, 250f, 300f, 900f))
         }
 
+        // Adjust Mask Y to be slightly above floor or floating
+        maskY = 280f + 50f
         maskRect.set(maskX, maskY, maskWidth, maskHeight)
     }
 
@@ -191,7 +193,10 @@ class GameScreen(
         val x = MathUtils.random(1280f)
         val speed = MathUtils.random(50f, 150f)
         val radius = MathUtils.random(2f, 8f)
-        bubbles.add(Bubble(x, startY, speed, radius))
+
+        // Allow bubbles to spawn higher up to fill the deep gap
+        val actualY = if (startY == -20f) MathUtils.random(-50f, 280f) else startY
+        bubbles.add(Bubble(x, actualY, speed, radius))
     }
 
     private fun createUi() {
@@ -289,17 +294,18 @@ class GameScreen(
         if (isDead || isLevelComplete) {
             stateTimer += delta
             if (stateTimer >= 2.0f) {
-                if (isDead) {
-                    setupChunk(currentChunk) // Restart same chunk
-                } else {
-                    // Go to next chunk
-                    if (currentLevel == 1 && currentChunk >= 3) {
-                         completeLevel()
+                Gdx.app.postRunnable {
+                    if (isDead) {
+                        setupChunk(currentChunk) // Restart same chunk
                     } else {
-                         // We can't simply replace the screen easily without potentially passing data.
-                         // But we can just create a new screen.
-                         game.screen = GameScreen(game, currentLevel, currentChunk + 1)
-                         dispose()
+                        // Go to next chunk
+                        if (currentLevel == 1 && currentChunk >= 3) {
+                             completeLevel()
+                        } else {
+                             // Switch to next chunk safely
+                             game.screen = GameScreen(game, currentLevel, currentChunk + 1)
+                             dispose()
+                        }
                     }
                 }
             }
@@ -322,6 +328,11 @@ class GameScreen(
         if (isRightPressed) {
             playerX += moveSpeed * delta
             isWalking = true
+        }
+
+        // Boundary Check (Death Walls)
+        if (playerX < 0f || playerX > 1280f) {
+            die(customMessage = "There is no escape.")
         }
 
         if (isWalking) {
@@ -406,10 +417,10 @@ class GameScreen(
         uiStage.act(delta)
     }
 
-    private fun die() {
+    private fun die(customMessage: String? = null) {
         if (isDead) return
         isDead = true
-        val roast = deathRoasts.random()
+        val roast = customMessage ?: deathRoasts.random()
         messageLabel?.setText(roast)
         messageLabel?.color = Color.RED
         messageLabel?.isVisible = true
