@@ -71,10 +71,22 @@ class GameScreen(
         val patrolRight: Float,
         var facingRight: Boolean = false,
         var isSleeper: Boolean = false,
-        var isAwake: Boolean = false
+        var isAwake: Boolean = false,
+        var isStalker: Boolean = false
     )
 
     private val sharks = mutableListOf<Shark>()
+
+    // Platform Stats
+    enum class PlatformType { NORMAL, CRUMBLE_SLOW, CRUMBLE_FAST, GHOST }
+    data class Platform(
+        val rect: Rectangle,
+        val type: PlatformType,
+        var state: String = "ACTIVE", // ACTIVE, BROKEN
+        var timer: Float = 0f
+    )
+
+    private val platforms = mutableListOf<Platform>()
 
     // Mask Stats
     private var maskX = 1100f
@@ -93,7 +105,8 @@ class GameScreen(
         "Ocean's tax collector.",
         "He smelled confidence.",
         "Sharp teeth, bad trust.",
-        "That wasn't a dolphin."
+        "That wasn't a dolphin.",
+        "There is no escape."
     )
 
     private val winRoasts = listOf(
@@ -134,6 +147,7 @@ class GameScreen(
 
     private fun setupChunk(chunk: Int) {
         sharks.clear()
+        platforms.clear()
         playerX = 100f
         playerY = 280f
         velocityY = 0f
@@ -146,33 +160,50 @@ class GameScreen(
             levelLabel!!.setText("Level $currentLevel-$chunk")
         }
 
-        // Logic for Level 1 Chunks
+        // Logic for Levels
         if (currentLevel == 1) {
             when (chunk) {
                 1 -> {
-                    // One normal shark
                     sharks.add(Shark(600f, 280f, 250f, 300f, 900f))
                     maskX = 1100f
                 }
                 2 -> {
-                    // Two sharks
                     sharks.add(Shark(500f, 280f, 200f, 300f, 700f))
                     sharks.add(Shark(900f, 280f, 280f, 800f, 1100f))
                     maskX = 1150f
                 }
                 3 -> {
-                    // Sleeper shark
                     sharks.add(Shark(800f, 280f, 0f, 0f, 1280f, isSleeper = true, facingRight = false))
                     maskX = 1200f
                 }
-                else -> {
-                    // Level Completed
-                    completeLevel()
+            }
+        } else if (currentLevel == 2) {
+            when (chunk) {
+                1 -> {
+                    // Shark on floor, Platform (CRUMBLE_SLOW) safety
+                    sharks.add(Shark(800f, 280f, 250f, 500f, 1000f))
+                    platforms.add(Platform(Rectangle(600f, 450f, 150f, 20f), PlatformType.CRUMBLE_SLOW))
+                    maskX = 1100f
+                }
+                2 -> {
+                    // 2 Sharks, 2 Crumble Fast Platforms over pit (simulated by sharks being below)
+                    sharks.add(Shark(500f, 280f, 250f, 400f, 800f))
+                    sharks.add(Shark(900f, 280f, 300f, 800f, 1100f))
+                    platforms.add(Platform(Rectangle(500f, 450f, 100f, 20f), PlatformType.CRUMBLE_FAST))
+                    platforms.add(Platform(Rectangle(800f, 450f, 100f, 20f), PlatformType.CRUMBLE_FAST))
+                    maskX = 1150f
+                }
+                3 -> {
+                    // Stalker Shark, Ghost Platform
+                    sharks.add(Shark(600f, 280f, 150f, 0f, 1280f, isStalker = true))
+                    platforms.add(Platform(Rectangle(600f, 450f, 150f, 20f), PlatformType.GHOST))
+                    maskX = 1150f
                 }
             }
         } else {
              // Placeholder for other levels
              sharks.add(Shark(600f, 280f, 250f, 300f, 900f))
+             maskX = 1100f
         }
 
         // Adjust Mask Y to be slightly above floor or floating
@@ -180,13 +211,31 @@ class GameScreen(
         maskRect.set(maskX, maskY, maskWidth, maskHeight)
     }
 
-    private fun completeLevel() {
-        // Unlock next level (2) if we just beat Level 1
-        val unlocked = Gdx.app.getPreferences("TrustIssues").getInteger("unlockedLevel", 1)
-        if (currentLevel >= unlocked && currentLevel < 11) {
-            Gdx.app.getPreferences("TrustIssues").putInteger("unlockedLevel", currentLevel + 1).flush()
+    private fun completeChunk() {
+        val nextChunk = currentChunk + 1
+
+        if (nextChunk > 3) {
+            // Level Complete
+            val nextLevel = currentLevel + 1
+            // Unlock next level in preferences
+            val unlocked = Gdx.app.getPreferences("TrustIssues").getInteger("unlockedLevel", 1)
+            if (nextLevel > unlocked) {
+                Gdx.app.getPreferences("TrustIssues").putInteger("unlockedLevel", nextLevel).flush()
+            }
+
+            if (nextLevel > 10) {
+                 // Boss logic later
+                 // For now loop or go to selection
+                 game.screen = LevelSelectScreen(game)
+            } else {
+                 // Start next level chunk 1
+                 game.screen = GameScreen(game, nextLevel, 1)
+            }
+        } else {
+            // Next Chunk
+            game.screen = GameScreen(game, currentLevel, nextChunk)
         }
-        game.screen = LevelSelectScreen(game)
+        dispose()
     }
 
     private fun spawnBubble(startY: Float = -20f) {
@@ -234,6 +283,15 @@ class GameScreen(
             override fun touchDown(event: InputEvent?, x: Float, y: Float, pointer: Int, button: Int): Boolean {
                 if (!isDead && !isLevelComplete && playerY <= floorY + 1f) {
                     velocityY = jumpStrength
+                } else if (!isDead && !isLevelComplete) {
+                     // Check if on a platform (approximate)
+                     // If needed for double jump, add here. For now, only jump from floor or platform (handled by Y check)
+                     // Since platform logic sets velocityY=0 and prevents falling, Y check against floorY is insufficient if on platform.
+                     // But we will handle collision such that playerY stays stable.
+                     // A simple "allow jump if velocityY is approx 0" might work better.
+                     if (Math.abs(velocityY) < 10f) {
+                         velocityY = jumpStrength
+                     }
                 }
                 return true
             }
@@ -298,14 +356,8 @@ class GameScreen(
                     if (isDead) {
                         setupChunk(currentChunk) // Restart same chunk
                     } else {
-                        // Go to next chunk
-                        if (currentLevel == 1 && currentChunk >= 3) {
-                             completeLevel()
-                        } else {
-                             // Switch to next chunk safely
-                             game.screen = GameScreen(game, currentLevel, currentChunk + 1)
-                             dispose()
-                        }
+                        // Go to next chunk/level logic
+                        completeChunk()
                     }
                 }
             }
@@ -345,14 +397,59 @@ class GameScreen(
         velocityY += gravity * delta
         playerY += velocityY * delta
 
+        // Floor Collision
         if (playerY < floorY) {
             playerY = floorY
             velocityY = 0f
         }
 
+        // Platform Collision
+        playerRect.set(playerX, playerY, playerWidth, playerHeight)
+
+        for (plat in platforms) {
+            if (plat.state == "BROKEN") continue
+
+            // Logic for crumbling
+            if (plat.state == "CRUMBLING") {
+                plat.timer -= delta
+                if (plat.timer <= 0f) {
+                    plat.state = "BROKEN"
+                    continue // No collision if broken just now
+                }
+            }
+
+            // Check collision only if falling and above the platform
+            // We use a slightly offset Y to check feet
+            if (velocityY <= 0 && plat.type != PlatformType.GHOST) {
+                // Check if we are landing on it
+                if (playerY >= plat.rect.y + plat.rect.height - 10f && // was above
+                    playerX + playerWidth > plat.rect.x && playerX < plat.rect.x + plat.rect.width) { // within X bounds
+
+                    // Simple AABB check for vertical overlap "entering" the platform from top
+                     if (playerY + velocityY * delta <= plat.rect.y + plat.rect.height) {
+                         playerY = plat.rect.y + plat.rect.height
+                         velocityY = 0f
+
+                         // Trigger Crumble
+                         if ((plat.type == PlatformType.CRUMBLE_SLOW || plat.type == PlatformType.CRUMBLE_FAST)
+                             && plat.state == "ACTIVE") {
+                             plat.state = "CRUMBLING"
+                             plat.timer = if (plat.type == PlatformType.CRUMBLE_SLOW) 1.0f else 0.5f
+                         }
+                     }
+                }
+            }
+        }
+
         // Shark AI
         for (shark in sharks) {
-            if (shark.isSleeper) {
+            if (shark.isStalker) {
+                // Stalker Logic: Chase Player X
+                val dir = if (playerX > shark.x) 1 else -1
+                shark.x += shark.speed * delta * dir
+                shark.facingRight = dir > 0
+
+            } else if (shark.isSleeper) {
                 if (!shark.isAwake) {
                     // Check trigger
                     if (playerX > 400f) {
@@ -362,8 +459,6 @@ class GameScreen(
                 }
 
                 if (shark.isAwake) {
-                    // Moves left towards player area generally, but here just simple logic
-                    // The prompt says "Lunges". Let's assume it charges Left.
                     shark.x -= shark.speed * delta
                     shark.facingRight = false
                 }
@@ -460,6 +555,25 @@ class GameScreen(
         shapeRenderer.color = Color.WHITE
         for (b in bubbles) {
             shapeRenderer.circle(b.x, b.y, b.radius)
+        }
+        shapeRenderer.end()
+
+        // Platforms
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled)
+        for (plat in platforms) {
+            if (plat.state == "BROKEN") continue
+
+            if (plat.state == "CRUMBLING") {
+                // Flash or change color
+                shapeRenderer.color = if (plat.timer % 0.2f < 0.1f) Color.ORANGE else Color.GREEN
+            } else if (plat.type == PlatformType.GHOST) {
+                // Look like normal platform
+                shapeRenderer.color = Color.GREEN
+            } else {
+                shapeRenderer.color = Color.GREEN
+            }
+
+            shapeRenderer.rect(plat.rect.x, plat.rect.y, plat.rect.width, plat.rect.height)
         }
         shapeRenderer.end()
 
