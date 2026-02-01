@@ -585,40 +585,49 @@ class GameScreen(
         // Shark AI
         for (shark in sharks) {
             if (shark.isStalker) {
-                // 1. Basic Chase (Always run towards player)
-                val direction = if (playerX > shark.x) 1 else -1
-                shark.x += shark.speed * delta * direction
-                shark.facingRight = direction > 0
+                var moveDir = 0
 
-                // 2. LEVEL 1 CHUNK 3 EXCLUSIVE (The Infinite Ambush Loop)
+                // LEVEL 1-3 EXCLUSIVE: THE AMBUSH LOOP
                 if (currentLevel == 1 && currentChunk == 3) {
-                    // ALLOW leaving the screen to trigger teleport
-                    val sharkWidth = 120f
-                    // Scenario: Shark runs OFF Left Wall -> Teleports to Right -> Charges Player
-                    if (shark.x < -sharkWidth - 50f) { // Added buffer to ensure he fully vanishes
-                        shark.x = 1280f
-                        shark.speed = 950f // ENHANCED SPEED
+                    // Basic Chase
+                    moveDir = if (playerX > shark.x) 1 else -1
+
+                    // COMMITMENT OVERRIDE:
+                    // If Shark is to the Right of Player (shark.x > playerX) but is moving Left...
+                    // FORCE him to keep going Left into the wall. Do not let him turn around.
+                    if (shark.x > playerX && !shark.facingRight) {
+                         moveDir = -1
                     }
 
-                    // Scenario: Shark runs OFF Right Wall -> Teleports to Left
+                    // TELEPORT LOGIC (The Wrap)
+                    val sharkWidth = 120f
+                    // If he hits the Left Wall -> Teleport to Right
+                    if (shark.x < -sharkWidth - 50f) {
+                        shark.x = 1280f
+                        shark.speed = 950f // SPEED BOOST
+                        shark.facingRight = false // Face Left (towards player)
+                    }
+                    // If he hits the Right Wall -> Teleport to Left (Safety)
                     if (shark.x > 1280f + 50f) {
                         shark.x = -sharkWidth
                         shark.speed = 950f
+                        shark.facingRight = true
                     }
                 }
-                // 3. ALL OTHER LEVELS (Standard Clamp)
+                // STANDARD STALKER LOGIC (Levels 2+)
                 else {
-                    // Strict Clamp so they don't leave the screen in other levels
+                    moveDir = if (playerX > shark.x) 1 else -1
+
+                    // Standard Clamp
                     val sharkWidth = 120f
-                    if (shark.x < 0f) {
-                        shark.x = 0f
-                        // Force turn around if stuck
-                         if (playerX < shark.x) shark.facingRight = true
-                    }
-                    if (shark.x > 1280f - sharkWidth) {
-                        shark.x = 1280f - sharkWidth
-                    }
+                    if (shark.x < 0f) { shark.x = 0f; if(playerX < shark.x) moveDir = 1 } // turn if stuck
+                    if (shark.x > 1280f - sharkWidth) { shark.x = 1280f - sharkWidth }
                 }
+
+                // Apply Movement
+                shark.x += shark.speed * delta * moveDir
+                if (moveDir != 0) shark.facingRight = (moveDir > 0)
+
             } else if (shark.isSleeper) {
                 if (!shark.isAwake) {
                     if (playerX > 400f) {
