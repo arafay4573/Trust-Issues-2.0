@@ -474,16 +474,15 @@ class GameScreen(
         ScreenUtils.clear(0f, 0f, 0.2f, 1f)
 
         // Always act and draw UI (fix unresponsive pause buttons)
-        uiStage.act(delta)
+        // Use Gdx.graphics.deltaTime for UI to ensure it updates even if game time is manipulated
+        uiStage.act(Gdx.graphics.deltaTime)
 
         if (!isPaused) {
             update(delta)
             draw()
         } else {
-            // Even when paused, we might want to draw the game world FROZEN behind the UI
-            // But the user requested "Game Logic (Only runs if the game is NOT paused)" and structured drawing inside.
-            // However, typical pause screens show the game.
-            // I will draw it here too, just not update it.
+            // Force input processor to UI when paused
+            Gdx.input.inputProcessor = uiStage
             draw()
         }
 
@@ -585,49 +584,48 @@ class GameScreen(
         // Shark AI
         for (shark in sharks) {
             if (shark.isStalker) {
-                var moveDir = 0
+                // DEFAULT: Chase the player
+                var targetDir = if (playerX > shark.x) 1 else -1
 
-                // LEVEL 1-3 EXCLUSIVE: THE AMBUSH LOOP
+                // --- LEVEL 1 CHUNK 3 EXCLUSIVE REWRITE ---
                 if (currentLevel == 1 && currentChunk == 3) {
-                    // Basic Chase
-                    moveDir = if (playerX > shark.x) 1 else -1
 
-                    // COMMITMENT OVERRIDE:
-                    // If Shark is to the Right of Player (shark.x > playerX) but is moving Left...
-                    // FORCE him to keep going Left into the wall. Do not let him turn around.
-                    if (shark.x > playerX && !shark.facingRight) {
-                         moveDir = -1
+                    // MOMENTUM LOCK (The Fix):
+                    // If the shark is already moving LEFT (chasing you to the wall)...
+                    // AND he is past the middle of the screen (x < 640)...
+                    // HE MUST IGNORE THE PLAYER. He keeps running Left until he hits the wall.
+                    if (!shark.facingRight && shark.x < 640f) {
+                        targetDir = -1 // Force Left (Ignore Player Jump)
                     }
 
-                    // TELEPORT LOGIC (The Wrap)
+                    // Apply Movement
+                    shark.x += shark.speed * delta * targetDir
+
+                    // Update Facing (Only visual)
+                    shark.facingRight = (targetDir > 0)
+
+                    // TELEPORT LOGIC (Infinite Loop)
                     val sharkWidth = 120f
-                    // If he hits the Left Wall -> Teleport to Right
+                    // Hit Left Wall -> Teleport Right -> SPRINT
                     if (shark.x < -sharkWidth - 50f) {
                         shark.x = 1280f
-                        shark.speed = 950f // SPEED BOOST
-                        shark.facingRight = false // Face Left (towards player)
+                        shark.speed = 950f
                     }
-                    // If he hits the Right Wall -> Teleport to Left (Safety)
+                    // Hit Right Wall -> Teleport Left
                     if (shark.x > 1280f + 50f) {
                         shark.x = -sharkWidth
                         shark.speed = 950f
-                        shark.facingRight = true
                     }
                 }
-                // STANDARD STALKER LOGIC (Levels 2+)
+                // --- ALL OTHER LEVELS (Standard Logic) ---
                 else {
-                    moveDir = if (playerX > shark.x) 1 else -1
-
-                    // Standard Clamp
+                    shark.x += shark.speed * delta * targetDir
+                    shark.facingRight = (targetDir > 0)
+                    // Clamp
                     val sharkWidth = 120f
-                    if (shark.x < 0f) { shark.x = 0f; if(playerX < shark.x) moveDir = 1 } // turn if stuck
-                    if (shark.x > 1280f - sharkWidth) { shark.x = 1280f - sharkWidth }
+                    if (shark.x < 0f) shark.x = 0f
+                    if (shark.x > 1280f - sharkWidth) shark.x = 1280f - sharkWidth
                 }
-
-                // Apply Movement
-                shark.x += shark.speed * delta * moveDir
-                if (moveDir != 0) shark.facingRight = (moveDir > 0)
-
             } else if (shark.isSleeper) {
                 if (!shark.isAwake) {
                     if (playerX > 400f) {
