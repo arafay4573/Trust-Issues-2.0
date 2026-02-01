@@ -531,7 +531,8 @@ class GameScreen(
                  playerX = 0f
              }
         } else {
-            if (playerX < 0f || playerX > 1280f) {
+            // Strictly enforce bounds for levels like 1-3
+            if (playerX < 0f || playerX > 1280f - playerWidth) {
                 die(customMessage = "There is no escape.")
             }
         }
@@ -584,20 +585,39 @@ class GameScreen(
         // Shark AI
         for (shark in sharks) {
             if (shark.isStalker) {
-                // 1. Always chase the player on X axis
+                // 1. Basic Chase (Always run towards player)
                 val direction = if (playerX > shark.x) 1 else -1
                 shark.x += shark.speed * delta * direction
                 shark.facingRight = direction > 0
 
-                // 2. FORCE WRAP (Teleport Logic)
-                // If he runs into the Left Wall -> Pop out of the Right Wall
-                val width = 120f
-                if (shark.x < -width) {
-                    shark.x = 1280f
+                // 2. LEVEL 1 CHUNK 3 EXCLUSIVE (The Infinite Ambush Loop)
+                if (currentLevel == 1 && currentChunk == 3) {
+                    // ALLOW leaving the screen to trigger teleport
+                    val sharkWidth = 120f
+                    // Scenario: Shark runs OFF Left Wall -> Teleports to Right -> Charges Player
+                    if (shark.x < -sharkWidth - 50f) { // Added buffer to ensure he fully vanishes
+                        shark.x = 1280f
+                        shark.speed = 950f // ENHANCED SPEED
+                    }
+
+                    // Scenario: Shark runs OFF Right Wall -> Teleports to Left
+                    if (shark.x > 1280f + 50f) {
+                        shark.x = -sharkWidth
+                        shark.speed = 950f
+                    }
                 }
-                // If he runs into the Right Wall -> Pop out of the Left Wall
-                if (shark.x > 1280f) {
-                    shark.x = -width
+                // 3. ALL OTHER LEVELS (Standard Clamp)
+                else {
+                    // Strict Clamp so they don't leave the screen in other levels
+                    val sharkWidth = 120f
+                    if (shark.x < 0f) {
+                        shark.x = 0f
+                        // Force turn around if stuck
+                         if (playerX < shark.x) shark.facingRight = true
+                    }
+                    if (shark.x > 1280f - sharkWidth) {
+                        shark.x = 1280f - sharkWidth
+                    }
                 }
             } else if (shark.isSleeper) {
                 if (!shark.isAwake) {
@@ -654,7 +674,7 @@ class GameScreen(
             win()
         }
 
-        // Note: Act moved to render() to support pausing
+        uiStage.act(delta)
     }
 
     private fun die(customMessage: String? = null) {
@@ -749,7 +769,8 @@ class GameScreen(
 
         shapeRenderer.end()
 
-        // UI Drawing handled in render()
+        uiStage.viewport.apply()
+        uiStage.draw()
     }
 
     override fun resize(width: Int, height: Int) {
