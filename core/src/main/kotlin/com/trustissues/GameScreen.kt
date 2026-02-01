@@ -481,7 +481,7 @@ class GameScreen(
             update(delta)
             draw()
         } else {
-            // Force input processor to UI when paused
+            // Force input processor to UI when paused to ensure clicks work
             Gdx.input.inputProcessor = uiStage
             draw()
         }
