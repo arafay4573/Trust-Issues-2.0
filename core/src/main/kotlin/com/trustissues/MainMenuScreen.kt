@@ -69,7 +69,7 @@ class MainMenuScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
         // Layout
         table.add(titleLabel).padBottom(100f).row()
         table.add(playButton).size(300f, 100f).padBottom(20f).row()
-        table.add(settingsButton).size(200f, 60f).padBottom(10f).row()
+        table.add(settingsButton).size(300f, 80f).padBottom(10f).row()
         table.add(soundLabel).padTop(10f)
 
         stage.addActor(table)

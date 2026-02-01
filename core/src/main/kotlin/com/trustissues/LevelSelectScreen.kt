@@ -38,6 +38,21 @@ class LevelSelectScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
         rootTable.setFillParent(true)
         rootTable.center()
 
+        // Back Button
+        val backBtn = TextButton("<", skin, "default") // Circular style if available or create simple one
+        // Wait, "default" style uses bubble texture which is round. Perfect.
+        backBtn.addListener(object : ClickListener() {
+            override fun clicked(event: InputEvent?, x: Float, y: Float) {
+                Gdx.app.postRunnable {
+                    game.screen = MainMenuScreen(game)
+                    dispose()
+                }
+            }
+        })
+        stage.addActor(backBtn)
+        backBtn.setPosition(20f, 720f - 100f)
+        backBtn.setSize(80f, 80f)
+
         // Title
         val titleFont = game.generateFont(50)
         fonts.add(titleFont)
