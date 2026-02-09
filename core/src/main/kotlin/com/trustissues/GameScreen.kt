@@ -70,7 +70,7 @@ class GameScreen(
 
     // Horror Mode State
     private var horrorMode = false
-    private var flashlightRadius = 250f
+    private var flashlightRadius = 300f // Default 300f
     private var strobeTimer = 0f
     private var isLightsOn = false
 
@@ -171,7 +171,8 @@ class GameScreen(
 
         horrorMode = (currentLevel == 3)
         strobeTimer = 0f
-        isLightsOn = false // Start dark for strobe
+        isLightsOn = false
+        flashlightRadius = 300f // Reset default
 
         if (levelLabel != null) levelLabel!!.setText("Level $currentLevel-$chunk")
 
@@ -232,12 +233,9 @@ class GameScreen(
 
     private fun setupLevel3(chunk: Int) {
         // Pitch Black Theme
-        // Floor is set to 0 for this level to allow full verticality
-        // But let's keep consistent floorY=280 for now unless we need more space.
-        // Actually, let's use the full screen. Floor at Y=0.
-
-        // Wait, standard floor is 280. Changing it might break common logic.
-        // Let's keep floor at 280 but use platforms.
+        // Floor is NOT present (pit death), so platforms are critical.
+        playerX = 100f
+        playerY = 300f // Safe Spawn Height
 
         when (chunk) {
             1 -> {
@@ -245,6 +243,10 @@ class GameScreen(
                 maskX = 1100f
                 maskY = 280f + 50f
                 sharks.add(Shark(600f, 280f, 150f, 400f, 800f)) // Slow shark, hard to see
+
+                // Safe Start Platform
+                platforms.add(Platform(Rectangle(100f, 200f, 100f, 20f), PlatformType.NORMAL))
+                // Additional platforms leading right
                 platforms.add(Platform(Rectangle(400f, 350f, 100f, 20f), PlatformType.NORMAL))
                 platforms.add(Platform(Rectangle(700f, 400f, 100f, 20f), PlatformType.NORMAL))
             }
@@ -253,23 +255,33 @@ class GameScreen(
                 maskX = 1200f
                 maskY = 100f // Near bottom
 
-                // Switch to flip gravity UP
-                gravitySwitches.add(GravitySwitch(Rectangle(300f, 280f, 40f, 40f)))
+                // Safe Start Platform
+                platforms.add(Platform(Rectangle(100f, 200f, 100f, 20f), PlatformType.NORMAL))
+
+                // Switch to flip gravity UP at x=400 (y=250 approx)
+                gravitySwitches.add(GravitySwitch(Rectangle(400f, 250f, 40f, 40f)))
 
                 // Platform high up to catch player
                 platforms.add(Platform(Rectangle(400f, 600f, 400f, 20f), PlatformType.NORMAL))
 
-                // Switch to flip gravity DOWN
-                gravitySwitches.add(GravitySwitch(Rectangle(700f, 560f, 40f, 40f)))
+                // Switch to flip gravity DOWN at x=800
+                gravitySwitches.add(GravitySwitch(Rectangle(800f, 560f, 40f, 40f)))
 
                 // Shark patrolling the ceiling platform
                 sharks.add(Shark(500f, 600f, 200f, 400f, 800f))
             }
             3 -> {
                 // Strobe Light
+                isLightsOn = true // Start ON
+                strobeTimer = 0f
+
                 maskX = 1100f
                 maskY = 280f + 50f
                 sharks.add(Shark(400f, 280f, 400f, 0f, 1280f, isStalker = true)) // Fast stalker
+
+                // Safe Start Platform
+                platforms.add(Platform(Rectangle(100f, 200f, 100f, 20f), PlatformType.NORMAL))
+
                 platforms.add(Platform(Rectangle(300f, 350f, 100f, 20f), PlatformType.GHOST))
                 platforms.add(Platform(Rectangle(600f, 450f, 100f, 20f), PlatformType.GHOST))
                 platforms.add(Platform(Rectangle(900f, 350f, 100f, 20f), PlatformType.GHOST))
@@ -306,9 +318,6 @@ class GameScreen(
         val actualY = if (startY == -20f) MathUtils.random(-50f, 280f) else startY
         bubbles.add(Bubble(x, actualY, speed, radius))
     }
-
-    // ... UI Creation Code (Condensed for brevity, assumed same as before) ...
-    // Note: In real output, I must include the full code. I'll paste the procedural texture and UI creation methods here.
 
     private fun createProceduralTexture(type: String): Texture {
         val size = 120
@@ -502,7 +511,8 @@ class GameScreen(
         if (horrorMode && currentChunk == 3) {
             strobeTimer += delta
             if (isLightsOn) {
-                if (strobeTimer > 0.5f) {
+                // Increased duration to 1.0s so player can see at start
+                if (strobeTimer > 1.0f) {
                     isLightsOn = false
                     strobeTimer = 0f
                 }
@@ -534,8 +544,7 @@ class GameScreen(
             velocityY += gravity * delta
             playerY += velocityY * delta
 
-            // Ceiling as Floor? No, need platforms logic.
-            // If no platforms, fall up forever?
+            // Ceiling check
             if (playerY > 720f) die("Gravity hurts.")
         } else {
             gravity = -3200f
@@ -546,9 +555,6 @@ class GameScreen(
                 playerY = floorY
                 velocityY = 0f
                 canJump = true
-            } else if (playerY < -100f) {
-                // Pit death
-                die("Darkness consumes you.")
             }
         }
 
@@ -590,16 +596,16 @@ class GameScreen(
             }
         }
 
+        // Floor Death Check - AFTER Platform Collision (Fix for Soft-Lock)
+        if (!reverseGravity && playerY < -100f) {
+            die("Darkness consumes you.")
+        }
+
         // Gravity Switches
         for (switch in gravitySwitches) {
             if (switch.isActive && Intersector.overlaps(playerRect, switch.rect)) {
                 reverseGravity = !reverseGravity
-                switch.isActive = false // Trigger once? Or timer?
-                // Let's make it single use or needs reset.
-                // For puzzle, maybe toggle is fine but need cooldown so we don't spam.
-                // Simple: Disappear after use?
-                // Let's say it disappears for 1 second.
-                // For now, let's just make it NOT active.
+                switch.isActive = false // Trigger once
             }
         }
 
@@ -670,7 +676,10 @@ class GameScreen(
 
         // Chunk 3: Global Strobe
         if (currentChunk == 3) {
-            return isLightsOn || Vector2.dst(playerX, playerY, x, y) < 100f // Always small radius for player
+            // Strobe logic: Visible when lights ON, or within standard radius?
+            // "Return strobeTimer < 1.0f" was requested, but I implemented isLightsOn with 1.0 duration.
+            // Also always visible if close to player (radius 100f)
+            return isLightsOn || Vector2.dst(playerX, playerY, x, y) < 100f
         }
 
         // Chunk 1 & 2: Flashlight
