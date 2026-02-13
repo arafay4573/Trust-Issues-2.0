@@ -235,20 +235,22 @@ class GameScreen(
         // Pitch Black Theme
         // Floor is NOT present (pit death), so platforms are critical.
         playerX = 100f
-        playerY = 300f // Safe Spawn Height
+        playerY = 350f // Safe Spawn Height
 
         when (chunk) {
             1 -> {
                 // Flashlight Mode
                 maskX = 1100f
                 maskY = 280f + 50f
-                sharks.add(Shark(600f, 280f, 150f, 400f, 800f)) // Slow shark, hard to see
+                sharks.add(Shark(600f, 500f, 150f, 400f, 800f)) // Moved up slightly
 
                 // Safe Start Platform
                 platforms.add(Platform(Rectangle(100f, 200f, 100f, 20f), PlatformType.NORMAL))
-                // Additional platforms leading right
-                platforms.add(Platform(Rectangle(400f, 350f, 100f, 20f), PlatformType.NORMAL))
-                platforms.add(Platform(Rectangle(700f, 400f, 100f, 20f), PlatformType.NORMAL))
+
+                // Chain of platforms leading right
+                platforms.add(Platform(Rectangle(300f, 300f, 100f, 20f), PlatformType.NORMAL))
+                platforms.add(Platform(Rectangle(500f, 400f, 100f, 20f), PlatformType.NORMAL))
+                platforms.add(Platform(Rectangle(700f, 500f, 100f, 20f), PlatformType.NORMAL))
             }
             2 -> {
                 // Gravity Switches
@@ -258,14 +260,17 @@ class GameScreen(
                 // Safe Start Platform
                 platforms.add(Platform(Rectangle(100f, 200f, 100f, 20f), PlatformType.NORMAL))
 
+                // Platform near switch 1
+                platforms.add(Platform(Rectangle(350f, 200f, 150f, 20f), PlatformType.NORMAL))
+
                 // Switch to flip gravity UP at x=400 (y=250 approx)
                 gravitySwitches.add(GravitySwitch(Rectangle(400f, 250f, 40f, 40f)))
 
                 // Platform high up to catch player
                 platforms.add(Platform(Rectangle(400f, 600f, 400f, 20f), PlatformType.NORMAL))
 
-                // Switch to flip gravity DOWN at x=800
-                gravitySwitches.add(GravitySwitch(Rectangle(800f, 560f, 40f, 40f)))
+                // Switch to flip gravity DOWN at x=700
+                gravitySwitches.add(GravitySwitch(Rectangle(700f, 400f, 40f, 40f)))
 
                 // Shark patrolling the ceiling platform
                 sharks.add(Shark(500f, 600f, 200f, 400f, 800f))
@@ -282,6 +287,7 @@ class GameScreen(
                 // Safe Start Platform
                 platforms.add(Platform(Rectangle(100f, 200f, 100f, 20f), PlatformType.NORMAL))
 
+                // Ghost Platforms
                 platforms.add(Platform(Rectangle(300f, 350f, 100f, 20f), PlatformType.GHOST))
                 platforms.add(Platform(Rectangle(600f, 450f, 100f, 20f), PlatformType.GHOST))
                 platforms.add(Platform(Rectangle(900f, 350f, 100f, 20f), PlatformType.GHOST))
@@ -479,11 +485,12 @@ class GameScreen(
     }
 
     override fun render(delta: Float) {
-        // Pitch Black Background for Horror Mode
-        if (horrorMode) {
-            ScreenUtils.clear(0f, 0f, 0f, 1f)
+        // Fix for Global Black Screen Bug:
+        // Explicitly check currentLevel to determine background color.
+        if (currentLevel == 3) {
+            ScreenUtils.clear(0f, 0f, 0f, 1f) // Pitch Black (Horror)
         } else {
-            ScreenUtils.clear(0f, 0f, 0.2f, 1f)
+            ScreenUtils.clear(0.2f, 0.4f, 0.8f, 1f) // Standard Ocean Blue
         }
 
         uiStage.act(Gdx.graphics.deltaTime)
@@ -611,13 +618,60 @@ class GameScreen(
 
         // Shark AI
         for (shark in sharks) {
-            // ... (Shark logic mostly same, just standard patrol for now) ...
-             if (shark.isStalker) {
+            if (shark.isStalker) {
+                // DEFAULT: Chase the player
                 var targetDir = if (playerX > shark.x) 1 else -1
-                shark.x += shark.speed * delta * targetDir
-                shark.facingRight = (targetDir > 0)
+
+                // --- LEVEL 1 CHUNK 3 EXCLUSIVE REWRITE ---
+                if (currentLevel == 1 && currentChunk == 3) {
+
+                    // MOMENTUM LOCK (The Fix):
+                    // If the shark is already moving LEFT (chasing you to the wall)...
+                    // AND he is past the middle of the screen (x < 640)...
+                    // HE MUST IGNORE THE PLAYER. He keeps running Left until he hits the wall.
+                    if (!shark.facingRight && shark.x < 640f) {
+                        targetDir = -1 // Force Left (Ignore Player Jump)
+                    }
+
+                    // Apply Movement
+                    shark.x += shark.speed * delta * targetDir
+
+                    // Update Facing (Only visual)
+                    shark.facingRight = (targetDir > 0)
+
+                    // TELEPORT LOGIC (Infinite Loop)
+                    val sharkWidth = 120f
+                    // Hit Left Wall -> Teleport Right -> SPRINT
+                    if (shark.x < -sharkWidth - 50f) {
+                        shark.x = 1280f
+                        shark.speed = 950f
+                    }
+                    // Hit Right Wall -> Teleport Left
+                    if (shark.x > 1280f + 50f) {
+                        shark.x = -sharkWidth
+                        shark.speed = 950f
+                    }
+                }
+                // --- ALL OTHER LEVELS (Standard Logic) ---
+                else {
+                    shark.x += shark.speed * delta * targetDir
+                    shark.facingRight = (targetDir > 0)
+                    // Clamp
+                    val sharkWidth = 120f
+                    if (shark.x < 0f) shark.x = 0f
+                    if (shark.x > 1280f - sharkWidth) shark.x = 1280f - sharkWidth
+                }
             } else if (shark.isSleeper) {
-                // ...
+                if (!shark.isAwake) {
+                    if (playerX > 400f) {
+                        shark.isAwake = true
+                        shark.speed = 600f
+                    }
+                }
+                if (shark.isAwake) {
+                    shark.x -= shark.speed * delta
+                    shark.facingRight = false
+                }
             } else {
                 if (shark.facingRight) {
                     shark.x += shark.speed * delta
@@ -672,6 +726,9 @@ class GameScreen(
     }
 
     private fun isVisible(x: Float, y: Float): Boolean {
+        // Fix for Visibility Bug:
+        // If not Level 3, EVERYTHING is visible (Standard Mode)
+        if (currentLevel != 3) return true
         if (!horrorMode) return true
 
         // Chunk 3: Global Strobe
@@ -749,8 +806,7 @@ class GameScreen(
         if (horrorMode) shapeRenderer.color = Color.GRAY else shapeRenderer.color = Color.BLACK
 
         val centerX = playerX + 12.5f
-        // ... (Player drawing code, adjusted for color) ...
-        // Simplification for brevity in this thought, will write full code in tool
+
         val isCrouching = playerHeight < normalHeight
         val headOffset = if (isCrouching) 22f else 44f
         val neckOffset = if (isCrouching) 15f else 38f
@@ -759,7 +815,14 @@ class GameScreen(
         shapeRenderer.circle(centerX, playerY + headOffset, 6f)
         shapeRenderer.rectLine(centerX, playerY + neckOffset, centerX, playerY + waistOffset, 3f)
 
+        if (isCrouching) {
+             shapeRenderer.rectLine(centerX - 10f, playerY + 12f, centerX + 10f, playerY + 12f, 3f)
+        } else {
+             shapeRenderer.rectLine(centerX - 10f, playerY + 30f, centerX + 10f, playerY + 30f, 3f)
+        }
+
         val legOffset = if (isCrouching) 0f else (Math.sin(walkTime.toDouble()).toFloat() * 6f)
+
         shapeRenderer.rectLine(centerX, playerY + waistOffset, centerX - 6f - legOffset, playerY, 3f)
         shapeRenderer.rectLine(centerX, playerY + waistOffset, centerX + 6f + legOffset, playerY, 3f)
 
