@@ -239,58 +239,66 @@ class GameScreen(
 
         when (chunk) {
             1 -> {
-                // Flashlight Mode
-                maskX = 1100f
-                maskY = 280f + 50f
-                sharks.add(Shark(600f, 500f, 150f, 400f, 800f)) // Moved up slightly
+                // Chunk 1: Flashlight Mode, Mask Closer
+                maskX = 1000f
+                maskY = 300f
+                flashlightRadius = 300f
 
-                // Safe Start Platform
+                // Safe Start
                 platforms.add(Platform(Rectangle(100f, 200f, 100f, 20f), PlatformType.NORMAL))
 
-                // Chain of platforms leading right
+                // Sequence of Normal Platforms
                 platforms.add(Platform(Rectangle(300f, 300f, 100f, 20f), PlatformType.NORMAL))
                 platforms.add(Platform(Rectangle(500f, 400f, 100f, 20f), PlatformType.NORMAL))
-                platforms.add(Platform(Rectangle(700f, 500f, 100f, 20f), PlatformType.NORMAL))
+                platforms.add(Platform(Rectangle(700f, 350f, 100f, 20f), PlatformType.NORMAL))
+                platforms.add(Platform(Rectangle(900f, 300f, 150f, 20f), PlatformType.NORMAL))
             }
             2 -> {
-                // Gravity Switches
+                // Chunk 2: Flashlight + Gravity Chase
                 maskX = 1200f
-                maskY = 100f // Near bottom
+                maskY = 100f
+                flashlightRadius = 300f
 
-                // Safe Start Platform
+                // Safe Start
                 platforms.add(Platform(Rectangle(100f, 200f, 100f, 20f), PlatformType.NORMAL))
 
-                // Platform near switch 1
+                // Gravity Switches
+                gravitySwitches.add(GravitySwitch(Rectangle(400f, 250f, 40f, 40f)))
                 platforms.add(Platform(Rectangle(350f, 200f, 150f, 20f), PlatformType.NORMAL))
 
-                // Switch to flip gravity UP at x=400 (y=250 approx)
-                gravitySwitches.add(GravitySwitch(Rectangle(400f, 250f, 40f, 40f)))
+                // High platform for second switch
+                platforms.add(Platform(Rectangle(750f, 350f, 150f, 20f), PlatformType.NORMAL))
+                gravitySwitches.add(GravitySwitch(Rectangle(800f, 400f, 40f, 40f)))
 
-                // Platform high up to catch player
-                platforms.add(Platform(Rectangle(400f, 600f, 400f, 20f), PlatformType.NORMAL))
-
-                // Switch to flip gravity DOWN at x=700
-                gravitySwitches.add(GravitySwitch(Rectangle(700f, 400f, 40f, 40f)))
-
-                // Shark patrolling the ceiling platform
-                sharks.add(Shark(500f, 600f, 200f, 400f, 800f))
+                // Vertical Stalker Shark
+                sharks.add(Shark(100f, 350f, 200f, 0f, 1280f, isStalker = true))
             }
             3 -> {
-                // Strobe Light
-                isLightsOn = true // Start ON
+                // Chunk 3: The Pulse
+                isLightsOn = false // Start DARK
                 strobeTimer = 0f
 
-                maskX = 1100f
+                maskX = 1150f
                 maskY = 280f + 50f
-                sharks.add(Shark(400f, 280f, 400f, 0f, 1280f, isStalker = true)) // Fast stalker
 
-                // Safe Start Platform
+                // Safe Start
                 platforms.add(Platform(Rectangle(100f, 200f, 100f, 20f), PlatformType.NORMAL))
 
-                // Ghost Platforms
-                platforms.add(Platform(Rectangle(300f, 350f, 100f, 20f), PlatformType.GHOST))
-                platforms.add(Platform(Rectangle(600f, 450f, 100f, 20f), PlatformType.GHOST))
-                platforms.add(Platform(Rectangle(900f, 350f, 100f, 20f), PlatformType.GHOST))
+                // Staircase Pattern (Up, Down, Up)
+                // Up
+                platforms.add(Platform(Rectangle(300f, 300f, 100f, 20f), PlatformType.NORMAL))
+                platforms.add(Platform(Rectangle(450f, 400f, 100f, 20f), PlatformType.NORMAL))
+
+                // Down (with Stationary Sharks)
+                platforms.add(Platform(Rectangle(600f, 300f, 100f, 20f), PlatformType.NORMAL))
+                sharks.add(Shark(600f, 350f, 0f, 600f, 700f)) // Sentry
+
+                platforms.add(Platform(Rectangle(750f, 200f, 100f, 20f), PlatformType.NORMAL))
+                sharks.add(Shark(750f, 250f, 0f, 750f, 850f)) // Sentry
+
+                // Up to Exit
+                platforms.add(Platform(Rectangle(900f, 300f, 100f, 20f), PlatformType.NORMAL))
+                platforms.add(Platform(Rectangle(1050f, 400f, 150f, 20f), PlatformType.NORMAL))
             }
         }
     }
@@ -514,17 +522,18 @@ class GameScreen(
             return
         }
 
-        // Strobe Logic
+        // Strobe Logic (Chunk 3) - The Pulse
         if (horrorMode && currentChunk == 3) {
             strobeTimer += delta
             if (isLightsOn) {
-                // Increased duration to 1.0s so player can see at start
-                if (strobeTimer > 1.0f) {
+                // On for 0.5s
+                if (strobeTimer > 0.5f) {
                     isLightsOn = false
                     strobeTimer = 0f
                 }
             } else {
-                if (strobeTimer > 2.0f) {
+                // Off for 3.0s
+                if (strobeTimer > 3.0f) {
                     isLightsOn = true
                     strobeTimer = 0f
                 }
@@ -586,7 +595,13 @@ class GameScreen(
                          playerY = plat.rect.y + plat.rect.height
                          velocityY = 0f
                          canJump = true
-                         if (plat.type.name.startsWith("CRUMBLE") && plat.state == "ACTIVE") {
+
+                         // Level 3 Crumbling Logic: All platforms crumble on touch
+                         if (currentLevel == 3 && plat.state == "ACTIVE") {
+                             plat.state = "CRUMBLING"
+                             plat.timer = 2.0f
+                         } else if ((plat.type == PlatformType.CRUMBLE_SLOW || plat.type == PlatformType.CRUMBLE_FAST)
+                             && plat.state == "ACTIVE") {
                              plat.state = "CRUMBLING"
                              plat.timer = if (plat.type == PlatformType.CRUMBLE_SLOW) 1.0f else 0.5f
                          }
@@ -619,11 +634,20 @@ class GameScreen(
         // Shark AI
         for (shark in sharks) {
             if (shark.isStalker) {
-                // DEFAULT: Chase the player
-                var targetDir = if (playerX > shark.x) 1 else -1
+                // Vertical Stalker Logic (Level 3 Chunk 2)
+                if (currentLevel == 3 && currentChunk == 2) {
+                    // Chase X
+                    var targetDir = if (playerX > shark.x) 1 else -1
+                    shark.x += shark.speed * delta * targetDir
+                    shark.facingRight = (targetDir > 0)
 
-                // --- LEVEL 1 CHUNK 3 EXCLUSIVE REWRITE ---
-                if (currentLevel == 1 && currentChunk == 3) {
+                    // Chase Y (Gravity Chase)
+                    var targetYDir = if (playerY > shark.y) 1 else -1
+                    shark.y += shark.speed * delta * targetYDir
+                }
+                // Level 1 Chunk 3 Ambush Logic
+                else if (currentLevel == 1 && currentChunk == 3) {
+                    var targetDir = if (playerX > shark.x) 1 else -1
 
                     // MOMENTUM LOCK (The Fix):
                     // If the shark is already moving LEFT (chasing you to the wall)...
@@ -652,8 +676,9 @@ class GameScreen(
                         shark.speed = 950f
                     }
                 }
-                // --- ALL OTHER LEVELS (Standard Logic) ---
+                // Standard Stalker Logic
                 else {
+                    var targetDir = if (playerX > shark.x) 1 else -1
                     shark.x += shark.speed * delta * targetDir
                     shark.facingRight = (targetDir > 0)
                     // Clamp
@@ -760,8 +785,17 @@ class GameScreen(
             if (plat.state == "BROKEN") continue
             // Check center visibility
             if (isVisible(plat.rect.x + plat.rect.width/2, plat.rect.y + plat.rect.height/2)) {
-                shapeRenderer.color = Color.GREEN
-                shapeRenderer.rect(plat.rect.x, plat.rect.y, plat.rect.width, plat.rect.height)
+                // Visual Feedback for Crumbling
+                if (plat.state == "CRUMBLING") {
+                    shapeRenderer.color = Color.RED
+                    // Shake effect
+                    val offsetX = MathUtils.random(-2f, 2f)
+                    val offsetY = MathUtils.random(-2f, 2f)
+                    shapeRenderer.rect(plat.rect.x + offsetX, plat.rect.y + offsetY, plat.rect.width, plat.rect.height)
+                } else {
+                    shapeRenderer.color = Color.GREEN
+                    shapeRenderer.rect(plat.rect.x, plat.rect.y, plat.rect.width, plat.rect.height)
+                }
             }
         }
 
