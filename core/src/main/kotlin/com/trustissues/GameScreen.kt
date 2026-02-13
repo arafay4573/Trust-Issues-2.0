@@ -252,6 +252,9 @@ class GameScreen(
                 platforms.add(Platform(Rectangle(500f, 400f, 100f, 20f), PlatformType.NORMAL))
                 platforms.add(Platform(Rectangle(700f, 350f, 100f, 20f), PlatformType.NORMAL))
                 platforms.add(Platform(Rectangle(900f, 300f, 150f, 20f), PlatformType.NORMAL))
+
+                // Hazard Shark (Added for Pressure)
+                sharks.add(Shark(600f, 300f, 200f, 500f, 700f))
             }
             2 -> {
                 // Chunk 2: Flashlight + Gravity Chase
@@ -270,8 +273,8 @@ class GameScreen(
                 platforms.add(Platform(Rectangle(750f, 350f, 150f, 20f), PlatformType.NORMAL))
                 gravitySwitches.add(GravitySwitch(Rectangle(800f, 400f, 40f, 40f)))
 
-                // Vertical Stalker Shark
-                sharks.add(Shark(100f, 350f, 200f, 0f, 1280f, isStalker = true))
+                // Vertical Stalker Shark (Moved to 900f for Safe Spawn)
+                sharks.add(Shark(900f, 350f, 200f, 0f, 1280f, isStalker = true))
             }
             3 -> {
                 // Chunk 3: The Pulse
@@ -294,7 +297,8 @@ class GameScreen(
                 sharks.add(Shark(600f, 350f, 0f, 600f, 700f)) // Sentry
 
                 platforms.add(Platform(Rectangle(750f, 200f, 100f, 20f), PlatformType.NORMAL))
-                sharks.add(Shark(750f, 250f, 0f, 750f, 850f)) // Sentry
+                // Shark REMOVED here to create safe landing rhythm
+                // sharks.add(Shark(750f, 250f, 0f, 750f, 850f))
 
                 // Up to Exit
                 platforms.add(Platform(Rectangle(900f, 300f, 100f, 20f), PlatformType.NORMAL))
