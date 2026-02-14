@@ -251,8 +251,9 @@ class GameScreen(
                 platforms.add(Platform(Rectangle(700f, 300f, 100f, 20f), PlatformType.NORMAL))
 
                 // Hazards
-                sharks.add(Shark(400f, 300f, 60f, 300f, 500f)) // Shark 1 - Patrol
-                sharks.add(Shark(800f, 300f, 60f, 700f, 900f)) // Shark 2 - Patrol
+                // TUNED: Increased speed to 160f for tighter pressure
+                sharks.add(Shark(400f, 300f, 160f, 300f, 500f)) // Shark 1 - Patrol
+                sharks.add(Shark(800f, 300f, 160f, 700f, 900f)) // Shark 2 - Patrol
 
                 maskX = 1000f; maskY = 300f
             }
@@ -270,7 +271,8 @@ class GameScreen(
                 maskX = 1100f; maskY = 200f
 
                 // The "Creepy" Stalker
-                sharks.add(Shark(200f, 300f, 60f, 0f, 1280f, isStalker = true))
+                // TUNED: Spawn off-screen at -150f to delay arrival
+                sharks.add(Shark(-150f, 300f, 60f, 0f, 1280f, isStalker = true))
             }
             3 -> {
                 // Chunk 3: The Pulse (Keep existing logic)
@@ -844,12 +846,6 @@ class GameScreen(
 
         shapeRenderer.circle(centerX, playerY + headOffset, 6f)
         shapeRenderer.rectLine(centerX, playerY + neckOffset, centerX, playerY + waistOffset, 3f)
-
-        if (isCrouching) {
-             shapeRenderer.rectLine(centerX - 10f, playerY + 12f, centerX + 10f, playerY + 12f, 3f)
-        } else {
-             shapeRenderer.rectLine(centerX - 10f, playerY + 30f, centerX + 10f, playerY + 30f, 3f)
-        }
 
         val legOffset = if (isCrouching) 0f else (Math.sin(walkTime.toDouble()).toFloat() * 6f)
 
