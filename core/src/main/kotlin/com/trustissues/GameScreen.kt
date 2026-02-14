@@ -91,7 +91,7 @@ class GameScreen(
     )
     private val sharks = mutableListOf<Shark>()
 
-    enum class PlatformType { NORMAL, CRUMBLE_SLOW, CRUMBLE_FAST, GHOST }
+    enum class PlatformType { NORMAL, CRUMBLE_SLOW, CRUMBLE_FAST, GHOST, CRUMBLING }
     data class Platform(
         val rect: Rectangle,
         val type: PlatformType,
@@ -264,15 +264,20 @@ class GameScreen(
 
                 // The Combo Layout
                 gravitySwitches.add(GravitySwitch(Rectangle(400f, 250f, 40f, 40f))) // Switch A (Up)
-                platforms.add(Platform(Rectangle(500f, 550f, 150f, 20f), PlatformType.NORMAL)) // Ceiling Catch
+
+                // TOP PLATFORM: Must be CRUMBLING (Red/Vanish)
+                platforms.add(Platform(Rectangle(500f, 550f, 150f, 20f), PlatformType.CRUMBLING)) // Ceiling Catch
+
                 gravitySwitches.add(GravitySwitch(Rectangle(700f, 350f, 40f, 40f))) // Switch B (Down)
-                platforms.add(Platform(Rectangle(900f, 150f, 150f, 20f), PlatformType.NORMAL)) // Floor Catch
+
+                // BOTTOM PLATFORM: Moved to x=700 to catch the fall
+                platforms.add(Platform(Rectangle(700f, 150f, 150f, 20f), PlatformType.CRUMBLING)) // Floor Catch
 
                 maskX = 1100f; maskY = 200f
 
                 // The "Creepy" Stalker
-                // TUNED: Spawn off-screen at -150f to delay arrival
-                sharks.add(Shark(-150f, 300f, 60f, 0f, 1280f, isStalker = true))
+                // The Twist Stalker: Faster (110f) + Spawn Off-Screen (-150f)
+                sharks.add(Shark(-150f, 300f, 110f, 0f, 1280f, isStalker = true))
             }
             3 -> {
                 // Chunk 3: The Pulse (Keep existing logic)
@@ -637,14 +642,16 @@ class GameScreen(
             if (shark.isStalker) {
                 // LEVEL 3 CHUNK 2 EXCLUSIVE: "The Creepy Drift"
                 if (currentLevel == 3 && currentChunk == 2) {
-                    shark.speed = 60f // Slow Speed
+                    shark.speed = 110f // Slow Speed increased to 110f
 
                     // 1. Constant Forward Drift (X-Axis)
                     shark.x += shark.speed * delta
 
                     // 2. Slow Vertical Tracking (Y-Axis)
-                    if (playerY > shark.y) shark.y += shark.speed * delta
-                    else shark.y -= shark.speed * delta
+                    // Wait, stalker Y logic was simplified in previous step.
+                    // Let's keep it simple: Chase Y
+                    if (playerY > shark.y) shark.y += 60f * delta // Vertical speed 60f
+                    else shark.y -= 60f * delta
 
                     shark.facingRight = true
                 }
@@ -790,6 +797,13 @@ class GameScreen(
                     val offsetX = MathUtils.random(-2f, 2f)
                     val offsetY = MathUtils.random(-2f, 2f)
                     shapeRenderer.rect(plat.rect.x + offsetX, plat.rect.y + offsetY, plat.rect.width, plat.rect.height)
+                } else if (plat.type == PlatformType.CRUMBLING) {
+                    // Always render CRUMBLING type as red if not activated yet?
+                    // No, platforms should look normal until touched, usually.
+                    // But user said "Top Platform (Ceiling) must be CRUMBLING (Red/Vanish)".
+                    // Let's make it look Red if type is CRUMBLING.
+                    shapeRenderer.color = Color.RED
+                    shapeRenderer.rect(plat.rect.x, plat.rect.y, plat.rect.width, plat.rect.height)
                 } else {
                     shapeRenderer.color = Color.GREEN
                     shapeRenderer.rect(plat.rect.x, plat.rect.y, plat.rect.width, plat.rect.height)
@@ -815,7 +829,15 @@ class GameScreen(
             val height = width * ratio
 
             for (shark in sharks) {
-                if (isVisible(shark.x, shark.y)) {
+                var isVisible = true
+
+                // LEVEL 3 CHUNK 2 TWIST: Invisible when jumping
+                // If the player is in the air (!canJump), the Stalker becomes INVISIBLE.
+                if (currentLevel == 3 && currentChunk == 2 && shark.isStalker) {
+                    if (!canJump) isVisible = false
+                }
+
+                if (isVisible && isVisible(shark.x, shark.y)) {
                     game.batch.draw(tex, shark.x, shark.y, width, height, 0, 0, tex.width, tex.height, shark.facingRight, false)
                 }
             }
@@ -846,6 +868,12 @@ class GameScreen(
 
         shapeRenderer.circle(centerX, playerY + headOffset, 6f)
         shapeRenderer.rectLine(centerX, playerY + neckOffset, centerX, playerY + waistOffset, 3f)
+
+        if (isCrouching) {
+             shapeRenderer.rectLine(centerX - 10f, playerY + 12f, centerX + 10f, playerY + 12f, 3f)
+        } else {
+             shapeRenderer.rectLine(centerX - 10f, playerY + 30f, centerX + 10f, playerY + 30f, 3f)
+        }
 
         val legOffset = if (isCrouching) 0f else (Math.sin(walkTime.toDouble()).toFloat() * 6f)
 
