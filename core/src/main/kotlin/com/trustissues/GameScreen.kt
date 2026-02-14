@@ -76,6 +76,7 @@ class GameScreen(
 
     // Assets
     private var sharkTexture: Texture? = null
+    private var maskTexture: Texture? = null
 
     // Entities
     data class Shark(
@@ -141,6 +142,18 @@ class GameScreen(
 
     override fun show() {
         sharkTexture = Texture(Gdx.files.internal("shark.png"))
+
+        // Create Procedural Mask Texture (Cyan Circle)
+        val maskPix = Pixmap(32, 32, Pixmap.Format.RGBA8888)
+        maskPix.setColor(Color.CLEAR)
+        maskPix.fill()
+        maskPix.setColor(Color.WHITE)
+        maskPix.fillCircle(16, 16, 16)
+        maskPix.setColor(Color.CYAN)
+        maskPix.fillCircle(16, 16, 12)
+        maskTexture = Texture(maskPix)
+        maskPix.dispose()
+
         Gdx.input.inputProcessor = uiStage
         createUi()
 
@@ -277,8 +290,8 @@ class GameScreen(
                 // Mask: Move to 900f (Was 1100f)
                 maskX = 900f; maskY = 200f
 
-                // The Stalker: FAST (180f) + Spawn Off-Screen (-200f)
-                sharks.add(Shark(-200f, 300f, 180f, 0f, 1280f, isStalker = true))
+                // The Stalker: FAST (230f) + Spawn Off-Screen (-200f)
+                sharks.add(Shark(-200f, 300f, 230f, 0f, 1280f, isStalker = true))
             }
             3 -> {
                 // Chunk 3: The Pulse (Keep existing logic)
@@ -596,7 +609,9 @@ class GameScreen(
             if (plat.state == "CRUMBLING" || plat.isCrumbling) {
                 if (currentLevel == 3) {
                     plat.timer += delta
-                    if (plat.timer > 2.0f) {
+                    // DYNAMIC LIMIT: Chunk 3 = 1.0s, Others = 2.0s
+                    val limit = if (currentChunk == 3) 1.0f else 2.0f
+                    if (plat.timer > limit) {
                         platIter.remove() // Correct iterator removal
                         continue
                     }
@@ -665,12 +680,14 @@ class GameScreen(
             if (shark.isStalker) {
                 // LEVEL 3 CHUNK 2 EXCLUSIVE: "The Creepy Drift"
                 if (currentLevel == 3 && currentChunk == 2) {
-                    shark.speed = 180f // UPDATED: 180f
+                    shark.speed = 230f // UPDATED: 230f as requested
 
                     // 1. Constant Forward Drift (X-Axis)
                     shark.x += shark.speed * delta
 
                     // 2. Slow Vertical Tracking (Y-Axis)
+                    // Wait, stalker Y logic was simplified in previous step.
+                    // Let's keep it simple: Chase Y
                     if (playerY > shark.y) shark.y += 60f * delta // Keep vertical slow
                     else shark.y -= 60f * delta
 
@@ -852,17 +869,17 @@ class GameScreen(
                 }
             }
         }
+
+        // Draw Mask using Texture (FIX: Use batch instead of ShapeRenderer)
+        maskTexture?.let { tex ->
+            if (isVisible(maskX, maskY)) {
+                game.batch.draw(tex, maskX, maskY, 32f, 32f)
+            }
+        }
+
         game.batch.end()
 
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled)
-
-        // Draw Goal (Mask) - UPDATED: Hidden in dark
-        if (isVisible(maskX, maskY)) {
-            shapeRenderer.color = Color.WHITE
-            shapeRenderer.circle(maskX + maskWidth/2, maskY + maskHeight/2, maskWidth/2)
-            shapeRenderer.color = Color.CYAN
-            shapeRenderer.rect(maskX, maskY + maskHeight/2 - 2, maskWidth, 4f)
-        }
 
         // Draw Player (Always visible to self)
         shapeRenderer.color = Color.BLACK // Wait, if background is black, player invisible?
@@ -899,6 +916,7 @@ class GameScreen(
     override fun dispose() {
         shapeRenderer.dispose()
         sharkTexture?.dispose()
+        maskTexture?.dispose() // Dispose mask
         uiStage.dispose()
         skin?.dispose()
         whiteTexture?.dispose()
