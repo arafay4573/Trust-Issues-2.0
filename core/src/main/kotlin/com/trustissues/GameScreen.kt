@@ -232,52 +232,48 @@ class GameScreen(
     }
 
     private fun setupLevel3(chunk: Int) {
+        // EMERGENCY OVERRIDE - Replace Level 3 Logic
         // Pitch Black Theme
+        horrorMode = true
         // Floor is NOT present (pit death), so platforms are critical.
         playerX = 100f
         playerY = 350f // Safe Spawn Height
 
         when (chunk) {
             1 -> {
-                // Chunk 1: Flashlight Mode, Mask Closer
-                maskX = 1000f
-                maskY = 300f
-                flashlightRadius = 300f
+                // Chunk 1: Two Sharks (Harder)
+                playerX = 100f; playerY = 350f
+                platforms.add(Platform(Rectangle(100f, 200f, 100f, 20f), PlatformType.NORMAL)) // Safe start
 
-                // Safe Start
-                platforms.add(Platform(Rectangle(100f, 200f, 100f, 20f), PlatformType.NORMAL))
-
-                // Sequence of Normal Platforms
+                // Crumbling Path
                 platforms.add(Platform(Rectangle(300f, 300f, 100f, 20f), PlatformType.NORMAL))
                 platforms.add(Platform(Rectangle(500f, 400f, 100f, 20f), PlatformType.NORMAL))
-                platforms.add(Platform(Rectangle(700f, 350f, 100f, 20f), PlatformType.NORMAL))
-                platforms.add(Platform(Rectangle(900f, 300f, 150f, 20f), PlatformType.NORMAL))
+                platforms.add(Platform(Rectangle(700f, 300f, 100f, 20f), PlatformType.NORMAL))
 
-                // Hazard Shark (Added for Pressure)
-                sharks.add(Shark(600f, 300f, 200f, 500f, 700f))
+                // Hazards
+                sharks.add(Shark(400f, 300f, 60f, 300f, 500f)) // Shark 1 - Patrol
+                sharks.add(Shark(800f, 300f, 60f, 700f, 900f)) // Shark 2 - Patrol
+
+                maskX = 1000f; maskY = 300f
             }
             2 -> {
-                // Chunk 2: Flashlight + Gravity Chase
-                maskX = 1200f
-                maskY = 100f
-                flashlightRadius = 300f
+                // Chunk 2: The Gravity Combo (Structured)
+                playerX = 100f; playerY = 350f
+                platforms.add(Platform(Rectangle(100f, 200f, 100f, 20f), PlatformType.NORMAL)) // Start
 
-                // Safe Start
-                platforms.add(Platform(Rectangle(100f, 200f, 100f, 20f), PlatformType.NORMAL))
+                // The Combo Layout
+                gravitySwitches.add(GravitySwitch(Rectangle(400f, 250f, 40f, 40f))) // Switch A (Up)
+                platforms.add(Platform(Rectangle(500f, 550f, 150f, 20f), PlatformType.NORMAL)) // Ceiling Catch
+                gravitySwitches.add(GravitySwitch(Rectangle(700f, 350f, 40f, 40f))) // Switch B (Down)
+                platforms.add(Platform(Rectangle(900f, 150f, 150f, 20f), PlatformType.NORMAL)) // Floor Catch
 
-                // Gravity Switches
-                gravitySwitches.add(GravitySwitch(Rectangle(400f, 250f, 40f, 40f)))
-                platforms.add(Platform(Rectangle(350f, 200f, 150f, 20f), PlatformType.NORMAL))
+                maskX = 1100f; maskY = 200f
 
-                // High platform for second switch
-                platforms.add(Platform(Rectangle(750f, 350f, 150f, 20f), PlatformType.NORMAL))
-                gravitySwitches.add(GravitySwitch(Rectangle(800f, 400f, 40f, 40f)))
-
-                // Vertical Stalker Shark (Moved to 900f for Safe Spawn)
-                sharks.add(Shark(900f, 350f, 200f, 0f, 1280f, isStalker = true))
+                // The "Creepy" Stalker
+                sharks.add(Shark(200f, 300f, 60f, 0f, 1280f, isStalker = true))
             }
             3 -> {
-                // Chunk 3: The Pulse
+                // Chunk 3: The Pulse (Keep existing logic)
                 isLightsOn = false // Start DARK
                 strobeTimer = 0f
 
@@ -298,7 +294,6 @@ class GameScreen(
 
                 platforms.add(Platform(Rectangle(750f, 200f, 100f, 20f), PlatformType.NORMAL))
                 // Shark REMOVED here to create safe landing rhythm
-                // sharks.add(Shark(750f, 250f, 0f, 750f, 850f))
 
                 // Up to Exit
                 platforms.add(Platform(Rectangle(900f, 300f, 100f, 20f), PlatformType.NORMAL))
@@ -638,27 +633,26 @@ class GameScreen(
         // Shark AI
         for (shark in sharks) {
             if (shark.isStalker) {
-                // Vertical Stalker Logic (Level 3 Chunk 2)
+                // LEVEL 3 CHUNK 2 EXCLUSIVE: "The Creepy Drift"
                 if (currentLevel == 3 && currentChunk == 2) {
-                    // Chase X
-                    var targetDir = if (playerX > shark.x) 1 else -1
-                    shark.x += shark.speed * delta * targetDir
-                    shark.facingRight = (targetDir > 0)
+                    shark.speed = 60f // Slow Speed
 
-                    // Chase Y (Gravity Chase)
-                    var targetYDir = if (playerY > shark.y) 1 else -1
-                    shark.y += shark.speed * delta * targetYDir
+                    // 1. Constant Forward Drift (X-Axis)
+                    shark.x += shark.speed * delta
+
+                    // 2. Slow Vertical Tracking (Y-Axis)
+                    if (playerY > shark.y) shark.y += shark.speed * delta
+                    else shark.y -= shark.speed * delta
+
+                    shark.facingRight = true
                 }
-                // Level 1 Chunk 3 Ambush Logic
+                // LEVEL 1 CHUNK 3: The Ambush Loop (Keep existing)
                 else if (currentLevel == 1 && currentChunk == 3) {
                     var targetDir = if (playerX > shark.x) 1 else -1
 
                     // MOMENTUM LOCK (The Fix):
-                    // If the shark is already moving LEFT (chasing you to the wall)...
-                    // AND he is past the middle of the screen (x < 640)...
-                    // HE MUST IGNORE THE PLAYER. He keeps running Left until he hits the wall.
                     if (!shark.facingRight && shark.x < 640f) {
-                        targetDir = -1 // Force Left (Ignore Player Jump)
+                        targetDir = -1
                     }
 
                     // Apply Movement
@@ -669,18 +663,16 @@ class GameScreen(
 
                     // TELEPORT LOGIC (Infinite Loop)
                     val sharkWidth = 120f
-                    // Hit Left Wall -> Teleport Right -> SPRINT
                     if (shark.x < -sharkWidth - 50f) {
                         shark.x = 1280f
                         shark.speed = 950f
                     }
-                    // Hit Right Wall -> Teleport Left
                     if (shark.x > 1280f + 50f) {
                         shark.x = -sharkWidth
                         shark.speed = 950f
                     }
                 }
-                // Standard Stalker Logic
+                // STANDARD STALKER (Keep existing)
                 else {
                     var targetDir = if (playerX > shark.x) 1 else -1
                     shark.x += shark.speed * delta * targetDir
