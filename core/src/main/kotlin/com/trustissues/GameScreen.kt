@@ -229,20 +229,20 @@ class GameScreen(
             1 -> {
                 sharks.add(Shark(400f, 280f, 350f, 200f, 800f))
                 sharks.add(Shark(700f, 280f, 350f, 500f, 1100f))
-                platforms.add(Platform(Rectangle(600f, 360f, 150f, 20f), PlatformType.CRUMBLE_SLOW))
+                platforms.add(Platform(Rectangle(600f, 360f, 150f, 20f), PlatformType.CRUMBLING))
                 maskX = 1100f
             }
             2 -> {
                 sharks.add(Shark(500f, 280f, 400f, 300f, 900f))
                 sharks.add(Shark(900f, 280f, 400f, 700f, 1200f))
-                platforms.add(Platform(Rectangle(400f, 380f, 100f, 20f), PlatformType.CRUMBLE_FAST))
-                platforms.add(Platform(Rectangle(800f, 380f, 100f, 20f), PlatformType.CRUMBLE_FAST))
+                platforms.add(Platform(Rectangle(400f, 380f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(800f, 380f, 100f, 20f), PlatformType.CRUMBLING))
                 maskX = 1150f
             }
             3 -> {
                 allowScreenWrap = true
                 sharks.add(Shark(640f, 280f, 320f, 0f, 1280f, isStalker = true))
-                platforms.add(Platform(Rectangle(600f, 350f, 150f, 20f), PlatformType.GHOST))
+                platforms.add(Platform(Rectangle(600f, 350f, 150f, 20f), PlatformType.CRUMBLING))
                 maskX = 1150f
             }
         }
@@ -597,8 +597,8 @@ class GameScreen(
             val plat = platIter.next()
             if (plat.state == "BROKEN") continue
 
-            // 1. Trigger Crumble on Touch (Level 3 Only)
-            if (currentLevel == 3 && plat.type == PlatformType.CRUMBLING) {
+            // 1. Trigger Crumble on Touch (Level 2 & 3)
+            if ((currentLevel == 2 || currentLevel == 3) && plat.type == PlatformType.CRUMBLING) {
                 if (playerRect.overlaps(plat.rect)) {
                     plat.isCrumbling = true
                 }
@@ -607,8 +607,16 @@ class GameScreen(
             // 2. Process Crumble Timer & Removal
             if (plat.isCrumbling) {
                 plat.crumbleTimer += delta
-                // DYNAMIC LIMIT: Chunk 3 is 0.7s (Ultra-fast). Others are 1.5s.
-                val limit = if (currentChunk == 3) 0.7f else 1.5f
+                // DYNAMIC LIMITS
+                // Level 3 Chunk 3: 0.7s (Brutal)
+                // Level 3 Chunks 1 & 2: 1.0s (Fast)
+                // Level 2: 1.5s (Standard Training)
+                val limit = when {
+                    currentLevel == 3 && currentChunk == 3 -> 0.7f
+                    currentLevel == 3 -> 1.0f
+                    else -> 1.5f
+                }
+
                 if (plat.crumbleTimer > limit) {
                     platIter.remove()
                     continue
