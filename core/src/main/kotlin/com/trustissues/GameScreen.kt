@@ -777,7 +777,11 @@ class GameScreen(
         isLevelComplete = true
         val roast = winRoasts.random()
         messageLabel?.setText(roast)
-        messageLabel?.color = Color.GREEN
+        if (currentLevel == 3) {
+            messageLabel?.color = Color.WHITE
+        } else {
+            messageLabel?.color = Color.BLACK
+        }
         messageLabel?.isVisible = true
         messageLabel?.pack()
         messageLabel?.setPosition(1280f / 2 - messageLabel!!.width / 2, 500f)
