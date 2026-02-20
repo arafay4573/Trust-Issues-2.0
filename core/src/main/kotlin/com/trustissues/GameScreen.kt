@@ -93,14 +93,12 @@ class GameScreen(
     )
     private val sharks = mutableListOf<Shark>()
 
-    enum class PlatformType { NORMAL, CRUMBLE_SLOW, CRUMBLE_FAST, GHOST, CRUMBLING }
+    enum class PlatformType { NORMAL, CRUMBLING }
     data class Platform(
         val rect: Rectangle,
         val type: PlatformType,
-        var state: String = "ACTIVE",
-        var timer: Float = 0f,
         var isCrumbling: Boolean = false,
-        var crumbleTimer: Float = 0f // Added for correct timer tracking
+        var crumbleTimer: Float = 0f
     )
     private val platforms = mutableListOf<Platform>()
 
@@ -595,8 +593,6 @@ class GameScreen(
         val platIter = platforms.iterator() // RENAMED to fix conflict
         while (platIter.hasNext()) {
             val plat = platIter.next()
-            if (plat.state == "BROKEN") continue
-
             // 1. Trigger Crumble on Touch (Level 2 & 3)
             if ((currentLevel == 2 || currentLevel == 3) && plat.type == PlatformType.CRUMBLING) {
                 if (playerRect.overlaps(plat.rect)) {
@@ -632,13 +628,6 @@ class GameScreen(
                          playerY = plat.rect.y + plat.rect.height
                          velocityY = 0f
                          canJump = true
-
-                         // Legacy Crumble Trigger
-                         if (currentLevel != 3 && (plat.type == PlatformType.CRUMBLE_SLOW || plat.type == PlatformType.CRUMBLE_FAST)
-                             && plat.state == "ACTIVE") {
-                             plat.state = "CRUMBLING"
-                             plat.timer = if (plat.type == PlatformType.CRUMBLE_SLOW) 1.0f else 0.5f
-                         }
                      }
                 }
                 // Reverse: Falling UP onto platform bottom
@@ -814,8 +803,6 @@ class GameScreen(
         // Draw Platforms
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled)
         for (plat in platforms) {
-            if (plat.state == "BROKEN") continue
-
             // Visibility Logic for Platforms:
             // Visible IF: Not Chunk 3, OR initial flash is on, OR player stepped on it (revealed by touch)
             val isPlatformVisible = (currentLevel != 3 || currentChunk != 3) || isLightsOn || plat.isCrumbling
