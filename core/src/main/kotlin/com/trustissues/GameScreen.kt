@@ -73,6 +73,7 @@ class GameScreen(
     private var flashlightRadius = 300f // Default 300f
     private var strobeTimer = 0f
     private var isLightsOn = false
+    private var chunk3FlashTimer = 0f // Added for Level 3 Chunk 3 One-Time Flash
 
     // Assets
     private var sharkTexture: Texture? = null
@@ -98,7 +99,8 @@ class GameScreen(
         val type: PlatformType,
         var state: String = "ACTIVE",
         var timer: Float = 0f,
-        var isCrumbling: Boolean = false
+        var isCrumbling: Boolean = false,
+        var crumbleTimer: Float = 0f // Added for correct timer tracking
     )
     private val platforms = mutableListOf<Platform>()
 
@@ -187,6 +189,7 @@ class GameScreen(
         strobeTimer = 0f
         isLightsOn = false
         flashlightRadius = 300f // Reset default
+        chunk3FlashTimer = 0f // Reset
 
         if (levelLabel != null) levelLabel!!.setText("Level $currentLevel-$chunk")
 
@@ -259,10 +262,10 @@ class GameScreen(
                 playerX = 100f; playerY = 350f
                 platforms.add(Platform(Rectangle(100f, 200f, 100f, 20f), PlatformType.NORMAL)) // Safe start
 
-                // Crumbling Path
-                platforms.add(Platform(Rectangle(300f, 300f, 100f, 20f), PlatformType.NORMAL))
-                platforms.add(Platform(Rectangle(500f, 400f, 100f, 20f), PlatformType.NORMAL))
-                platforms.add(Platform(Rectangle(700f, 300f, 100f, 20f), PlatformType.NORMAL))
+                // Crumbling Path - CHANGED TO CRUMBLING
+                platforms.add(Platform(Rectangle(300f, 300f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(500f, 400f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(700f, 300f, 100f, 20f), PlatformType.CRUMBLING))
 
                 // Hazards
                 // TUNED: Increased speed to 160f for tighter pressure
@@ -295,8 +298,8 @@ class GameScreen(
             }
             3 -> {
                 // Chunk 3: The Pulse (Keep existing logic)
-                isLightsOn = false // Start DARK
-                strobeTimer = 0f
+                isLightsOn = true // START ON for 2.0s
+                chunk3FlashTimer = 0f
 
                 maskX = 1150f
                 maskY = 280f + 50f
@@ -304,21 +307,21 @@ class GameScreen(
                 // Safe Start
                 platforms.add(Platform(Rectangle(100f, 200f, 100f, 20f), PlatformType.NORMAL))
 
-                // Staircase Pattern (Up, Down, Up)
+                // Staircase Pattern (Up, Down, Up) - ALL CRUMBLING
                 // Up
-                platforms.add(Platform(Rectangle(300f, 300f, 100f, 20f), PlatformType.NORMAL))
-                platforms.add(Platform(Rectangle(450f, 400f, 100f, 20f), PlatformType.NORMAL))
+                platforms.add(Platform(Rectangle(300f, 300f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(450f, 400f, 100f, 20f), PlatformType.CRUMBLING))
 
                 // Down (with Stationary Sharks)
-                platforms.add(Platform(Rectangle(600f, 300f, 100f, 20f), PlatformType.NORMAL))
+                platforms.add(Platform(Rectangle(600f, 300f, 100f, 20f), PlatformType.CRUMBLING))
                 sharks.add(Shark(600f, 350f, 0f, 600f, 700f)) // Sentry
 
-                platforms.add(Platform(Rectangle(750f, 200f, 100f, 20f), PlatformType.NORMAL))
+                platforms.add(Platform(Rectangle(750f, 200f, 100f, 20f), PlatformType.CRUMBLING))
                 // Shark REMOVED here to create safe landing rhythm
 
                 // Up to Exit
-                platforms.add(Platform(Rectangle(900f, 300f, 100f, 20f), PlatformType.NORMAL))
-                platforms.add(Platform(Rectangle(1050f, 400f, 150f, 20f), PlatformType.NORMAL))
+                platforms.add(Platform(Rectangle(900f, 300f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(1050f, 400f, 150f, 20f), PlatformType.CRUMBLING))
             }
         }
     }
@@ -544,20 +547,9 @@ class GameScreen(
 
         // Strobe Logic (Chunk 3) - The Pulse
         if (horrorMode && currentChunk == 3) {
-            strobeTimer += delta
-            if (isLightsOn) {
-                // On for 0.5s
-                if (strobeTimer > 0.5f) {
-                    isLightsOn = false
-                    strobeTimer = 0f
-                }
-            } else {
-                // Off for 3.0s
-                if (strobeTimer > 3.0f) {
-                    isLightsOn = true
-                    strobeTimer = 0f
-                }
-            }
+            chunk3FlashTimer += delta
+            // Lights stay ON for 2.0s, then OFF forever.
+            isLightsOn = chunk3FlashTimer < 2.0f
         }
 
         playerHeight = if (isDownPressed) crouchHeight else normalHeight
@@ -605,31 +597,21 @@ class GameScreen(
             val plat = platIter.next()
             if (plat.state == "BROKEN") continue
 
-            // Crumble Timer Logic
-            if (plat.state == "CRUMBLING" || plat.isCrumbling) {
-                if (currentLevel == 3) {
-                    plat.timer += delta
-                    // DYNAMIC LIMIT: Chunk 3 = 1.0s, Others = 2.0s
-                    val limit = if (currentChunk == 3) 1.0f else 2.0f
-                    if (plat.timer > limit) {
-                        platIter.remove() // Correct iterator removal
-                        continue
-                    }
-                } else {
-                    // Legacy behavior for Levels 1 & 2 (Subtraction)
-                    plat.timer -= delta
-                    if (plat.timer <= 0f) {
-                        plat.state = "BROKEN"
-                        continue
-                    }
+            // 1. Trigger Crumble on Touch (Level 3 Only)
+            if (currentLevel == 3 && plat.type == PlatformType.CRUMBLING) {
+                if (playerRect.overlaps(plat.rect)) {
+                    plat.isCrumbling = true
                 }
             }
 
-            // Level 3 Trigger: Overlap
-            if (currentLevel == 3 && plat.type == PlatformType.CRUMBLING) {
-                if (playerRect.overlaps(plat.rect)) {
-                    plat.state = "CRUMBLING"
-                    plat.isCrumbling = true
+            // 2. Process Crumble Timer & Removal
+            if (plat.isCrumbling) {
+                plat.crumbleTimer += delta
+                // DYNAMIC LIMIT: Chunk 3 is 0.7s (Ultra-fast). Others are 1.5s.
+                val limit = if (currentChunk == 3) 0.7f else 1.5f
+                if (plat.crumbleTimer > limit) {
+                    platIter.remove()
+                    continue
                 }
             }
 
@@ -799,11 +781,10 @@ class GameScreen(
         if (currentLevel != 3) return true
         if (!horrorMode) return true
 
-        // Chunk 3: Global Strobe
+        // Chunk 3: Global Strobe (Updated for One-Time Flash)
         if (currentChunk == 3) {
-            // Strobe logic: Visible when lights ON, or within standard radius?
-            // "Return strobeTimer < 1.0f" was requested, but I implemented isLightsOn with 1.0 duration.
-            // Also always visible if close to player (radius 100f)
+            // isLightsOn handles the 2.0s initial flash.
+            // Also visible if close to player (radius 100f)
             return isLightsOn || Vector2.dst(playerX, playerY, x, y) < 100f
         }
 
@@ -826,22 +807,18 @@ class GameScreen(
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled)
         for (plat in platforms) {
             if (plat.state == "BROKEN") continue
-            // Check center visibility
-            if (isVisible(plat.rect.x + plat.rect.width/2, plat.rect.y + plat.rect.height/2)) {
-                // Visual Feedback for Crumbling
-                if (plat.state == "CRUMBLING") {
-                    shapeRenderer.color = Color.RED
-                    // Shake effect
-                    val offsetX = MathUtils.random(-2f, 2f)
-                    val offsetY = MathUtils.random(-2f, 2f)
-                    shapeRenderer.rect(plat.rect.x + offsetX, plat.rect.y + offsetY, plat.rect.width, plat.rect.height)
-                } else if (plat.type == PlatformType.CRUMBLING) {
-                    shapeRenderer.color = Color.RED
-                    shapeRenderer.rect(plat.rect.x, plat.rect.y, plat.rect.width, plat.rect.height)
+
+            // Visibility Logic for Platforms:
+            // Visible IF: Not Chunk 3, OR initial flash is on, OR player stepped on it (revealed by touch)
+            val isPlatformVisible = (currentLevel != 3 || currentChunk != 3) || isLightsOn || plat.isCrumbling
+
+            if (isPlatformVisible && isVisible(plat.rect.x, plat.rect.y)) {
+                if (plat.isCrumbling) {
+                    shapeRenderer.color = Color.RED // Danger!
                 } else {
-                    shapeRenderer.color = Color.GREEN
-                    shapeRenderer.rect(plat.rect.x, plat.rect.y, plat.rect.width, plat.rect.height)
+                    shapeRenderer.color = Color.GREEN // Safe (for now)
                 }
+                shapeRenderer.rect(plat.rect.x, plat.rect.y, plat.rect.width, plat.rect.height)
             }
         }
 
@@ -870,9 +847,11 @@ class GameScreen(
             }
         }
 
-        // Draw Mask using Texture (FIX: Use batch instead of ShapeRenderer)
+        // Draw Mask using Texture
         maskTexture?.let { tex ->
-            if (isVisible(maskX, maskY)) {
+            // Mask Visibility: Only during flash or close up in Chunk 3
+            val hideMask = (currentLevel == 3 && currentChunk == 3 && !isLightsOn)
+            if (!hideMask && isVisible(maskX, maskY)) {
                 game.batch.draw(tex, maskX, maskY, 32f, 32f)
             }
         }
