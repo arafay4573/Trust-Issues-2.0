@@ -715,8 +715,8 @@ class GameScreen(
             val plat = platIter.next()
             if (plat.state == "BROKEN") continue
 
-            // 1. Trigger Crumble on Touch (Level 2 & 3)
-            if ((currentLevel == 2 || currentLevel == 3) && plat.type == PlatformType.CRUMBLING) {
+            // 1. Trigger Crumble on Touch (Level 2, 3, 4)
+            if ((currentLevel == 2 || currentLevel == 3 || currentLevel == 4) && plat.type == PlatformType.CRUMBLING) {
                 if (playerRect.overlaps(plat.rect)) {
                     plat.isCrumbling = true
                 }
@@ -1031,20 +1031,9 @@ class GameScreen(
         for (laser in lasers) {
              shapeRenderer.rect(laser.rect.x, laser.rect.y, laser.rect.width, laser.rect.height)
         }
-        shapeRenderer.end() // End filled batch first? No, blending state matters.
-        // Actually shapeRenderer handles batching. Just enable blend before drawing transparent stuff.
-        // But ShapeRenderer might need a flush if changing GL state externally?
-        // It's safer to separate the batch if changing raw GL state, but `shapeRenderer` uses its own shader.
-        // Let's rely on standard practice: Enable blend, draw, end.
-        // However, ShapeRenderer.begin/end toggles states.
-        // We should enable blending *before* begin? Or inside?
-        // ShapeRenderer sets its own blend function usually.
-        // Let's just set the color with alpha and ensure blending is enabled.
-
-        // Re-doing the block to be safe:
-        // Lasers are last in ShapeRenderer.
-
         shapeRenderer.end()
+        Gdx.gl.glDisable(com.badlogic.gdx.graphics.GL20.GL_BLEND)
+
         game.batch.projectionMatrix = gameViewport.camera.combined
         game.batch.begin()
         sharkTexture?.let { tex ->
