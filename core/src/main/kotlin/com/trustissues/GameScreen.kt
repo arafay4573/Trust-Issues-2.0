@@ -977,8 +977,10 @@ class GameScreen(
     }
 
     private fun draw() {
-        // Draw Background (Bubbles)
+        // --- 1. SHAPES (Filled & Line) ---
         shapeRenderer.projectionMatrix = gameViewport.camera.combined
+
+        // Bubbles (Lines)
         shapeRenderer.begin(ShapeRenderer.ShapeType.Line)
         shapeRenderer.color = Color.WHITE
         for (b in bubbles) {
@@ -986,21 +988,16 @@ class GameScreen(
         }
         shapeRenderer.end()
 
-        // Draw Platforms
+        // Platforms, Walls, Lasers, Player (Filled)
+        Gdx.gl.glEnable(com.badlogic.gdx.graphics.GL20.GL_BLEND)
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled)
+
+        // Draw Platforms
         for (plat in platforms) {
             if (plat.state == "BROKEN") continue
-
-            // Visibility Logic for Platforms:
-            // Visible IF: Not Chunk 3, OR initial flash is on, OR player stepped on it (revealed by touch)
             val isPlatformVisible = (currentLevel != 3 || currentChunk != 3) || isLightsOn || plat.isCrumbling
-
             if (isPlatformVisible && isVisible(plat.rect.x, plat.rect.y)) {
-                if (plat.isCrumbling) {
-                    shapeRenderer.color = Color.RED // Danger!
-                } else {
-                    shapeRenderer.color = Color.GREEN // Safe (for now)
-                }
+                shapeRenderer.color = if (plat.isCrumbling) Color.RED else Color.GREEN
                 shapeRenderer.rect(plat.rect.x, plat.rect.y, plat.rect.width, plat.rect.height)
             }
         }
@@ -1025,24 +1022,39 @@ class GameScreen(
             shapeRenderer.rect(btn.rect.x, btn.rect.y, btn.rect.width, btn.rect.height)
         }
 
-        // Draw Lasers (with blending)
-        Gdx.gl.glEnable(com.badlogic.gdx.graphics.GL20.GL_BLEND)
+        // Draw Lasers (Transparent Red)
         shapeRenderer.color = Color(1f, 0f, 0f, 0.5f)
         for (laser in lasers) {
              shapeRenderer.rect(laser.rect.x, laser.rect.y, laser.rect.width, laser.rect.height)
         }
+
+        // Draw Player (Procedural Shapes)
+        shapeRenderer.color = if (horrorMode) Color.GRAY else Color.BLACK
+        val centerX = playerX + 12.5f
+        val isCrouching = playerHeight < normalHeight
+        val headOffset = if (isCrouching) 22f else 44f
+        val neckOffset = if (isCrouching) 15f else 38f
+        val waistOffset = if (isCrouching) 5f else 18f
+        val legOffset = if (isCrouching) 0f else (Math.sin(walkTime.toDouble()).toFloat() * 6f)
+
+        shapeRenderer.circle(centerX, playerY + headOffset, 6f)
+        shapeRenderer.rectLine(centerX, playerY + neckOffset, centerX, playerY + waistOffset, 3f)
+        shapeRenderer.rectLine(centerX, playerY + waistOffset, centerX - 6f - legOffset, playerY, 3f)
+        shapeRenderer.rectLine(centerX, playerY + waistOffset, centerX + 6f + legOffset, playerY, 3f)
+
         shapeRenderer.end()
         Gdx.gl.glDisable(com.badlogic.gdx.graphics.GL20.GL_BLEND)
 
+        // --- 2. TEXTURES (SpriteBatch) ---
         game.batch.projectionMatrix = gameViewport.camera.combined
         game.batch.begin()
+
+        // Draw Sharks
         sharkTexture?.let { tex ->
             val ratio = tex.height.toFloat() / tex.width.toFloat()
             val width = 120f
             val height = width * ratio
-
             for (shark in sharks) {
-                // UPDATED: No invisible twist. Always visible if environment permits.
                 if (isVisible(shark.x, shark.y)) {
                     game.batch.draw(tex, shark.x, shark.y, width, height, 0, 0, tex.width, tex.height, shark.facingRight, false)
                 }
@@ -1051,7 +1063,6 @@ class GameScreen(
 
         // Draw Mask using Texture
         maskTexture?.let { tex ->
-            // Mask Visibility: Only during flash or close up in Chunk 3
             val hideMask = (currentLevel == 3 && currentChunk == 3 && !isLightsOn)
             if (!hideMask && isVisible(maskX, maskY)) {
                 game.batch.draw(tex, maskX, maskY, 32f, 32f)
@@ -1059,34 +1070,6 @@ class GameScreen(
         }
 
         game.batch.end()
-
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled)
-
-        // Draw Player (Always visible to self)
-        shapeRenderer.color = Color.BLACK // Wait, if background is black, player invisible?
-        // Player should be WHITE in horror mode? Or Gray?
-        if (horrorMode) shapeRenderer.color = Color.GRAY else shapeRenderer.color = Color.BLACK
-
-        val centerX = playerX + 12.5f
-
-        val isCrouching = playerHeight < normalHeight
-        val headOffset = if (isCrouching) 22f else 44f
-        val neckOffset = if (isCrouching) 15f else 38f
-        val waistOffset = if (isCrouching) 5f else 18f
-
-        shapeRenderer.circle(centerX, playerY + headOffset, 6f)
-        shapeRenderer.rectLine(centerX, playerY + neckOffset, centerX, playerY + waistOffset, 3f)
-
-        val legOffset = if (isCrouching) 0f else (Math.sin(walkTime.toDouble()).toFloat() * 6f)
-
-        shapeRenderer.rectLine(centerX, playerY + waistOffset, centerX - 6f - legOffset, playerY, 3f)
-        shapeRenderer.rectLine(centerX, playerY + waistOffset, centerX + 6f + legOffset, playerY, 3f)
-
-        // Flashlight beam?
-        // Rendering a light cone is hard with ShapeRenderer.
-        // The "pitch black" is achieved by clearing to black and only drawing what is isVisible.
-
-        shapeRenderer.end()
     }
 
     override fun resize(width: Int, height: Int) {
