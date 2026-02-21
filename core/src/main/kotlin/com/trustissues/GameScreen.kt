@@ -107,6 +107,31 @@ class GameScreen(
     data class GravitySwitch(val rect: Rectangle, var isActive: Boolean = true)
     private val gravitySwitches = mutableListOf<GravitySwitch>()
 
+    // Level 4 Entities
+    data class Laser(
+        val rect: Rectangle,
+        var isSweeping: Boolean = false,
+        var sweepSpeed: Float = 200f,
+        var minX: Float = 0f,
+        var maxX: Float = 0f,
+        var movingRight: Boolean = true
+    )
+    private val lasers = mutableListOf<Laser>()
+
+    data class MovingWall(
+        val rect: Rectangle,
+        var speed: Float,
+        var isActive: Boolean
+    )
+    private val movingWalls = mutableListOf<MovingWall>()
+
+    data class GameButton(
+        val rect: Rectangle,
+        var isPressed: Boolean = false,
+        var onHit: (() -> Unit)? = null
+    )
+    private val gameButtons = mutableListOf<GameButton>()
+
     private var maskX = 1100f
     private var maskY = 280f + 50f // Default
     private val maskWidth = 30f
@@ -119,10 +144,14 @@ class GameScreen(
     private var bubbleSpawnTimer = 0f
 
     // Roasts
-    private val deathRoasts = listOf(
+    private val deathRoasts = mutableListOf(
         "You fed the shark.", "Ocean's tax collector.", "He smelled confidence.",
         "Sharp teeth, bad trust.", "That wasn't a dolphin.", "There is no escape.",
-        "Darkness consumes you.", "Did you hear that?", "Gravity hurts."
+        "Darkness consumes you.", "Did you hear that?", "Gravity hurts.",
+        // Level 4 specific
+        "Grilled to perfection. Serve with a side of failure.",
+        "You have the spatial awareness of a broken Roomba.",
+        "Squished like a bug. And just as insignificant."
     )
     private val winRoasts = listOf(
         "Don't relax.", "That was bait.", "One step closer to regret.", "Still breathing? Weird."
@@ -169,6 +198,9 @@ class GameScreen(
         sharks.clear()
         platforms.clear()
         gravitySwitches.clear()
+        lasers.clear()
+        movingWalls.clear()
+        gameButtons.clear()
 
         playerX = 100f
         playerY = 280f
@@ -199,6 +231,8 @@ class GameScreen(
             setupLevel2(chunk)
         } else if (currentLevel == 3) {
             setupLevel3(chunk)
+        } else if (currentLevel == 4) {
+            setupLevel4(chunk)
         }
 
         maskRect.set(maskX, maskY, maskWidth, maskHeight)
@@ -219,6 +253,90 @@ class GameScreen(
             3 -> {
                 sharks.add(Shark(800f, 280f, 300f, 0f, 1280f, isStalker = true))
                 maskX = 1200f
+            }
+        }
+    }
+
+    private fun setupLevel4(chunk: Int) {
+        when (chunk) {
+            1 -> {
+                // Chunk 1: Sweeping bottom laser + Crumbling Platforms + Gravity Switches
+                playerX = 100f; playerY = 350f
+                platforms.add(Platform(Rectangle(100f, 350f, 100f, 20f), PlatformType.NORMAL)) // Safe spawn
+
+                // Sweeping Laser (Bottom Half)
+                lasers.add(Laser(Rectangle(0f, 0f, 50f, 300f), isSweeping = true, minX = 200f, maxX = 1000f, sweepSpeed = 250f))
+
+                // Crumbling Floor (Must avoid laser)
+                platforms.add(Platform(Rectangle(300f, 350f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(500f, 350f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(700f, 350f, 100f, 20f), PlatformType.CRUMBLING))
+
+                // Gravity Switches to escape
+                gravitySwitches.add(GravitySwitch(Rectangle(400f, 380f, 40f, 40f))) // Up
+                gravitySwitches.add(GravitySwitch(Rectangle(600f, 650f, 40f, 40f))) // Down (Ceiling return)
+
+                platforms.add(Platform(Rectangle(900f, 350f, 100f, 20f), PlatformType.CRUMBLING))
+                maskX = 1100f; maskY = 350f
+            }
+            2 -> {
+                // Chunk 2: Static top laser + Crumbling Platforms + Sharks
+                playerX = 100f; playerY = 280f
+                // Floor is safe-ish, but Sharks patrol it
+                platforms.add(Platform(Rectangle(100f, 280f, 100f, 20f), PlatformType.NORMAL))
+
+                // Static Top Laser
+                lasers.add(Laser(Rectangle(0f, 400f, 1280f, 320f), isSweeping = false)) // Top half death zone
+
+                // Sharks on the floor
+                sharks.add(Shark(400f, 280f, 200f, 300f, 600f))
+                sharks.add(Shark(800f, 280f, 200f, 700f, 1000f))
+
+                // Platforms (Must stay low)
+                platforms.add(Platform(Rectangle(300f, 280f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(500f, 280f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(700f, 280f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(900f, 280f, 100f, 20f), PlatformType.CRUMBLING))
+
+                maskX = 1150f; maskY = 280f
+            }
+            3 -> {
+                // Chunk 3: The Compactor
+                playerX = 100f; playerY = 280f
+
+                // Walls
+                val leftWall = MovingWall(Rectangle(-200f, 0f, 200f, 800f), 80f, isActive = true)
+                movingWalls.add(leftWall)
+                val rightWall = MovingWall(Rectangle(1400f, 0f, 200f, 800f), -80f, isActive = false)
+                movingWalls.add(rightWall)
+
+                // Staircase UP
+                platforms.add(Platform(Rectangle(100f, 200f, 100f, 20f), PlatformType.NORMAL))
+                platforms.add(Platform(Rectangle(250f, 350f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(400f, 500f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(400f, 600f, 100f, 20f), PlatformType.CRUMBLING))
+
+                // Roof Button (Stops Left, Starts Right)
+                gameButtons.add(GameButton(Rectangle(400f, 650f, 40f, 40f), onHit = {
+                    leftWall.isActive = false
+                    rightWall.isActive = true
+                }))
+
+                // Staircase DOWN
+                platforms.add(Platform(Rectangle(600f, 400f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(750f, 250f, 100f, 20f), PlatformType.CRUMBLING))
+
+                // Vertical Laser Gate blocking Mask
+                val gateLaser = Laser(Rectangle(1000f, 0f, 50f, 800f), isSweeping = false)
+                lasers.add(gateLaser)
+
+                // Floor Button (Stops Right, Removes Laser)
+                gameButtons.add(GameButton(Rectangle(800f, 50f, 40f, 40f), onHit = {
+                    rightWall.isActive = false
+                    lasers.remove(gateLaser) // Open gate
+                }))
+
+                maskX = 1150f; maskY = 280f
             }
         }
     }
@@ -608,16 +726,21 @@ class GameScreen(
             if (plat.isCrumbling) {
                 plat.crumbleTimer += delta
                 // DYNAMIC LIMITS
+                // Level 4 Chunk 3: 0.8s (Ultra fast)
+                // Level 4 Chunks 1 & 2: 1.0s (Fast)
                 // Level 3 Chunk 3: 0.7s (Brutal)
                 // Level 3 Chunks 1 & 2: 1.0s (Fast)
                 // Level 2: 1.5s (Standard Training)
-                val limit = when {
-                    currentLevel == 3 && currentChunk == 3 -> 0.7f
-                    currentLevel == 3 -> 1.0f
-                    else -> 1.5f
+
+                // RE-WRITTEN CLEAN LIMIT LOGIC
+                val actualLimit = when {
+                     currentLevel == 3 && currentChunk == 3 -> 0.7f
+                     currentLevel == 4 && currentChunk == 3 -> 0.8f
+                     currentLevel == 3 || currentLevel == 4 -> 1.0f
+                     else -> 1.5f
                 }
 
-                if (plat.crumbleTimer > limit) {
+                if (plat.crumbleTimer > actualLimit) {
                     platIter.remove()
                     continue
                 }
@@ -662,6 +785,44 @@ class GameScreen(
             if (switch.isActive && Intersector.overlaps(playerRect, switch.rect)) {
                 reverseGravity = !reverseGravity
                 switch.isActive = false // Trigger once
+            }
+        }
+
+        // Level 4 Mechanics
+        // Lasers
+        val laserIter = lasers.iterator()
+        while (laserIter.hasNext()) {
+            val laser = laserIter.next()
+            if (laser.isSweeping) {
+                if (laser.movingRight) {
+                    laser.rect.x += laser.sweepSpeed * delta
+                    if (laser.rect.x > laser.maxX) laser.movingRight = false
+                } else {
+                    laser.rect.x -= laser.sweepSpeed * delta
+                    if (laser.rect.x < laser.minX) laser.movingRight = true
+                }
+            }
+            if (Intersector.overlaps(playerRect, laser.rect)) {
+                die("Grilled to perfection. Serve with a side of failure.")
+            }
+        }
+
+        // Moving Walls
+        for (wall in movingWalls) {
+            if (wall.isActive) {
+                wall.rect.x += wall.speed * delta
+                // Check if wall crushes player
+                if (Intersector.overlaps(playerRect, wall.rect)) {
+                    die("Squished like a bug. And just as insignificant.")
+                }
+            }
+        }
+
+        // Buttons
+        for (btn in gameButtons) {
+            if (!btn.isPressed && Intersector.overlaps(playerRect, btn.rect)) {
+                btn.isPressed = true
+                btn.onHit?.invoke()
             }
         }
 
@@ -775,9 +936,23 @@ class GameScreen(
     private fun win() {
         if (isLevelComplete) return
         isLevelComplete = true
-        val roast = winRoasts.random()
+
+        var roast = winRoasts.random()
+        if (currentLevel == 4) {
+            roast = when (currentChunk) {
+                1 -> "Wow, you dodged a laser. Want a medal for basic motor skills?"
+                2 -> "Not too high, not too low... just perfectly mediocre."
+                3 -> "You escaped the compactor. Unfortunately, you're still garbage."
+                else -> roast
+            }
+        }
+
         messageLabel?.setText(roast)
-        messageLabel?.color = Color.GREEN
+        if (currentLevel == 3) {
+            messageLabel?.color = Color.WHITE
+        } else {
+            messageLabel?.color = Color.BLACK
+        }
         messageLabel?.isVisible = true
         messageLabel?.pack()
         messageLabel?.setPosition(1280f / 2 - messageLabel!!.width / 2, 500f)
@@ -837,9 +1012,39 @@ class GameScreen(
                 shapeRenderer.rect(sw.rect.x, sw.rect.y, sw.rect.width, sw.rect.height)
             }
         }
-        shapeRenderer.end()
 
-        // Draw Sharks
+        // Draw Moving Walls
+        shapeRenderer.color = Color.DARK_GRAY
+        for (wall in movingWalls) {
+            shapeRenderer.rect(wall.rect.x, wall.rect.y, wall.rect.width, wall.rect.height)
+        }
+
+        // Draw Game Buttons
+        for (btn in gameButtons) {
+            shapeRenderer.color = if (btn.isPressed) Color.GRAY else Color.YELLOW
+            shapeRenderer.rect(btn.rect.x, btn.rect.y, btn.rect.width, btn.rect.height)
+        }
+
+        // Draw Lasers (with blending)
+        Gdx.gl.glEnable(com.badlogic.gdx.graphics.GL20.GL_BLEND)
+        shapeRenderer.color = Color(1f, 0f, 0f, 0.5f)
+        for (laser in lasers) {
+             shapeRenderer.rect(laser.rect.x, laser.rect.y, laser.rect.width, laser.rect.height)
+        }
+        shapeRenderer.end() // End filled batch first? No, blending state matters.
+        // Actually shapeRenderer handles batching. Just enable blend before drawing transparent stuff.
+        // But ShapeRenderer might need a flush if changing GL state externally?
+        // It's safer to separate the batch if changing raw GL state, but `shapeRenderer` uses its own shader.
+        // Let's rely on standard practice: Enable blend, draw, end.
+        // However, ShapeRenderer.begin/end toggles states.
+        // We should enable blending *before* begin? Or inside?
+        // ShapeRenderer sets its own blend function usually.
+        // Let's just set the color with alpha and ensure blending is enabled.
+
+        // Re-doing the block to be safe:
+        // Lasers are last in ShapeRenderer.
+
+        shapeRenderer.end()
         game.batch.projectionMatrix = gameViewport.camera.combined
         game.batch.begin()
         sharkTexture?.let { tex ->
