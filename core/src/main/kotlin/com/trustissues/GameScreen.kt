@@ -260,8 +260,11 @@ class GameScreen(
     private fun setupLevel4(chunk: Int) {
         when (chunk) {
             1 -> {
-                // Chunk 1: Dynamic Leap of Faith
-                playerX = 50f; playerY = 300f
+                // Chunk 1: Dynamic Leap of Faith (Final Tune)
+                playerX = 50f
+                playerY = 250f
+                velocityY = 0f
+                reverseGravity = false
 
                 // 1. FLOOR LEVEL (Broken Bridge)
                 platforms.add(Platform(Rectangle(0f, 200f, 150f, 20f), PlatformType.CRUMBLING))
