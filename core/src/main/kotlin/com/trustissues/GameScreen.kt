@@ -261,23 +261,28 @@ class GameScreen(
         when (chunk) {
             1 -> {
                 // Chunk 1: Sweeping bottom laser + Crumbling Platforms + Gravity Switches
-                playerX = 100f; playerY = 350f
-                platforms.add(Platform(Rectangle(100f, 350f, 100f, 20f), PlatformType.NORMAL)) // Safe spawn
+                playerX = 50f; playerY = 150f
 
-                // Sweeping Laser (Bottom Half)
-                lasers.add(Laser(Rectangle(0f, 0f, 50f, 300f), isSweeping = true, minX = 200f, maxX = 1000f, sweepSpeed = 250f))
+                // GROUND PLATFORM 1 (Elevated)
+                platforms.add(Platform(Rectangle(0f, 100f, 500f, 20f), PlatformType.CRUMBLING))
 
-                // Crumbling Floor (Must avoid laser)
-                platforms.add(Platform(Rectangle(300f, 350f, 100f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(500f, 350f, 100f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(700f, 350f, 100f, 20f), PlatformType.CRUMBLING))
+                // GRAVITY SWITCH UP
+                gravitySwitches.add(GravitySwitch(Rectangle(400f, 120f, 40f, 40f))) // Up
 
-                // Gravity Switches to escape
-                gravitySwitches.add(GravitySwitch(Rectangle(400f, 380f, 40f, 40f))) // Up
-                gravitySwitches.add(GravitySwitch(Rectangle(600f, 650f, 40f, 40f))) // Down (Ceiling return)
+                // CEILING PLATFORM
+                platforms.add(Platform(Rectangle(450f, 700f, 300f, 20f), PlatformType.CRUMBLING))
 
-                platforms.add(Platform(Rectangle(900f, 350f, 100f, 20f), PlatformType.CRUMBLING))
-                maskX = 1100f; maskY = 350f
+                // GRAVITY SWITCH DOWN
+                gravitySwitches.add(GravitySwitch(Rectangle(650f, 650f, 40f, 40f))) // Down
+
+                // GROUND PLATFORM 2
+                platforms.add(Platform(Rectangle(700f, 100f, 500f, 20f), PlatformType.CRUMBLING))
+
+                // THE LASER (Sweeping)
+                // Height = 530f. 100 + 530 = 630. Player head at 650 when inverted. 20px gap.
+                lasers.add(Laser(Rectangle(200f, 100f, 15f, 530f), isSweeping = true, minX = 0f, maxX = 1200f, sweepSpeed = 250f))
+
+                maskX = 1100f; maskY = 120f
             }
             2 -> {
                 // Chunk 2: Static top laser + Crumbling Platforms + Sharks
@@ -1023,7 +1028,7 @@ class GameScreen(
         }
 
         // Draw Lasers (Transparent Red)
-        shapeRenderer.color = Color(1f, 0f, 0f, 0.5f)
+        shapeRenderer.color = Color(1f, 0.1f, 0.1f, 0.8f)
         for (laser in lasers) {
              shapeRenderer.rect(laser.rect.x, laser.rect.y, laser.rect.width, laser.rect.height)
         }
