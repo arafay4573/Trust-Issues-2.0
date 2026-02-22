@@ -260,29 +260,37 @@ class GameScreen(
     private fun setupLevel4(chunk: Int) {
         when (chunk) {
             1 -> {
-                // Chunk 1: Sweeping bottom laser + Crumbling Platforms + Gravity Switches
-                playerX = 50f; playerY = 150f
+                // Chunk 1: Dynamic Leap of Faith
+                playerX = 50f; playerY = 220f
 
-                // GROUND PLATFORM 1 (Elevated)
-                platforms.add(Platform(Rectangle(0f, 100f, 500f, 20f), PlatformType.CRUMBLING))
+                // 1. FLOOR LEVEL (Broken Bridge)
+                platforms.add(Platform(Rectangle(0f, 200f, 150f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(250f, 200f, 150f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(500f, 200f, 150f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(750f, 200f, 150f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(1000f, 200f, 200f, 20f), PlatformType.CRUMBLING))
 
-                // GRAVITY SWITCH UP
-                gravitySwitches.add(GravitySwitch(Rectangle(400f, 120f, 40f, 40f))) // Up
+                // 3. HIDDEN CEILING ELEMENTS (Off-screen initially)
+                val ceilingPlat = Platform(Rectangle(-2000f, 650f, 300f, 20f), PlatformType.CRUMBLING)
+                platforms.add(ceilingPlat)
 
-                // CEILING PLATFORM
-                platforms.add(Platform(Rectangle(450f, 700f, 300f, 20f), PlatformType.CRUMBLING))
+                val downSwitch = GameButton(Rectangle(-2000f, 580f, 40f, 40f), false) {
+                    reverseGravity = false
+                }
+                gameButtons.add(downSwitch)
 
-                // GRAVITY SWITCH DOWN
-                gravitySwitches.add(GravitySwitch(Rectangle(650f, 650f, 40f, 40f))) // Down
+                // 4. THE HIGH JUMP SWITCH (Trigger)
+                val upSwitch = GameButton(Rectangle(300f, 380f, 40f, 40f), false) {
+                    reverseGravity = true
+                    ceilingPlat.rect.x = 450f // Teleport into view
+                    downSwitch.rect.x = 650f // Teleport into view
+                }
+                gameButtons.add(upSwitch)
 
-                // GROUND PLATFORM 2
-                platforms.add(Platform(Rectangle(700f, 100f, 500f, 20f), PlatformType.CRUMBLING))
+                // 5. THE LASER & MASK
+                lasers.add(Laser(Rectangle(200f, 200f, 15f, 400f), isSweeping = true, minX = 100f, maxX = 1200f, sweepSpeed = 250f))
 
-                // THE LASER (Sweeping)
-                // Height = 530f. 100 + 530 = 630. Player head at 650 when inverted. 20px gap.
-                lasers.add(Laser(Rectangle(200f, 100f, 15f, 530f), isSweeping = true, minX = 0f, maxX = 1200f, sweepSpeed = 250f))
-
-                maskX = 1100f; maskY = 120f
+                maskX = 1100f; maskY = 220f
             }
             2 -> {
                 // Chunk 2: Static top laser + Crumbling Platforms + Sharks
