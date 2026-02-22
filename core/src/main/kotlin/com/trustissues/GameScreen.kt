@@ -261,7 +261,7 @@ class GameScreen(
         when (chunk) {
             1 -> {
                 // Chunk 1: Dynamic Leap of Faith
-                playerX = 50f; playerY = 220f
+                playerX = 50f; playerY = 300f
 
                 // 1. FLOOR LEVEL (Broken Bridge)
                 platforms.add(Platform(Rectangle(0f, 200f, 150f, 20f), PlatformType.CRUMBLING))
@@ -280,10 +280,10 @@ class GameScreen(
                 gameButtons.add(downSwitch)
 
                 // 4. THE HIGH JUMP SWITCH (Trigger)
-                val upSwitch = GameButton(Rectangle(300f, 380f, 40f, 40f), false) {
+                val upSwitch = GameButton(Rectangle(300f, 350f, 40f, 40f), false) {
                     reverseGravity = true
-                    ceilingPlat.rect.x = 450f // Teleport into view
-                    downSwitch.rect.x = 650f // Teleport into view
+                    ceilingPlat.rect.x = 250f // Teleport into view
+                    downSwitch.rect.x = 450f // Teleport into view
                 }
                 gameButtons.add(upSwitch)
 
