@@ -260,7 +260,7 @@ class GameScreen(
     private fun setupLevel4(chunk: Int) {
         when (chunk) {
             1 -> {
-                // Chunk 1: The Troll Setup (Final v3)
+                // Chunk 1: The Troll Setup (Final v4)
 
                 // Clear the board
                 platforms.clear(); lasers.clear(); gravitySwitches.clear(); gameButtons.clear(); sharks.clear()
@@ -291,7 +291,7 @@ class GameScreen(
                 }
                 gameButtons.add(downSwitch)
 
-                // 4. The 50/50 Troll Switches
+                // 4. The 50/50 Troll Switches (Side-by-side!)
                 // FAKE SWITCH (Left): Spawns the shark EXACTLY on the player. Instant death!
                 val fakeSwitch = GameButton(Rectangle(300f, 450f, 40f, 40f), false) {
                     sharks.add(Shark(300f, 450f, 0f, 300f, 300f))
