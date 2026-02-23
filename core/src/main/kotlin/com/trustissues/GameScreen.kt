@@ -269,7 +269,8 @@ class GameScreen(
 
                 // 1. Player Spawn & The Broken Bridge (Raised to y=300)
                 playerX = 50f
-                playerY = 300f
+                // SPAWN FIX: Spawn higher (y=320) so gravity drops him ONTO the y=300 platform, not inside it.
+                playerY = 320f
                 velocityY = 0f
                 reverseGravity = false
                 isLevelComplete = false
@@ -283,13 +284,15 @@ class GameScreen(
                 // 2. The Mask & The Sweeping Laser
                 maskX = 1100f
                 maskY = 320f
-                lasers.add(Laser(Rectangle(200f, 300f, 15f, 380f), isSweeping = true, minX = 100f, maxX = 1200f, sweepSpeed = 250f))
+                // LASER FIX: Lower height (310f) to stop at y=610, leaving space for the hanging player under the new y=680 ceiling.
+                lasers.add(Laser(Rectangle(200f, 300f, 15f, 310f), isSweeping = true, minX = 100f, maxX = 1200f, sweepSpeed = 250f))
 
-                // 3. The Hidden Ceiling & Escape Switch
-                val ceilingPlat = Platform(Rectangle(-2000f, 750f, 300f, 20f), PlatformType.CRUMBLING)
+                // 3. The Hidden Ceiling & Escape Switch (Initial spawn off-screen)
+                // CEILING FIX: Set target Y to 680f so it is visible on screen.
+                val ceilingPlat = Platform(Rectangle(-2000f, 680f, 300f, 20f), PlatformType.CRUMBLING)
                 platforms.add(ceilingPlat)
 
-                val downSwitch = GameButton(Rectangle(-2000f, 680f, 40f, 40f), false) {
+                val downSwitch = GameButton(Rectangle(-2000f, 610f, 40f, 40f), false) {
                     reverseGravity = false
                 }
                 gameButtons.add(downSwitch)
@@ -304,8 +307,11 @@ class GameScreen(
                 // REAL SWITCH (Right): Saves them and teleports the ceiling!
                 val realSwitch = GameButton(Rectangle(380f, 450f, 40f, 40f), false) {
                     reverseGravity = true
+                    // TELEPORT FIX: Ensure it moves to the visible coordinates.
                     ceilingPlat.rect.x = 250f
+                    ceilingPlat.rect.y = 680f
                     downSwitch.rect.x = 450f
+                    downSwitch.rect.y = 610f
                 }
                 gameButtons.add(realSwitch)
             }
