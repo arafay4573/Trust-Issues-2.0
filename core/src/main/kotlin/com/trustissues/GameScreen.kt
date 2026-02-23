@@ -260,7 +260,7 @@ class GameScreen(
     private fun setupLevel4(chunk: Int) {
         when (chunk) {
             1 -> {
-                // Chunk 1: The Troll Setup (Final)
+                // Chunk 1: The Troll Setup (Final v3)
 
                 // Clear the board
                 platforms.clear(); lasers.clear(); gravitySwitches.clear(); gameButtons.clear(); sharks.clear()
@@ -280,8 +280,6 @@ class GameScreen(
 
                 // 2. The Mask & The Sweeping Laser
                 maskX = 1100f; maskY = 320f
-                // Laser starts at the bridge (y=300). Height is 380 (reaches y=680).
-                // Player inverted on ceiling (y=750) hangs to y=700. 20px gap.
                 lasers.add(Laser(Rectangle(200f, 300f, 15f, 380f), isSweeping = true, minX = 100f, maxX = 1200f, sweepSpeed = 250f))
 
                 // 3. The Hidden Ceiling & Escape Switch
@@ -293,8 +291,8 @@ class GameScreen(
                 }
                 gameButtons.add(downSwitch)
 
-                // 4. The 50/50 Troll Switches (Raised so the player has to jump from the y=300 bridge)
-                // FAKE SWITCH (Left): Spawns the shark EXACTLY on the switch coordinates. Instant death!
+                // 4. The 50/50 Troll Switches
+                // FAKE SWITCH (Left): Spawns the shark EXACTLY on the player. Instant death!
                 val fakeSwitch = GameButton(Rectangle(300f, 450f, 40f, 40f), false) {
                     sharks.add(Shark(300f, 450f, 0f, 300f, 300f))
                 }
