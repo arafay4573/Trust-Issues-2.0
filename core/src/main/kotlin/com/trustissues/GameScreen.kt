@@ -260,48 +260,46 @@ class GameScreen(
     private fun setupLevel4(chunk: Int) {
         when (chunk) {
             1 -> {
-                // Chunk 1: The Troll Setup (50/50 Trust Issues)
+                // Chunk 1: The Troll Setup (Final v4)
 
-                // Clear the board (Redundant safety)
+                // Clear the board
                 platforms.clear(); lasers.clear(); gravitySwitches.clear(); gameButtons.clear(); sharks.clear()
 
-                // 1. Player Spawn
+                // 1. Player Spawn & The Broken Bridge (Raised to y=300 to fix floating)
                 playerX = 50f
-                playerY = 250f
+                playerY = 300f
                 velocityY = 0f
                 reverseGravity = false
-                isLevelComplete = false // reset mask logic
+                isLevelComplete = false
 
-                // 2. The Broken Bridge (Floor)
-                platforms.add(Platform(Rectangle(0f, 200f, 150f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(250f, 200f, 150f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(500f, 200f, 150f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(750f, 200f, 150f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(1000f, 200f, 200f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(0f, 300f, 150f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(250f, 300f, 150f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(500f, 300f, 150f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(750f, 300f, 150f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(1000f, 300f, 200f, 20f), PlatformType.CRUMBLING))
 
-                // 3. The Mask & The Sweeping Laser
-                maskX = 1100f; maskY = 220f
-                lasers.add(Laser(Rectangle(200f, 200f, 15f, 400f), isSweeping = true, minX = 100f, maxX = 1200f, sweepSpeed = 250f))
+                // 2. The Mask & The Sweeping Laser
+                maskX = 1100f; maskY = 320f
+                lasers.add(Laser(Rectangle(200f, 300f, 15f, 380f), isSweeping = true, minX = 100f, maxX = 1200f, sweepSpeed = 250f))
 
-                // 4. The Hidden Ceiling & Escape Switch (Spawned far off-screen initially)
-                val ceilingPlat = Platform(Rectangle(-2000f, 650f, 300f, 20f), PlatformType.CRUMBLING)
+                // 3. The Hidden Ceiling & Escape Switch
+                val ceilingPlat = Platform(Rectangle(-2000f, 750f, 300f, 20f), PlatformType.CRUMBLING)
                 platforms.add(ceilingPlat)
 
-                val downSwitch = GameButton(Rectangle(-2000f, 580f, 40f, 40f), false) {
+                val downSwitch = GameButton(Rectangle(-2000f, 680f, 40f, 40f), false) {
                     reverseGravity = false
                 }
                 gameButtons.add(downSwitch)
 
-                // 5. The 50/50 Troll Switches (Russian Roulette)
-                // FAKE SWITCH (Left): Spawns a shark dropping directly onto the player's head!
-                val fakeSwitch = GameButton(Rectangle(300f, 350f, 40f, 40f), false) {
-                    // Shark spawns above. Since no gravity for sharks, it's just a floating hazard they might jump into.
-                    sharks.add(Shark(300f, 600f, 0f, 300f, 300f))
+                // 4. The 50/50 Troll Switches (Side-by-side!)
+                // FAKE SWITCH (Left): Spawns the shark EXACTLY on the player. Instant death!
+                val fakeSwitch = GameButton(Rectangle(300f, 450f, 40f, 40f), false) {
+                    sharks.add(Shark(300f, 450f, 0f, 300f, 300f))
                 }
                 gameButtons.add(fakeSwitch)
 
-                // REAL SWITCH (Right): Saves them, flips gravity, and teleports the ceiling!
-                val realSwitch = GameButton(Rectangle(380f, 350f, 40f, 40f), false) {
+                // REAL SWITCH (Right): Saves them and teleports the ceiling!
+                val realSwitch = GameButton(Rectangle(380f, 450f, 40f, 40f), false) {
                     reverseGravity = true
                     ceilingPlat.rect.x = 250f
                     downSwitch.rect.x = 450f
