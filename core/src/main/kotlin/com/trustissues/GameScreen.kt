@@ -260,17 +260,30 @@ class GameScreen(
     private fun setupLevel4(chunk: Int) {
         when (chunk) {
             1 -> {
-                // Chunk 1: Dynamic Leap of Faith
-                playerX = 50f; playerY = 220f
+                // Chunk 1: The Troll Setup (50/50 Trust Issues)
 
-                // 1. FLOOR LEVEL (Broken Bridge)
+                // Clear the board (Redundant safety)
+                platforms.clear(); lasers.clear(); gravitySwitches.clear(); gameButtons.clear(); sharks.clear()
+
+                // 1. Player Spawn
+                playerX = 50f
+                playerY = 250f
+                velocityY = 0f
+                reverseGravity = false
+                isLevelComplete = false // reset mask logic
+
+                // 2. The Broken Bridge (Floor)
                 platforms.add(Platform(Rectangle(0f, 200f, 150f, 20f), PlatformType.CRUMBLING))
                 platforms.add(Platform(Rectangle(250f, 200f, 150f, 20f), PlatformType.CRUMBLING))
                 platforms.add(Platform(Rectangle(500f, 200f, 150f, 20f), PlatformType.CRUMBLING))
                 platforms.add(Platform(Rectangle(750f, 200f, 150f, 20f), PlatformType.CRUMBLING))
                 platforms.add(Platform(Rectangle(1000f, 200f, 200f, 20f), PlatformType.CRUMBLING))
 
-                // 3. HIDDEN CEILING ELEMENTS (Off-screen initially)
+                // 3. The Mask & The Sweeping Laser
+                maskX = 1100f; maskY = 220f
+                lasers.add(Laser(Rectangle(200f, 200f, 15f, 400f), isSweeping = true, minX = 100f, maxX = 1200f, sweepSpeed = 250f))
+
+                // 4. The Hidden Ceiling & Escape Switch (Spawned far off-screen initially)
                 val ceilingPlat = Platform(Rectangle(-2000f, 650f, 300f, 20f), PlatformType.CRUMBLING)
                 platforms.add(ceilingPlat)
 
@@ -279,18 +292,21 @@ class GameScreen(
                 }
                 gameButtons.add(downSwitch)
 
-                // 4. THE HIGH JUMP SWITCH (Trigger)
-                val upSwitch = GameButton(Rectangle(300f, 380f, 40f, 40f), false) {
-                    reverseGravity = true
-                    ceilingPlat.rect.x = 450f // Teleport into view
-                    downSwitch.rect.x = 650f // Teleport into view
+                // 5. The 50/50 Troll Switches (Russian Roulette)
+                // FAKE SWITCH (Left): Spawns a shark dropping directly onto the player's head!
+                val fakeSwitch = GameButton(Rectangle(300f, 350f, 40f, 40f), false) {
+                    // Shark spawns above. Since no gravity for sharks, it's just a floating hazard they might jump into.
+                    sharks.add(Shark(300f, 600f, 0f, 300f, 300f))
                 }
-                gameButtons.add(upSwitch)
+                gameButtons.add(fakeSwitch)
 
-                // 5. THE LASER & MASK
-                lasers.add(Laser(Rectangle(200f, 200f, 15f, 400f), isSweeping = true, minX = 100f, maxX = 1200f, sweepSpeed = 250f))
-
-                maskX = 1100f; maskY = 220f
+                // REAL SWITCH (Right): Saves them, flips gravity, and teleports the ceiling!
+                val realSwitch = GameButton(Rectangle(380f, 350f, 40f, 40f), false) {
+                    reverseGravity = true
+                    ceilingPlat.rect.x = 250f
+                    downSwitch.rect.x = 450f
+                }
+                gameButtons.add(realSwitch)
             }
             2 -> {
                 // Chunk 2: Static top laser + Crumbling Platforms + Sharks
