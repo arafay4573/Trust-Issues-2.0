@@ -252,7 +252,7 @@ class GameScreen(
         when (chunk) {
             1 -> {
                 // Chunk 1: The Troll Setup (Physics Fix)
-                // --- START CHUNK 1 PHYSICS FIX ---
+                // --- START CHUNK 1 SHARK LINING ---
                 // Clear the board
                 platforms.clear()
                 lasers.clear()
@@ -267,52 +267,55 @@ class GameScreen(
                 reverseGravity = false
                 isLevelComplete = false
 
-                // 2. The Platforms (Standard)
+                // 2. The Platforms (y=300)
                 platforms.add(Platform(Rectangle(0f, 300f, 150f, 20f), PlatformType.CRUMBLING))
                 platforms.add(Platform(Rectangle(250f, 300f, 150f, 20f), PlatformType.CRUMBLING))
                 platforms.add(Platform(Rectangle(500f, 300f, 150f, 20f), PlatformType.CRUMBLING))
                 platforms.add(Platform(Rectangle(750f, 300f, 150f, 20f), PlatformType.CRUMBLING))
                 platforms.add(Platform(Rectangle(1000f, 300f, 200f, 20f), PlatformType.CRUMBLING))
 
-                // 3. The Death Floor (Shark Pit)
-                // Loop sharks across the bottom so there is no escape
-                for (i in -500..1500 step 100) {
-                    sharks.add(Shark(i.toFloat(), 0f, 0f, 0f, 0f))
+                // 3. THE SHARK LINING (The Failsafe)
+                // Spawning sharks at y=240 (Directly under the y=300 platforms).
+                // If the player falls OR walks on "ghost air", they hit this layer instantly.
+                for (i in 0..1200 step 80) {
+                    sharks.add(Shark(i.toFloat(), 240f, 0f, 0f, 0f))
                 }
 
-                // 4. The Mask & The TUNED Laser
+                // 4. The Mask & Laser (Speed 650f)
                 maskX = 1100f
                 maskY = 320f
-                // SPEED FIX: Reduced to 700f as requested.
-                lasers.add(Laser(Rectangle(200f, 300f, 15f, 310f), isSweeping = true, sweepSpeed = 700f, minX = 100f, maxX = 1200f))
+                lasers.add(Laser(Rectangle(200f, 300f, 15f, 310f), isSweeping = true, sweepSpeed = 650f, minX = 100f, maxX = 1200f))
 
-                // 5. The Hidden Ceiling & Escape Switch
-                // PHYSICS FIX: Increased Height to 500f (Solid Block) to prevent tunneling!
-                val ceilingPlat = Platform(Rectangle(-2000f, 680f, 300f, 500f), PlatformType.CRUMBLING)
+                // 5. The Hidden Ceiling & Hidden Escape Switch
+                // Ceiling is narrow again (20f). Spawns off-screen.
+                val ceilingPlat = Platform(Rectangle(-2000f, 680f, 300f, 20f), PlatformType.CRUMBLING)
                 platforms.add(ceilingPlat)
 
+                // The Down Switch spawns OFF-SCREEN (-2000f). It is invisible until triggered.
                 val downSwitch = GameButton(Rectangle(-2000f, 610f, 40f, 40f), false) {
                     reverseGravity = false
                 }
                 gameButtons.add(downSwitch)
 
-                // 6. The 50/50 Troll Switches
-                // FAKE SWITCH (Left): Instant Death Shark
+                // 6. The Troll Switches
+                // FAKE SWITCH (Left): Instant Death
                 val fakeSwitch = GameButton(Rectangle(300f, 450f, 40f, 40f), false) {
                     sharks.add(Shark(300f, 450f, 0f, 300f, 300f))
                 }
                 gameButtons.add(fakeSwitch)
 
-                // REAL SWITCH (Right): Gravity Flip & Teleport
+                // REAL SWITCH (Right): Gravity Flip & REVEAL BUTTON
                 val realSwitch = GameButton(Rectangle(380f, 450f, 40f, 40f), false) {
                     reverseGravity = true
+                    // Move ceiling into place
                     ceilingPlat.rect.x = 250f
                     ceilingPlat.rect.y = 680f
+                    // REVEAL the Down Switch now that we are up there!
                     downSwitch.rect.x = 450f
                     downSwitch.rect.y = 610f
                 }
                 gameButtons.add(realSwitch)
-                // --- END CHUNK 1 PHYSICS FIX ---
+                // --- END CHUNK 1 SHARK LINING ---
             }
             2 -> {
                 // Chunk 2: Static top laser + Crumbling Platforms + Sharks
