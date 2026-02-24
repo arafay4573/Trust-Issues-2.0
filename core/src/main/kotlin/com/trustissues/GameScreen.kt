@@ -296,8 +296,8 @@ class GameScreen(
                 lasers.add(Laser(Rectangle(200f, 300f, 15f, 310f), isSweeping = true, sweepSpeed = 700f, minX = 100f, maxX = 1200f))
 
                 // 5. The Hidden Ceiling & Escape Switch
-                // PHYSICS FIX: Increased Height to 100f (from 50f) so player can't phase through it!
-                val ceilingPlat = Platform(Rectangle(-2000f, 680f, 300f, 100f), PlatformType.CRUMBLING)
+                // PHYSICS FIX: Increased Height to 500f (Solid Block) to prevent tunneling!
+                val ceilingPlat = Platform(Rectangle(-2000f, 680f, 300f, 500f), PlatformType.CRUMBLING)
                 platforms.add(ceilingPlat)
 
                 val downSwitch = GameButton(Rectangle(-2000f, 610f, 40f, 40f), false) {
@@ -792,7 +792,8 @@ class GameScreen(
                 }
 
                 if (plat.crumbleTimer > actualLimit) {
-                    platIter.remove()
+                    plat.state = "BROKEN" // Explicitly mark as destroyed
+                    platIter.remove() // Remove from list
                     continue
                 }
             }
