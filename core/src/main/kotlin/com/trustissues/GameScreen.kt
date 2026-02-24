@@ -252,7 +252,7 @@ class GameScreen(
         when (chunk) {
             1 -> {
                 // Chunk 1: The Troll Setup (Physics Fix)
-                // --- START CHUNK 1 FINAL POLISH ---
+                // --- START CHUNK 1 FLUSH TUNE ---
                 // Clear the board
                 platforms.clear()
                 lasers.clear()
@@ -274,13 +274,12 @@ class GameScreen(
                 platforms.add(Platform(Rectangle(750f, 300f, 150f, 20f), PlatformType.CRUMBLING))
                 platforms.add(Platform(Rectangle(1000f, 300f, 200f, 20f), PlatformType.CRUMBLING))
 
-                // 3. SHARK LINING (Micro-Tuned V2)
-                // Y=244f. (3px lower than before).
-                // Top of shark is at 304f. Platform bottom is 300f.
-                // They overlap by 4px, ensuring the trap works if the floor vanishes,
-                // but giving the player a safer walking buffer.
+                // 3. SHARK LINING (Flush Fit)
+                // Y=240f. Height=60f. Top=300f.
+                // The shark fins touch the bottom of the platforms exactly.
+                // 20px fall distance from player feet (320) to death (300).
                 for (i in 0..1200 step 80) {
-                    sharks.add(Shark(i.toFloat(), 244f, 0f, 0f, 0f))
+                    sharks.add(Shark(i.toFloat(), 240f, 0f, 0f, 0f))
                 }
 
                 // 4. The Mask & Laser (Speed 580f)
@@ -311,7 +310,7 @@ class GameScreen(
                     downSwitch.rect.y = 610f
                 }
                 gameButtons.add(realSwitch)
-                // --- END CHUNK 1 FINAL POLISH ---
+                // --- END CHUNK 1 FLUSH TUNE ---
             }
             2 -> {
                 // Chunk 2: Static top laser + Crumbling Platforms + Sharks
