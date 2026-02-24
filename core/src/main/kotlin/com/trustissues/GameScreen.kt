@@ -318,6 +318,7 @@ class GameScreen(
                 sharks.clear()
                 lasers.clear()
                 gameButtons.clear()
+                gravitySwitches.clear()
 
                 // 1. Player Spawn (Sea Bed)
                 playerX = 400f // Center
@@ -840,27 +841,34 @@ class GameScreen(
             die("Darkness consumes you.")
         }
 
-        // --- CHUNK 2 LOGIC ---
-        // 1. Move Walls Logic
-        if (currentLevel == 4 && currentChunk == 2) {
-            // Find the walls by their X positions or references
-            platforms.forEach { p ->
-                if (p.rect.height == 1000f) { // Identify walls by height
-                    if (p.rect.x < 0) p.rect.x += 20f * delta // Left Wall moves Right (Slow: 20 speed)
-                    if (p.rect.x > 1000) p.rect.x -= 20f * delta // Right Wall moves Left
-                }
-            }
-
-            // 2. Deadly Platform Logic (The one at x=300, y=200)
-            // If player touches the "Normal" platform at this specific spot, DIE.
-            platforms.firstOrNull { it.rect.x == 300f && it.rect.y == 200f }?.let { deadly ->
-                if (playerRect.overlaps(deadly.rect)) {
-                    // Reset Level (Death)
-                    die("You trusted the platform. Rookie mistake.")
-                }
+        // --- CHUNK 2 LOGIC UPDATE ---
+        // 1. Move the Walls
+        platforms.forEach { p ->
+            if (p.rect.height == 1000f) {
+                // Move walls inward
+                if (p.rect.x < 400f) p.rect.x += 50f * delta // Left Wall Speed
+                if (p.rect.x > 400f) p.rect.x -= 50f * delta // Right Wall Speed
             }
         }
-        // ---------------------
+
+        // 2. Deadly Platform Logic (The "Normal" platform at 300, 200)
+        // If player touches the red platform, DIE.
+        platforms.firstOrNull { it.rect.x == 300f && it.rect.y == 200f }?.let { deadly ->
+            if (playerRect.overlaps(deadly.rect)) {
+                setupChunk(currentChunk) // Restart level
+            }
+        }
+
+        // 3. Friendly Shark Logic
+        // The shark at x=600 is "Friendly" (because we stand on the invisible platform above it).
+        // The physics engine might still kill us if we touch the shark hitbox.
+        // We should remove that specific shark from the collision check list, OR ensure the platform is thick enough.
+        // (For this PR, relying on the platform being on top).
+
+        // 4. CRITICAL: Ghost Floor Fix
+        // Remove destroyed platforms to prevent walking on air.
+        platforms.removeAll { it.type == PlatformType.CRUMBLING && it.state == PlatformState.DESTROYED }
+        // ----------------------------
 
         // Gravity Switches
         for (switch in gravitySwitches) {
