@@ -321,43 +321,35 @@ class GameScreen(
                 gravitySwitches.clear()
 
                 // 1. Player Spawn (Sea Bed)
-                playerX = 400f // Center
+                playerX = 400f
                 playerY = 50f
                 velocityY = 0f
                 reverseGravity = false
 
+                // 0. The Sea Bed (Solid Floor)
+                platforms.add(Platform(Rectangle(-400f, 0f, 2000f, 50f), PlatformType.NORMAL))
+
                 // 2. The Walls (The Sandwich)
-                // We use Platforms as walls.
                 // Left Wall (Starts far left)
-                val leftWall = Platform(Rectangle(-400f, 0f, 100f, 1000f), PlatformType.NORMAL)
-                platforms.add(leftWall)
+                platforms.add(Platform(Rectangle(-400f, 50f, 100f, 1000f), PlatformType.NORMAL))
                 // Right Wall (Starts far right)
-                val rightWall = Platform(Rectangle(1600f, 0f, 100f, 1000f), PlatformType.NORMAL)
-                platforms.add(rightWall)
+                platforms.add(Platform(Rectangle(1600f, 50f, 100f, 1000f), PlatformType.NORMAL))
 
                 // 3. LAYER 1 (Y=200): The Twist
-                // LEFT: The "Deadly Platform"
-                // We create a standard platform, but we will add specific logic in update() to kill player if touched.
-                // (Visual: Red/Normal)
-                val deadlyPlat = Platform(Rectangle(300f, 200f, 150f, 20f), PlatformType.NORMAL)
-                // MARKER: We will need to identify this specific platform to make it deadly.
-                // For now, we place it. logic below.
-                platforms.add(deadlyPlat)
+                // LEFT: The "Deadly Platform" (x=300, y=200)
+                platforms.add(Platform(Rectangle(300f, 200f, 150f, 20f), PlatformType.NORMAL))
 
-                // RIGHT: The "Friendly Shark"
-                // We place an INVISIBLE PLATFORM (Solid)
-                platforms.add(Platform(Rectangle(600f, 200f, 100f, 20f), PlatformType.INVISIBLE))
-                // And we place a SHARK (Visual Only - No Hitbox logic yet, or we assume Shark class kills).
-                // HACK: To make a "Friendly" shark, we will just NOT add a Shark object here.
-                // instead, we rely on the Invisible Platform.
-                // The user wants to "Climb the Shark".
-                // For the prototype, place a platform at x=600 and label it "SAFE SHARK" in your mind.
+                // RIGHT: The "Friendly Shark" (x=600, y=200)
+                // Invisible Platform for standing
+                platforms.add(Platform(Rectangle(600f, 200f, 120f, 20f), PlatformType.INVISIBLE))
+                // Visual Shark (Collision logic will make it safe)
+                sharks.add(Shark(600f, 200f, 0f, 0f, 0f))
 
-                // 4. LAYER 2 (Y=400): The Crumble
-                // LEFT: Crumbling Platform (Green/Safe but fast)
+                // 4. LAYER 2 (Y=400): The Escape
+                // LEFT: Standard Crumbling Platform
                 platforms.add(Platform(Rectangle(200f, 400f, 150f, 20f), PlatformType.CRUMBLING))
 
-                // RIGHT: Real Shark (Deadly)
+                // RIGHT: Standard Deadly Shark
                 sharks.add(Shark(700f, 400f, 0f, 0f, 0f))
 
                 // 5. The Goal
@@ -842,28 +834,22 @@ class GameScreen(
         }
 
         // --- CHUNK 2 LOGIC UPDATE ---
-        // 1. Move the Walls
-        platforms.forEach { p ->
-            if (p.rect.height == 1000f) {
-                // Move walls inward
-                if (p.rect.x < 400f) p.rect.x += 50f * delta // Left Wall Speed
-                if (p.rect.x > 400f) p.rect.x -= 50f * delta // Right Wall Speed
+        if (currentLevel == 4 && currentChunk == 2) {
+            // 1. Move the Walls (Speed 30f)
+            platforms.forEach { p ->
+                if (p.rect.height == 1000f) {
+                    if (p.rect.x < 400f) p.rect.x += 30f * delta // Left Wall
+                    if (p.rect.x > 400f) p.rect.x -= 30f * delta // Right Wall
+                }
+            }
+
+            // 2. Deadly Platform Logic (x=300, y=200)
+            platforms.firstOrNull { it.rect.x == 300f && it.rect.y == 200f }?.let { deadly ->
+                if (playerRect.overlaps(deadly.rect)) {
+                    die("You trusted the platform. Rookie mistake.")
+                }
             }
         }
-
-        // 2. Deadly Platform Logic (The "Normal" platform at 300, 200)
-        // If player touches the red platform, DIE.
-        platforms.firstOrNull { it.rect.x == 300f && it.rect.y == 200f }?.let { deadly ->
-            if (playerRect.overlaps(deadly.rect)) {
-                setupChunk(currentChunk) // Restart level
-            }
-        }
-
-        // 3. Friendly Shark Logic
-        // The shark at x=600 is "Friendly" (because we stand on the invisible platform above it).
-        // The physics engine might still kill us if we touch the shark hitbox.
-        // We should remove that specific shark from the collision check list, OR ensure the platform is thick enough.
-        // (For this PR, relying on the platform being on top).
 
         // 4. CRITICAL: Ghost Floor Fix
         // Remove destroyed platforms to prevent walking on air.
@@ -992,8 +978,11 @@ class GameScreen(
             }
 
             // Shark Collision
-            sharkRect.set(shark.x, shark.y, 120f, 60f) // approx
-            if (Intersector.overlaps(playerRect, sharkRect)) die()
+            // Safe Shark Logic: Skip collision if shark is at x=600 (Chunk 2 Friendly Shark)
+            if (currentLevel != 4 || currentChunk != 2 || shark.x != 600f) {
+                sharkRect.set(shark.x, shark.y, 120f, 60f) // approx
+                if (Intersector.overlaps(playerRect, sharkRect)) die()
+            }
         }
 
         // Bubbles
