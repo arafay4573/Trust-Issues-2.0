@@ -274,17 +274,19 @@ class GameScreen(
                 platforms.add(Platform(Rectangle(750f, 300f, 150f, 20f), PlatformType.CRUMBLING))
                 platforms.add(Platform(Rectangle(1000f, 300f, 200f, 20f), PlatformType.CRUMBLING))
 
-                // 3. SHARK LINING (Micro-Tuned)
-                // Y=247f. (3px lower than before).
-                // Perfect balance between safety and instant death.
+                // 3. SHARK LINING (Micro-Tuned V2)
+                // Y=244f. (3px lower than before).
+                // Top of shark is at 304f. Platform bottom is 300f.
+                // They overlap by 4px, ensuring the trap works if the floor vanishes,
+                // but giving the player a safer walking buffer.
                 for (i in 0..1200 step 80) {
-                    sharks.add(Shark(i.toFloat(), 247f, 0f, 0f, 0f))
+                    sharks.add(Shark(i.toFloat(), 244f, 0f, 0f, 0f))
                 }
 
-                // 4. The Mask & Laser (Speed 585f)
+                // 4. The Mask & Laser (Speed 580f)
                 maskX = 1100f
                 maskY = 320f
-                lasers.add(Laser(Rectangle(200f, 300f, 15f, 310f), isSweeping = true, sweepSpeed = 585f, minX = 100f, maxX = 1200f))
+                lasers.add(Laser(Rectangle(200f, 300f, 15f, 310f), isSweeping = true, sweepSpeed = 580f, minX = 100f, maxX = 1200f))
 
                 // 5. The Hidden Ceiling & Escape Switch
                 val ceilingPlat = Platform(Rectangle(-2000f, 680f, 300f, 500f), PlatformType.CRUMBLING)
