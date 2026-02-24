@@ -313,25 +313,56 @@ class GameScreen(
                 // --- END CHUNK 1 GAP TUNE ---
             }
             2 -> {
-                // Chunk 2: Static top laser + Crumbling Platforms + Sharks
-                playerX = 100f; playerY = 280f
-                // Floor is safe-ish, but Sharks patrol it
-                platforms.add(Platform(Rectangle(100f, 280f, 100f, 20f), PlatformType.NORMAL))
+                // --- START CHUNK 2 SETUP ---
+                platforms.clear()
+                sharks.clear()
+                lasers.clear()
+                gameButtons.clear()
 
-                // Static Top Laser
-                lasers.add(Laser(Rectangle(0f, 400f, 1280f, 320f), isSweeping = false)) // Top half death zone
+                // 1. Player Spawn (Sea Bed)
+                playerX = 400f // Center
+                playerY = 50f
+                velocityY = 0f
+                reverseGravity = false
 
-                // Sharks on the floor
-                sharks.add(Shark(400f, 280f, 200f, 300f, 600f))
-                sharks.add(Shark(800f, 280f, 200f, 700f, 1000f))
+                // 2. The Walls (The Sandwich)
+                // We use Platforms as walls.
+                // Left Wall (Starts far left)
+                val leftWall = Platform(Rectangle(-400f, 0f, 100f, 1000f), PlatformType.NORMAL)
+                platforms.add(leftWall)
+                // Right Wall (Starts far right)
+                val rightWall = Platform(Rectangle(1600f, 0f, 100f, 1000f), PlatformType.NORMAL)
+                platforms.add(rightWall)
 
-                // Platforms (Must stay low)
-                platforms.add(Platform(Rectangle(300f, 280f, 100f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(500f, 280f, 100f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(700f, 280f, 100f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(900f, 280f, 100f, 20f), PlatformType.CRUMBLING))
+                // 3. LAYER 1 (Y=200): The Twist
+                // LEFT: The "Deadly Platform"
+                // We create a standard platform, but we will add specific logic in update() to kill player if touched.
+                // (Visual: Red/Normal)
+                val deadlyPlat = Platform(Rectangle(300f, 200f, 150f, 20f), PlatformType.NORMAL)
+                // MARKER: We will need to identify this specific platform to make it deadly.
+                // For now, we place it. logic below.
+                platforms.add(deadlyPlat)
 
-                maskX = 1150f; maskY = 280f
+                // RIGHT: The "Friendly Shark"
+                // We place an INVISIBLE PLATFORM (Solid)
+                platforms.add(Platform(Rectangle(600f, 200f, 100f, 20f), PlatformType.INVISIBLE))
+                // And we place a SHARK (Visual Only - No Hitbox logic yet, or we assume Shark class kills).
+                // HACK: To make a "Friendly" shark, we will just NOT add a Shark object here.
+                // instead, we rely on the Invisible Platform.
+                // The user wants to "Climb the Shark".
+                // For the prototype, place a platform at x=600 and label it "SAFE SHARK" in your mind.
+
+                // 4. LAYER 2 (Y=400): The Crumble
+                // LEFT: Crumbling Platform (Green/Safe but fast)
+                platforms.add(Platform(Rectangle(200f, 400f, 150f, 20f), PlatformType.CRUMBLING))
+
+                // RIGHT: Real Shark (Deadly)
+                sharks.add(Shark(700f, 400f, 0f, 0f, 0f))
+
+                // 5. The Goal
+                maskX = 100f
+                maskY = 550f
+                // --- END CHUNK 2 SETUP ---
             }
             3 -> {
                 // Chunk 3: The Compactor
@@ -809,15 +840,27 @@ class GameScreen(
             die("Darkness consumes you.")
         }
 
-        // --- SMART BUTTON LOGIC ---
-        // If gravity is reversed AND player is high up (on the ceiling), reveal the button.
-        if (reverseGravity && playerY > 600f) {
-            // Find the down switch (it's the one at y=610) and move it to screen
-            gameButtons.find { it.rect.y == 610f }?.let { btn ->
-                if (btn.rect.x < 0) btn.rect.x = 450f // Teleport into view
+        // --- CHUNK 2 LOGIC ---
+        // 1. Move Walls Logic
+        if (currentLevel == 4 && currentChunk == 2) {
+            // Find the walls by their X positions or references
+            platforms.forEach { p ->
+                if (p.rect.height == 1000f) { // Identify walls by height
+                    if (p.rect.x < 0) p.rect.x += 20f * delta // Left Wall moves Right (Slow: 20 speed)
+                    if (p.rect.x > 1000) p.rect.x -= 20f * delta // Right Wall moves Left
+                }
+            }
+
+            // 2. Deadly Platform Logic (The one at x=300, y=200)
+            // If player touches the "Normal" platform at this specific spot, DIE.
+            platforms.firstOrNull { it.rect.x == 300f && it.rect.y == 200f }?.let { deadly ->
+                if (playerRect.overlaps(deadly.rect)) {
+                    // Reset Level (Death)
+                    die("You trusted the platform. Rookie mistake.")
+                }
             }
         }
-        // --------------------------
+        // ---------------------
 
         // Gravity Switches
         for (switch in gravitySwitches) {
