@@ -260,14 +260,19 @@ class GameScreen(
     private fun setupLevel4(chunk: Int) {
         when (chunk) {
             1 -> {
-                // Chunk 1: The Troll Setup (Final v4)
-
+                // Chunk 1: The Troll Setup (Fixed v2)
+                // --- START CHUNK 1 OVERWRITE ---
                 // Clear the board
-                platforms.clear(); lasers.clear(); gravitySwitches.clear(); gameButtons.clear(); sharks.clear()
+                platforms.clear()
+                lasers.clear()
+                gravitySwitches.clear()
+                gameButtons.clear()
+                sharks.clear()
 
-                // 1. Player Spawn & The Broken Bridge (Raised to y=300 to fix floating)
+                // 1. Player Spawn & The Broken Bridge (Raised to y=300)
                 playerX = 50f
-                playerY = 300f
+                // SPAWN FIX: Spawn at y=350 to drop ONTO the y=300 platform (fix sinking issue)
+                playerY = 350f
                 velocityY = 0f
                 reverseGravity = false
                 isLevelComplete = false
@@ -279,19 +284,22 @@ class GameScreen(
                 platforms.add(Platform(Rectangle(1000f, 300f, 200f, 20f), PlatformType.CRUMBLING))
 
                 // 2. The Mask & The Sweeping Laser
-                maskX = 1100f; maskY = 320f
-                lasers.add(Laser(Rectangle(200f, 300f, 15f, 380f), isSweeping = true, minX = 100f, maxX = 1200f, sweepSpeed = 250f))
+                maskX = 1100f
+                maskY = 320f
+                // LASER FIX: Height 310f (Top at y=610). Ceiling at y=680. Player head at y=630. Safe gap = 20px.
+                lasers.add(Laser(Rectangle(200f, 300f, 15f, 310f), isSweeping = true, sweepSpeed = 250f, minX = 100f, maxX = 1200f))
 
-                // 3. The Hidden Ceiling & Escape Switch
-                val ceilingPlat = Platform(Rectangle(-2000f, 750f, 300f, 20f), PlatformType.CRUMBLING)
+                // 3. The Hidden Ceiling & Escape Switch (Spawn off-screen)
+                // CEILING FIX: y=680 (Visible on screen)
+                val ceilingPlat = Platform(Rectangle(-2000f, 680f, 300f, 20f), PlatformType.CRUMBLING)
                 platforms.add(ceilingPlat)
 
-                val downSwitch = GameButton(Rectangle(-2000f, 680f, 40f, 40f), false) {
+                val downSwitch = GameButton(Rectangle(-2000f, 610f, 40f, 40f), false) {
                     reverseGravity = false
                 }
                 gameButtons.add(downSwitch)
 
-                // 4. The 50/50 Troll Switches (Side-by-side!)
+                // 4. The 50/50 Troll Switches
                 // FAKE SWITCH (Left): Spawns the shark EXACTLY on the player. Instant death!
                 val fakeSwitch = GameButton(Rectangle(300f, 450f, 40f, 40f), false) {
                     sharks.add(Shark(300f, 450f, 0f, 300f, 300f))
@@ -301,10 +309,14 @@ class GameScreen(
                 // REAL SWITCH (Right): Saves them and teleports the ceiling!
                 val realSwitch = GameButton(Rectangle(380f, 450f, 40f, 40f), false) {
                     reverseGravity = true
+                    // TELEPORT FIX: Ensure it moves to the visible coordinates (x=250, y=680)
                     ceilingPlat.rect.x = 250f
+                    ceilingPlat.rect.y = 680f
                     downSwitch.rect.x = 450f
+                    downSwitch.rect.y = 610f
                 }
                 gameButtons.add(realSwitch)
+                // --- END CHUNK 1 OVERWRITE ---
             }
             2 -> {
                 // Chunk 2: Static top laser + Crumbling Platforms + Sharks
