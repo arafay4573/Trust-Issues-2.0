@@ -252,7 +252,7 @@ class GameScreen(
         when (chunk) {
             1 -> {
                 // Chunk 1: The Troll Setup (Physics Fix)
-                // --- START CHUNK 1 ZERO TOLERANCE ---
+                // --- START CHUNK 1 PERFECT TUNE ---
                 // Clear the board
                 platforms.clear()
                 lasers.clear()
@@ -274,12 +274,12 @@ class GameScreen(
                 platforms.add(Platform(Rectangle(750f, 300f, 150f, 20f), PlatformType.CRUMBLING))
                 platforms.add(Platform(Rectangle(1000f, 300f, 200f, 20f), PlatformType.CRUMBLING))
 
-                // 3. ZERO TOLERANCE SHARK LINING
-                // Y=260f. Height=60f. Top=320f.
-                // This puts the shark hitbox EXACTLY at the player's feet level.
-                // If the platform (y=300) disappears, the player is immediately intersecting the shark.
+                // 3. SHARK LINING (Interlocking)
+                // Y=250f. Height=60f. Top=310f.
+                // The sharks are literally inside the platform structure (300-320).
+                // 10px gap below player feet. Safe to walk, but instant death if the floor vanishes.
                 for (i in 0..1200 step 80) {
-                    sharks.add(Shark(i.toFloat(), 260f, 0f, 0f, 0f))
+                    sharks.add(Shark(i.toFloat(), 250f, 0f, 0f, 0f))
                 }
 
                 // 4. The Mask & Laser (Speed 590f)
@@ -288,7 +288,6 @@ class GameScreen(
                 lasers.add(Laser(Rectangle(200f, 300f, 15f, 310f), isSweeping = true, sweepSpeed = 590f, minX = 100f, maxX = 1200f))
 
                 // 5. The Hidden Ceiling & Escape Switch
-                // Thick ceiling (500f) to prevent tunneling. Spawns off-screen.
                 val ceilingPlat = Platform(Rectangle(-2000f, 680f, 300f, 500f), PlatformType.CRUMBLING)
                 platforms.add(ceilingPlat)
 
@@ -298,23 +297,20 @@ class GameScreen(
                 gameButtons.add(downSwitch)
 
                 // 6. The Troll Switches
-                // FAKE SWITCH (Left): Instant Death
                 val fakeSwitch = GameButton(Rectangle(300f, 450f, 40f, 40f), false) {
                     sharks.add(Shark(300f, 450f, 0f, 300f, 300f))
                 }
                 gameButtons.add(fakeSwitch)
 
-                // REAL SWITCH (Right): Gravity Flip & Teleport
                 val realSwitch = GameButton(Rectangle(380f, 450f, 40f, 40f), false) {
                     reverseGravity = true
                     ceilingPlat.rect.x = 250f
                     ceilingPlat.rect.y = 680f
-                    // Reveal button immediately (simplifying logic to ensure it works)
                     downSwitch.rect.x = 450f
                     downSwitch.rect.y = 610f
                 }
                 gameButtons.add(realSwitch)
-                // --- END CHUNK 1 ZERO TOLERANCE ---
+                // --- END CHUNK 1 PERFECT TUNE ---
             }
             2 -> {
                 // Chunk 2: Static top laser + Crumbling Platforms + Sharks
