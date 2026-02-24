@@ -93,15 +93,6 @@ class GameScreen(
     )
     private val sharks = mutableListOf<Shark>()
 
-    enum class PlatformType { NORMAL, CRUMBLE_SLOW, CRUMBLE_FAST, GHOST, CRUMBLING }
-    data class Platform(
-        val rect: Rectangle,
-        val type: PlatformType,
-        var state: String = "ACTIVE",
-        var timer: Float = 0f,
-        var isCrumbling: Boolean = false,
-        var crumbleTimer: Float = 0f // Added for correct timer tracking
-    )
     private val platforms = mutableListOf<Platform>()
 
     data class GravitySwitch(val rect: Rectangle, var isActive: Boolean = true)
@@ -755,46 +746,34 @@ class GameScreen(
         if (!reverseGravity && playerY <= floorY + 1f && currentLevel != 3) canJump = true
 
         // --- CRITICAL FIX: Remove destroyed platforms so player falls! ---
-        platforms.removeAll { it.type == PlatformType.CRUMBLING && it.state == "BROKEN" }
+        platforms.removeAll { it.state == PlatformState.DESTROYED }
         // ---------------------------------------------------------------
 
-        val platIter = platforms.iterator() // RENAMED to fix conflict
-        while (platIter.hasNext()) {
-            val plat = platIter.next()
-            if (plat.state == "BROKEN") {
-                platIter.remove()
-                continue
-            }
+        for (plat in platforms) {
+            // Update platform state (crumble timer)
+            plat.update(delta)
+
+            // Skip if destroyed
+            if (plat.state == PlatformState.DESTROYED) continue
 
             // 1. Trigger Crumble on Touch (Level 2, 3, 4)
             if ((currentLevel == 2 || currentLevel == 3 || currentLevel == 4) && plat.type == PlatformType.CRUMBLING) {
                 if (playerRect.overlaps(plat.rect)) {
-                    plat.isCrumbling = true
-                }
-            }
+                    // DYNAMIC LIMITS
+                    // Level 4 Chunk 3: 0.8s (Ultra fast)
+                    // Level 4 Chunks 1 & 2: 1.0s (Fast)
+                    // Level 3 Chunk 3: 0.7s (Brutal)
+                    // Level 3 Chunks 1 & 2: 1.0s (Fast)
+                    // Level 2: 1.5s (Standard Training)
 
-            // 2. Process Crumble Timer & Removal
-            if (plat.isCrumbling) {
-                plat.crumbleTimer += delta
-                // DYNAMIC LIMITS
-                // Level 4 Chunk 3: 0.8s (Ultra fast)
-                // Level 4 Chunks 1 & 2: 1.0s (Fast)
-                // Level 3 Chunk 3: 0.7s (Brutal)
-                // Level 3 Chunks 1 & 2: 1.0s (Fast)
-                // Level 2: 1.5s (Standard Training)
-
-                // RE-WRITTEN CLEAN LIMIT LOGIC
-                val actualLimit = when {
-                     currentLevel == 3 && currentChunk == 3 -> 0.7f
-                     currentLevel == 4 && currentChunk == 3 -> 0.8f
-                     currentLevel == 3 || currentLevel == 4 -> 1.0f
-                     else -> 1.5f
-                }
-
-                if (plat.crumbleTimer > actualLimit) {
-                    plat.state = "BROKEN" // Explicitly mark as destroyed
-                    platIter.remove() // Remove from list
-                    continue
+                    // RE-WRITTEN CLEAN LIMIT LOGIC
+                    val actualLimit = when {
+                         currentLevel == 3 && currentChunk == 3 -> 0.7f
+                         currentLevel == 4 && currentChunk == 3 -> 0.8f
+                         currentLevel == 3 || currentLevel == 4 -> 1.0f
+                         else -> 1.5f
+                    }
+                    plat.startCrumbling(actualLimit)
                 }
             }
 
@@ -810,9 +789,9 @@ class GameScreen(
 
                          // Legacy Crumble Trigger
                          if (currentLevel != 3 && (plat.type == PlatformType.CRUMBLE_SLOW || plat.type == PlatformType.CRUMBLE_FAST)
-                             && plat.state == "ACTIVE") {
-                             plat.state = "CRUMBLING"
-                             plat.timer = if (plat.type == PlatformType.CRUMBLE_SLOW) 1.0f else 0.5f
+                             && plat.state == PlatformState.ACTIVE) {
+                             val duration = if (plat.type == PlatformType.CRUMBLE_SLOW) 1.0f else 0.5f
+                             plat.startCrumbling(duration)
                          }
                      }
                 }
@@ -1046,10 +1025,10 @@ class GameScreen(
 
         // Draw Platforms
         for (plat in platforms) {
-            if (plat.state == "BROKEN") continue
-            val isPlatformVisible = (currentLevel != 3 || currentChunk != 3) || isLightsOn || plat.isCrumbling
+            if (plat.state == PlatformState.DESTROYED) continue
+            val isPlatformVisible = (currentLevel != 3 || currentChunk != 3) || isLightsOn || plat.state == PlatformState.CRUMBLING
             if (isPlatformVisible && isVisible(plat.rect.x, plat.rect.y)) {
-                shapeRenderer.color = if (plat.isCrumbling) Color.RED else Color.GREEN
+                shapeRenderer.color = if (plat.state == PlatformState.CRUMBLING) Color.RED else Color.GREEN
                 shapeRenderer.rect(plat.rect.x, plat.rect.y, plat.rect.width, plat.rect.height)
             }
         }
