@@ -252,7 +252,7 @@ class GameScreen(
         when (chunk) {
             1 -> {
                 // Chunk 1: The Troll Setup (Physics Fix)
-                // --- START CHUNK 1 SHARK LINING ---
+                // --- START CHUNK 1 ZERO TOLERANCE ---
                 // Clear the board
                 platforms.clear()
                 lasers.clear()
@@ -274,24 +274,24 @@ class GameScreen(
                 platforms.add(Platform(Rectangle(750f, 300f, 150f, 20f), PlatformType.CRUMBLING))
                 platforms.add(Platform(Rectangle(1000f, 300f, 200f, 20f), PlatformType.CRUMBLING))
 
-                // 3. THE SHARK LINING (The Failsafe)
-                // Spawning sharks at y=200 (Safety Gap: 40px under the y=300 platforms).
-                // If the player falls OR walks on "ghost air", they hit this layer instantly.
+                // 3. ZERO TOLERANCE SHARK LINING
+                // Y=260f. Height=60f. Top=320f.
+                // This puts the shark hitbox EXACTLY at the player's feet level.
+                // If the platform (y=300) disappears, the player is immediately intersecting the shark.
                 for (i in 0..1200 step 80) {
-                    sharks.add(Shark(i.toFloat(), 200f, 0f, 0f, 0f))
+                    sharks.add(Shark(i.toFloat(), 260f, 0f, 0f, 0f))
                 }
 
-                // 4. The Mask & Laser (Speed 620f)
+                // 4. The Mask & Laser (Speed 590f)
                 maskX = 1100f
                 maskY = 320f
-                lasers.add(Laser(Rectangle(200f, 300f, 15f, 310f), isSweeping = true, sweepSpeed = 620f, minX = 100f, maxX = 1200f))
+                lasers.add(Laser(Rectangle(200f, 300f, 15f, 310f), isSweeping = true, sweepSpeed = 590f, minX = 100f, maxX = 1200f))
 
-                // 5. The Hidden Ceiling & Hidden Escape Switch
-                // Ceiling is narrow again (20f). Spawns off-screen.
-                val ceilingPlat = Platform(Rectangle(-2000f, 680f, 300f, 20f), PlatformType.CRUMBLING)
+                // 5. The Hidden Ceiling & Escape Switch
+                // Thick ceiling (500f) to prevent tunneling. Spawns off-screen.
+                val ceilingPlat = Platform(Rectangle(-2000f, 680f, 300f, 500f), PlatformType.CRUMBLING)
                 platforms.add(ceilingPlat)
 
-                // The Down Switch spawns OFF-SCREEN (-2000f). It is invisible until triggered.
                 val downSwitch = GameButton(Rectangle(-2000f, 610f, 40f, 40f), false) {
                     reverseGravity = false
                 }
@@ -304,16 +304,17 @@ class GameScreen(
                 }
                 gameButtons.add(fakeSwitch)
 
-                // REAL SWITCH (Right): Gravity Flip & REVEAL BUTTON
+                // REAL SWITCH (Right): Gravity Flip & Teleport
                 val realSwitch = GameButton(Rectangle(380f, 450f, 40f, 40f), false) {
                     reverseGravity = true
-                    // Move ceiling into place
                     ceilingPlat.rect.x = 250f
                     ceilingPlat.rect.y = 680f
-                    // NOTE: Down Switch is now revealed via SMART BUTTON LOGIC in update loop
+                    // Reveal button immediately (simplifying logic to ensure it works)
+                    downSwitch.rect.x = 450f
+                    downSwitch.rect.y = 610f
                 }
                 gameButtons.add(realSwitch)
-                // --- END CHUNK 1 SHARK LINING ---
+                // --- END CHUNK 1 ZERO TOLERANCE ---
             }
             2 -> {
                 // Chunk 2: Static top laser + Crumbling Platforms + Sharks
