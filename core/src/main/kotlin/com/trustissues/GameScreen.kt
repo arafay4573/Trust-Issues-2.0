@@ -275,16 +275,16 @@ class GameScreen(
                 platforms.add(Platform(Rectangle(1000f, 300f, 200f, 20f), PlatformType.CRUMBLING))
 
                 // 3. THE SHARK LINING (The Failsafe)
-                // Spawning sharks at y=240 (Directly under the y=300 platforms).
+                // Spawning sharks at y=200 (Safety Gap: 40px under the y=300 platforms).
                 // If the player falls OR walks on "ghost air", they hit this layer instantly.
                 for (i in 0..1200 step 80) {
-                    sharks.add(Shark(i.toFloat(), 240f, 0f, 0f, 0f))
+                    sharks.add(Shark(i.toFloat(), 200f, 0f, 0f, 0f))
                 }
 
-                // 4. The Mask & Laser (Speed 650f)
+                // 4. The Mask & Laser (Speed 620f)
                 maskX = 1100f
                 maskY = 320f
-                lasers.add(Laser(Rectangle(200f, 300f, 15f, 310f), isSweeping = true, sweepSpeed = 650f, minX = 100f, maxX = 1200f))
+                lasers.add(Laser(Rectangle(200f, 300f, 15f, 310f), isSweeping = true, sweepSpeed = 620f, minX = 100f, maxX = 1200f))
 
                 // 5. The Hidden Ceiling & Hidden Escape Switch
                 // Ceiling is narrow again (20f). Spawns off-screen.
@@ -310,9 +310,7 @@ class GameScreen(
                     // Move ceiling into place
                     ceilingPlat.rect.x = 250f
                     ceilingPlat.rect.y = 680f
-                    // REVEAL the Down Switch now that we are up there!
-                    downSwitch.rect.x = 450f
-                    downSwitch.rect.y = 610f
+                    // NOTE: Down Switch is now revealed via SMART BUTTON LOGIC in update loop
                 }
                 gameButtons.add(realSwitch)
                 // --- END CHUNK 1 SHARK LINING ---
@@ -813,6 +811,16 @@ class GameScreen(
         if (!reverseGravity && playerY < -100f) {
             die("Darkness consumes you.")
         }
+
+        // --- SMART BUTTON LOGIC ---
+        // If gravity is reversed AND player is high up (on the ceiling), reveal the button.
+        if (reverseGravity && playerY > 600f) {
+            // Find the down switch (it's the one at y=610) and move it to screen
+            gameButtons.find { it.rect.y == 610f }?.let { btn ->
+                if (btn.rect.x < 0) btn.rect.x = 450f // Teleport into view
+            }
+        }
+        // --------------------------
 
         // Gravity Switches
         for (switch in gravitySwitches) {
