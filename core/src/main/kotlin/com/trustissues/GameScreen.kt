@@ -260,8 +260,8 @@ class GameScreen(
     private fun setupLevel4(chunk: Int) {
         when (chunk) {
             1 -> {
-                // Chunk 1: The Troll Setup (Final Tune)
-                // --- START CHUNK 1 FINAL TUNE ---
+                // Chunk 1: The Troll Setup (Physics Fix)
+                // --- START CHUNK 1 PHYSICS FIX ---
                 // Clear the board
                 platforms.clear()
                 lasers.clear()
@@ -269,34 +269,35 @@ class GameScreen(
                 gameButtons.clear()
                 sharks.clear()
 
-                // 1. Player Spawn & The Broken Bridge (y=300)
+                // 1. Player Spawn (y=350)
                 playerX = 50f
                 playerY = 350f
                 velocityY = 0f
                 reverseGravity = false
                 isLevelComplete = false
 
+                // 2. The Platforms (Standard)
                 platforms.add(Platform(Rectangle(0f, 300f, 150f, 20f), PlatformType.CRUMBLING))
                 platforms.add(Platform(Rectangle(250f, 300f, 150f, 20f), PlatformType.CRUMBLING))
                 platforms.add(Platform(Rectangle(500f, 300f, 150f, 20f), PlatformType.CRUMBLING))
                 platforms.add(Platform(Rectangle(750f, 300f, 150f, 20f), PlatformType.CRUMBLING))
                 platforms.add(Platform(Rectangle(1000f, 300f, 200f, 20f), PlatformType.CRUMBLING))
 
-                // 2. The Death Floor (The "Void")
-                // A massive shark hitbox spanning the bottom. If you fall off y=300, you hit this at y=150 and die.
-                // Shark constructor doesn't support width, so we tile them across the floor.
-                for (x in -500..1500 step 100) {
-                    sharks.add(Shark(x.toFloat(), 0f, 0f, x.toFloat(), x.toFloat()))
+                // 3. The Death Floor (Shark Pit)
+                // Loop sharks across the bottom so there is no escape
+                for (i in -500..1500 step 100) {
+                    sharks.add(Shark(i.toFloat(), 0f, 0f, 0f, 0f))
                 }
 
-                // 3. The Mask & The HYPER Laser
+                // 4. The Mask & The TUNED Laser
                 maskX = 1100f
                 maskY = 320f
-                // SPEED UPDATE: Increased speed from 250f to 850f (Very fast!)
-                lasers.add(Laser(Rectangle(200f, 300f, 15f, 310f), isSweeping = true, sweepSpeed = 850f, minX = 100f, maxX = 1200f))
+                // SPEED FIX: Reduced to 700f as requested.
+                lasers.add(Laser(Rectangle(200f, 300f, 15f, 310f), isSweeping = true, sweepSpeed = 700f, minX = 100f, maxX = 1200f))
 
-                // 4. The Hidden Ceiling & Escape Switch
-                val ceilingPlat = Platform(Rectangle(-2000f, 680f, 300f, 20f), PlatformType.CRUMBLING)
+                // 5. The Hidden Ceiling & Escape Switch
+                // PHYSICS FIX: Increased Height to 50f (from 20f) so player can't phase through it!
+                val ceilingPlat = Platform(Rectangle(-2000f, 680f, 300f, 50f), PlatformType.CRUMBLING)
                 platforms.add(ceilingPlat)
 
                 val downSwitch = GameButton(Rectangle(-2000f, 610f, 40f, 40f), false) {
@@ -304,7 +305,7 @@ class GameScreen(
                 }
                 gameButtons.add(downSwitch)
 
-                // 5. The 50/50 Troll Switches
+                // 6. The 50/50 Troll Switches
                 // FAKE SWITCH (Left): Instant Death Shark
                 val fakeSwitch = GameButton(Rectangle(300f, 450f, 40f, 40f), false) {
                     sharks.add(Shark(300f, 450f, 0f, 300f, 300f))
@@ -320,7 +321,7 @@ class GameScreen(
                     downSwitch.rect.y = 610f
                 }
                 gameButtons.add(realSwitch)
-                // --- END CHUNK 1 FINAL TUNE ---
+                // --- END CHUNK 1 PHYSICS FIX ---
             }
             2 -> {
                 // Chunk 2: Static top laser + Crumbling Platforms + Sharks
@@ -756,7 +757,10 @@ class GameScreen(
         val platIter = platforms.iterator() // RENAMED to fix conflict
         while (platIter.hasNext()) {
             val plat = platIter.next()
-            if (plat.state == "BROKEN") continue
+            if (plat.state == "BROKEN") {
+                platIter.remove()
+                continue
+            }
 
             // 1. Trigger Crumble on Touch (Level 2, 3, 4)
             if ((currentLevel == 2 || currentLevel == 3 || currentLevel == 4) && plat.type == PlatformType.CRUMBLING) {
