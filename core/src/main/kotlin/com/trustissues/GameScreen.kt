@@ -754,6 +754,10 @@ class GameScreen(
         canJump = false // Reset per frame
         if (!reverseGravity && playerY <= floorY + 1f && currentLevel != 3) canJump = true
 
+        // --- CRITICAL FIX: Remove destroyed platforms so player falls! ---
+        platforms.removeAll { it.type == PlatformType.CRUMBLING && it.state == "BROKEN" }
+        // ---------------------------------------------------------------
+
         val platIter = platforms.iterator() // RENAMED to fix conflict
         while (platIter.hasNext()) {
             val plat = platIter.next()
