@@ -3,7 +3,7 @@ package com.trustissues
 import com.badlogic.gdx.math.Rectangle
 
 enum class PlatformType {
-    NORMAL, CRUMBLE_SLOW, CRUMBLE_FAST, GHOST, CRUMBLING
+    NORMAL, CRUMBLE_SLOW, CRUMBLE_FAST, GHOST, CRUMBLING, INVISIBLE
 }
 
 enum class PlatformState {
