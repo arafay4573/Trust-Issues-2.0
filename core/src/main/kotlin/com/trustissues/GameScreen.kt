@@ -320,9 +320,9 @@ class GameScreen(
                 gameButtons.clear()
                 gravitySwitches.clear()
 
-                // 1. Player Spawn (Low Spawn)
+                // 1. Player Spawn (Ultra-Low Spawn)
                 playerX = 400f
-                playerY = 20f // Just above UI
+                playerY = 15f // Fix spawn Y to 15f
                 velocityY = 0f
                 reverseGravity = false
 
@@ -840,11 +840,11 @@ class GameScreen(
                 }
             }
 
-            // 2. Deadly Platform & Walls Logic (DEADLY_RED)
-            for (plat in platforms) {
-                if (plat.type == PlatformType.DEADLY_RED && playerRect.overlaps(plat.rect)) {
-                    setupChunk(currentChunk) // Death
-                }
+            // 2. Deadly Platform Logic (Crash-Proof)
+            // Use 'any' to check for collision, then execute death ONCE and return.
+            if (platforms.any { it.type == PlatformType.DEADLY_RED && playerRect.overlaps(it.rect) }) {
+                setupChunk(currentChunk) // Restart level
+                return
             }
         }
 
@@ -1077,7 +1077,6 @@ class GameScreen(
             val isPlatformVisible = (currentLevel != 3 || currentChunk != 3) || isLightsOn || plat.state == PlatformState.CRUMBLING
             if (isPlatformVisible && isVisible(plat.rect.x, plat.rect.y)) {
                 shapeRenderer.color = when(plat.type) {
-                    PlatformType.CRUMBLING -> Color.RED // Or GREEN/RED logic
                     PlatformType.DEADLY_RED -> Color.RED
                     else -> if (plat.state == PlatformState.CRUMBLING) Color.RED else Color.GREEN
                 }
