@@ -313,46 +313,38 @@ class GameScreen(
                 // --- END CHUNK 1 GAP TUNE ---
             }
             2 -> {
-                // --- START CHUNK 2 REFINEMENT ---
+                // --- START CHUNK 2 BRUTE FORCE FIX ---
                 platforms.clear()
                 sharks.clear()
                 lasers.clear()
                 gameButtons.clear()
                 gravitySwitches.clear()
 
-                // 1. Player Spawn (Ultra-Low Spawn)
-                playerX = 400f
-                playerY = 15f // Fix spawn Y to 15f
+                // 1. Player Spawn
+                playerX = 450f
+                playerY = 20f
                 velocityY = 0f
                 reverseGravity = false
 
-                // 0. The Sea Bed (Invisible) - Moved to y=0 to support spawn
-                platforms.add(Platform(Rectangle(-400f, 0f, 2400f, 20f), PlatformType.INVISIBLE))
+                // 2. The Sea Bed (Invisible)
+                platforms.add(Platform(Rectangle(0f, 10f, 2000f, 10f), PlatformType.INVISIBLE))
 
-                // 2. The Walls (DEADLY RED & Instant)
-                // Left Wall starts at x=0 (Visible immediately)
-                platforms.add(Platform(Rectangle(0f, 20f, 100f, 1000f), PlatformType.DEADLY_RED))
-                // Right Wall starts at x=1180 (Visible immediately)
-                platforms.add(Platform(Rectangle(1180f, 20f, 100f, 1000f), PlatformType.DEADLY_RED))
+                // 3. The Walls (DEADLY RED & Instant)
+                // Left Wall starts at -100f
+                platforms.add(Platform(Rectangle(-100f, 20f, 150f, 1000f), PlatformType.DEADLY_RED))
+                // Right Wall starts at 850f
+                platforms.add(Platform(Rectangle(850f, 20f, 150f, 1000f), PlatformType.DEADLY_RED))
 
-                // 3. LAYER 1 (Y=200): The Identity Crisis
-                // LEFT: Deadly Red Platform (x=300)
-                platforms.add(Platform(Rectangle(300f, 200f, 150f, 20f), PlatformType.DEADLY_RED))
-
-                // RIGHT: Friendly Shark (x=600) - Acts as a platform
-                platforms.add(Platform(Rectangle(600f, 200f, 120f, 60f), PlatformType.SAFE_SHARK))
-
-                // 4. LAYER 2 (Y=400): The Escape
-                // LEFT: Crumbling Platform
-                platforms.add(Platform(Rectangle(200f, 400f, 150f, 20f), PlatformType.CRUMBLING))
-
-                // RIGHT: Standard Deadly Shark
-                sharks.add(Shark(700f, 400f, 0f, 0f, 0f))
+                // 4. LAYER 1 (Y=120): The Identity Crisis
+                // LEFT: Deadly Red Platform
+                platforms.add(Platform(Rectangle(300f, 120f, 150f, 20f), PlatformType.DEADLY_RED))
+                // RIGHT: Safe Shark
+                platforms.add(Platform(Rectangle(600f, 120f, 80f, 60f), PlatformType.SAFE_SHARK))
 
                 // 5. The Goal
                 maskX = 100f
-                maskY = 550f
-                // --- END CHUNK 2 REFINEMENT ---
+                maskY = 500f
+                // --- END CHUNK 2 BRUTE FORCE FIX ---
             }
             3 -> {
                 // Chunk 3: The Compactor
@@ -717,6 +709,23 @@ class GameScreen(
             return
         }
 
+        // --- FORCED CHUNK 2 LOGIC (BRUTE FORCE) ---
+        if (currentLevel == 4 && currentChunk == 2) {
+             // 1. Move Walls (Speed 45f)
+             platforms.forEach { p ->
+                 if (p.rect.height == 1000f) {
+                     if (p.rect.x < 400f) p.rect.x += 45f * delta
+                     if (p.rect.x > 400f) p.rect.x -= 45f * delta
+                 }
+             }
+             // 2. Instant Death (Hard Reset)
+             if (platforms.any { it.type == PlatformType.DEADLY_RED && playerRect.overlaps(it.rect) }) {
+                 setupChunk(currentChunk)
+                 return
+             }
+        }
+        // ------------------------------------------
+
         // Strobe Logic (Chunk 3) - The Pulse
         if (horrorMode && currentChunk == 3) {
             chunk3FlashTimer += delta
@@ -828,24 +837,6 @@ class GameScreen(
         // Floor Death Check - AFTER Platform Collision (Fix for Soft-Lock)
         if (!reverseGravity && playerY < -100f) {
             die("Darkness consumes you.")
-        }
-
-        // --- CHUNK 2 LOGIC UPDATE ---
-        if (currentLevel == 4 && currentChunk == 2) {
-            // 1. Move the Walls (Height 1000f, Speed 35f)
-            platforms.forEach { p ->
-                if (p.rect.height == 1000f) {
-                    if (p.rect.x < 400f) p.rect.x += 35f * delta // Left Wall
-                    if (p.rect.x > 400f) p.rect.x -= 35f * delta // Right Wall
-                }
-            }
-
-            // 2. Deadly Platform Logic (Crash-Proof)
-            // Use 'any' to check for collision, then execute death ONCE and return.
-            if (platforms.any { it.type == PlatformType.DEADLY_RED && playerRect.overlaps(it.rect) }) {
-                setupChunk(currentChunk) // Restart level
-                return
-            }
         }
 
         // 4. CRITICAL: Ghost Floor Fix
