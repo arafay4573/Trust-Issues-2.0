@@ -326,27 +326,24 @@ class GameScreen(
                 velocityY = 0f
                 reverseGravity = false
 
-                // 0. The Sea Bed (Solid Floor)
-                platforms.add(Platform(Rectangle(-400f, 0f, 2000f, 50f), PlatformType.NORMAL))
+                // 0. The Sea Bed (Invisible but solid)
+                platforms.add(Platform(Rectangle(-400f, 0f, 2400f, 50f), PlatformType.INVISIBLE))
 
                 // 2. The Walls (The Sandwich)
-                // Left Wall (Starts far left)
+                // Left Wall
                 platforms.add(Platform(Rectangle(-400f, 50f, 100f, 1000f), PlatformType.NORMAL))
-                // Right Wall (Starts far right)
+                // Right Wall
                 platforms.add(Platform(Rectangle(1600f, 50f, 100f, 1000f), PlatformType.NORMAL))
 
-                // 3. LAYER 1 (Y=200): The Twist
-                // LEFT: The "Deadly Platform" (x=300, y=200)
-                platforms.add(Platform(Rectangle(300f, 200f, 150f, 20f), PlatformType.NORMAL))
+                // 3. LAYER 1 (Y=200): The Identity Crisis
+                // LEFT: Deadly Red Platform (x=300)
+                platforms.add(Platform(Rectangle(300f, 200f, 150f, 20f), PlatformType.DEADLY_RED))
 
-                // RIGHT: The "Friendly Shark" (x=600, y=200)
-                // Invisible Platform for standing
-                platforms.add(Platform(Rectangle(600f, 200f, 120f, 20f), PlatformType.INVISIBLE))
-                // Visual Shark (Collision logic will make it safe)
-                sharks.add(Shark(600f, 200f, 0f, 0f, 0f))
+                // RIGHT: Friendly Shark (x=600) - Acts as a platform
+                platforms.add(Platform(Rectangle(600f, 200f, 120f, 60f), PlatformType.SAFE_SHARK))
 
                 // 4. LAYER 2 (Y=400): The Escape
-                // LEFT: Standard Crumbling Platform
+                // LEFT: Crumbling Platform
                 platforms.add(Platform(Rectangle(200f, 400f, 150f, 20f), PlatformType.CRUMBLING))
 
                 // RIGHT: Standard Deadly Shark
@@ -835,18 +832,18 @@ class GameScreen(
 
         // --- CHUNK 2 LOGIC UPDATE ---
         if (currentLevel == 4 && currentChunk == 2) {
-            // 1. Move the Walls (Speed 30f)
+            // 1. Move the Walls (Height 1000f, Speed 40f)
             platforms.forEach { p ->
                 if (p.rect.height == 1000f) {
-                    if (p.rect.x < 400f) p.rect.x += 30f * delta // Left Wall
-                    if (p.rect.x > 400f) p.rect.x -= 30f * delta // Right Wall
+                    if (p.rect.x < 400f) p.rect.x += 40f * delta // Left Wall
+                    if (p.rect.x > 400f) p.rect.x -= 40f * delta // Right Wall
                 }
             }
 
-            // 2. Deadly Platform Logic (x=300, y=200)
-            platforms.firstOrNull { it.rect.x == 300f && it.rect.y == 200f }?.let { deadly ->
-                if (playerRect.overlaps(deadly.rect)) {
-                    die("You trusted the platform. Rookie mistake.")
+            // 2. Deadly Platform Logic (Red Platform)
+            for (plat in platforms) {
+                if (plat.type == PlatformType.DEADLY_RED && playerRect.overlaps(plat.rect)) {
+                    setupChunk(currentChunk) // Death
                 }
             }
         }
@@ -1074,9 +1071,16 @@ class GameScreen(
         // Draw Platforms
         for (plat in platforms) {
             if (plat.state == PlatformState.DESTROYED) continue
+            if (plat.type == PlatformType.INVISIBLE) continue // Do not draw invisible platforms
+            if (plat.type == PlatformType.SAFE_SHARK) continue // Drawn in SpriteBatch
+
             val isPlatformVisible = (currentLevel != 3 || currentChunk != 3) || isLightsOn || plat.state == PlatformState.CRUMBLING
             if (isPlatformVisible && isVisible(plat.rect.x, plat.rect.y)) {
-                shapeRenderer.color = if (plat.state == PlatformState.CRUMBLING) Color.RED else Color.GREEN
+                shapeRenderer.color = when(plat.type) {
+                    PlatformType.CRUMBLING -> Color.RED // Or GREEN/RED logic
+                    PlatformType.DEADLY_RED -> Color.RED
+                    else -> if (plat.state == PlatformState.CRUMBLING) Color.RED else Color.GREEN
+                }
                 shapeRenderer.rect(plat.rect.x, plat.rect.y, plat.rect.width, plat.rect.height)
             }
         }
@@ -1128,14 +1132,24 @@ class GameScreen(
         game.batch.projectionMatrix = gameViewport.camera.combined
         game.batch.begin()
 
-        // Draw Sharks
+        // Draw Sharks (and Safe Sharks from platforms)
         sharkTexture?.let { tex ->
             val ratio = tex.height.toFloat() / tex.width.toFloat()
             val width = 120f
             val height = width * ratio
+
+            // 1. Draw Real Sharks
             for (shark in sharks) {
                 if (isVisible(shark.x, shark.y)) {
                     game.batch.draw(tex, shark.x, shark.y, width, height, 0, 0, tex.width, tex.height, shark.facingRight, false)
+                }
+            }
+
+            // 2. Draw Safe Sharks (Platforms)
+            for (plat in platforms) {
+                if (plat.type == PlatformType.SAFE_SHARK && isVisible(plat.rect.x, plat.rect.y)) {
+                    // Draw shark at platform position
+                    game.batch.draw(tex, plat.rect.x, plat.rect.y, width, height, 0, 0, tex.width, tex.height, false, false)
                 }
             }
         }
