@@ -313,27 +313,27 @@ class GameScreen(
                 // --- END CHUNK 1 GAP TUNE ---
             }
             2 -> {
-                // --- START CHUNK 2 SETUP ---
+                // --- START CHUNK 2 REFINEMENT ---
                 platforms.clear()
                 sharks.clear()
                 lasers.clear()
                 gameButtons.clear()
                 gravitySwitches.clear()
 
-                // 1. Player Spawn (Sea Bed)
+                // 1. Player Spawn (Low Spawn)
                 playerX = 400f
-                playerY = 50f
+                playerY = 20f // Just above UI
                 velocityY = 0f
                 reverseGravity = false
 
-                // 0. The Sea Bed (Invisible but solid)
-                platforms.add(Platform(Rectangle(-400f, 0f, 2400f, 50f), PlatformType.INVISIBLE))
+                // 0. The Sea Bed (Invisible) - Moved to y=0 to support spawn
+                platforms.add(Platform(Rectangle(-400f, 0f, 2400f, 20f), PlatformType.INVISIBLE))
 
-                // 2. The Walls (The Sandwich)
-                // Left Wall
-                platforms.add(Platform(Rectangle(-400f, 50f, 100f, 1000f), PlatformType.NORMAL))
-                // Right Wall
-                platforms.add(Platform(Rectangle(1600f, 50f, 100f, 1000f), PlatformType.NORMAL))
+                // 2. The Walls (DEADLY RED & Instant)
+                // Left Wall starts at x=0 (Visible immediately)
+                platforms.add(Platform(Rectangle(0f, 20f, 100f, 1000f), PlatformType.DEADLY_RED))
+                // Right Wall starts at x=1180 (Visible immediately)
+                platforms.add(Platform(Rectangle(1180f, 20f, 100f, 1000f), PlatformType.DEADLY_RED))
 
                 // 3. LAYER 1 (Y=200): The Identity Crisis
                 // LEFT: Deadly Red Platform (x=300)
@@ -352,7 +352,7 @@ class GameScreen(
                 // 5. The Goal
                 maskX = 100f
                 maskY = 550f
-                // --- END CHUNK 2 SETUP ---
+                // --- END CHUNK 2 REFINEMENT ---
             }
             3 -> {
                 // Chunk 3: The Compactor
@@ -832,15 +832,15 @@ class GameScreen(
 
         // --- CHUNK 2 LOGIC UPDATE ---
         if (currentLevel == 4 && currentChunk == 2) {
-            // 1. Move the Walls (Height 1000f, Speed 40f)
+            // 1. Move the Walls (Height 1000f, Speed 35f)
             platforms.forEach { p ->
                 if (p.rect.height == 1000f) {
-                    if (p.rect.x < 400f) p.rect.x += 40f * delta // Left Wall
-                    if (p.rect.x > 400f) p.rect.x -= 40f * delta // Right Wall
+                    if (p.rect.x < 400f) p.rect.x += 35f * delta // Left Wall
+                    if (p.rect.x > 400f) p.rect.x -= 35f * delta // Right Wall
                 }
             }
 
-            // 2. Deadly Platform Logic (Red Platform)
+            // 2. Deadly Platform & Walls Logic (DEADLY_RED)
             for (plat in platforms) {
                 if (plat.type == PlatformType.DEADLY_RED && playerRect.overlaps(plat.rect)) {
                     setupChunk(currentChunk) // Death
