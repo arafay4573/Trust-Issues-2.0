@@ -313,38 +313,36 @@ class GameScreen(
                 // --- END CHUNK 1 GAP TUNE ---
             }
             2 -> {
-                // --- START CHUNK 2 BRUTE FORCE FIX ---
+                // --- START CHUNK 2 REALIGNMENT ---
                 platforms.clear()
                 sharks.clear()
                 lasers.clear()
                 gameButtons.clear()
                 gravitySwitches.clear()
 
-                // 1. Player Spawn
+                // 1. ANCHOR PLAYER TO BOTTOM
                 playerX = 450f
-                playerY = 20f
+                playerY = 15f
                 velocityY = 0f
                 reverseGravity = false
 
-                // 2. The Sea Bed (Invisible)
+                // 2. INVISIBLE SEA BED (Y=10)
                 platforms.add(Platform(Rectangle(0f, 10f, 2000f, 10f), PlatformType.INVISIBLE))
 
-                // 3. The Walls (DEADLY RED & Instant)
-                // Left Wall starts at -100f
-                platforms.add(Platform(Rectangle(-100f, 20f, 150f, 1000f), PlatformType.DEADLY_RED))
-                // Right Wall starts at 850f
-                platforms.add(Platform(Rectangle(850f, 20f, 150f, 1000f), PlatformType.DEADLY_RED))
+                // 3. THE RED CRUSHER WALLS (Lethal)
+                platforms.add(Platform(Rectangle(-150f, 0f, 150f, 1000f), PlatformType.DEADLY_RED))
+                platforms.add(Platform(Rectangle(800f, 0f, 150f, 1000f), PlatformType.DEADLY_RED))
 
-                // 4. LAYER 1 (Y=120): The Identity Crisis
-                // LEFT: Deadly Red Platform
-                platforms.add(Platform(Rectangle(300f, 120f, 150f, 20f), PlatformType.DEADLY_RED))
-                // RIGHT: Safe Shark
-                platforms.add(Platform(Rectangle(600f, 120f, 80f, 60f), PlatformType.SAFE_SHARK))
+                // 4. LIFT THE TRAP (Layer 1 - Above the player's head)
+                // Red Platform (Deadly) - Set to y=180f
+                platforms.add(Platform(Rectangle(300f, 180f, 150f, 20f), PlatformType.DEADLY_RED))
+                // Safe Shark (Solid) - Set to y=180f
+                platforms.add(Platform(Rectangle(600f, 180f, 80f, 60f), PlatformType.SAFE_SHARK))
 
-                // 5. The Goal
+                // 5. The Goal (High up)
                 maskX = 100f
-                maskY = 500f
-                // --- END CHUNK 2 BRUTE FORCE FIX ---
+                maskY = 550f
+                // --- END CHUNK 2 REALIGNMENT ---
             }
             3 -> {
                 // Chunk 3: The Compactor
