@@ -313,36 +313,27 @@ class GameScreen(
                 // --- END CHUNK 1 GAP TUNE ---
             }
             2 -> {
-                // --- START CHUNK 2 REALIGNMENT ---
+                // --- EMERGENCY RESET: STEP 1 ---
                 platforms.clear()
                 sharks.clear()
                 lasers.clear()
                 gameButtons.clear()
                 gravitySwitches.clear()
 
-                // 1. ANCHOR PLAYER TO BOTTOM
+                // 1. Player Spawn (Ultra-Low)
                 playerX = 450f
-                playerY = 15f
+                playerY = 20f
                 velocityY = 0f
                 reverseGravity = false
 
-                // 2. INVISIBLE SEA BED (Y=10)
+                // 2. THE INVISIBLE SEA BED (Y=10)
+                // This is the ONLY collision object for now.
                 platforms.add(Platform(Rectangle(0f, 10f, 2000f, 10f), PlatformType.INVISIBLE))
 
-                // 3. THE RED CRUSHER WALLS (Lethal)
-                platforms.add(Platform(Rectangle(-150f, 0f, 150f, 1000f), PlatformType.DEADLY_RED))
-                platforms.add(Platform(Rectangle(800f, 0f, 150f, 1000f), PlatformType.DEADLY_RED))
-
-                // 4. LIFT THE TRAP (Layer 1 - Above the player's head)
-                // Red Platform (Deadly) - Set to y=180f
-                platforms.add(Platform(Rectangle(300f, 180f, 150f, 20f), PlatformType.DEADLY_RED))
-                // Safe Shark (Solid) - Set to y=180f
-                platforms.add(Platform(Rectangle(600f, 180f, 80f, 60f), PlatformType.SAFE_SHARK))
-
-                // 5. The Goal (High up)
+                // 3. The Goal
                 maskX = 100f
                 maskY = 550f
-                // --- END CHUNK 2 REALIGNMENT ---
+                // --- END RESET ---
             }
             3 -> {
                 // Chunk 3: The Compactor
@@ -707,23 +698,6 @@ class GameScreen(
             return
         }
 
-        // --- FORCED CHUNK 2 LOGIC (BRUTE FORCE) ---
-        if (currentLevel == 4 && currentChunk == 2) {
-             // 1. Move Walls (Speed 45f)
-             platforms.forEach { p ->
-                 if (p.rect.height == 1000f) {
-                     if (p.rect.x < 400f) p.rect.x += 45f * delta
-                     if (p.rect.x > 400f) p.rect.x -= 45f * delta
-                 }
-             }
-             // 2. Instant Death (Hard Reset)
-             if (platforms.any { it.type == PlatformType.DEADLY_RED && playerRect.overlaps(it.rect) }) {
-                 setupChunk(currentChunk)
-                 return
-             }
-        }
-        // ------------------------------------------
-
         // Strobe Logic (Chunk 3) - The Pulse
         if (horrorMode && currentChunk == 3) {
             chunk3FlashTimer += delta
@@ -964,11 +938,8 @@ class GameScreen(
             }
 
             // Shark Collision
-            // Safe Shark Logic: Skip collision if shark is at x=600 (Chunk 2 Friendly Shark)
-            if (currentLevel != 4 || currentChunk != 2 || shark.x != 600f) {
-                sharkRect.set(shark.x, shark.y, 120f, 60f) // approx
-                if (Intersector.overlaps(playerRect, sharkRect)) die()
-            }
+            sharkRect.set(shark.x, shark.y, 120f, 60f) // approx
+            if (Intersector.overlaps(playerRect, sharkRect)) die()
         }
 
         // Bubbles
