@@ -313,29 +313,34 @@ class GameScreen(
                 // --- END CHUNK 1 GAP TUNE ---
             }
             2 -> {
-                // --- REBUILD STEP 1: THE FOUNDATION ---
+                // --- REBUILD STEP 2: TOTAL FLOOR & LASERS ---
                 platforms.clear()
                 sharks.clear()
                 lasers.clear()
                 gameButtons.clear()
                 gravitySwitches.clear()
 
-                // 1. ULTRA-LOW SPAWN
-                // Positioned at y=15f to be standing exactly on the seabed.
+                // 1. ABSOLUTE BOTTOM SPAWN
+                // Positioned at y=5f to be virtually touching the bottom edge of the screen.
                 playerX = 450f
-                playerY = 15f
+                playerY = 5f
                 velocityY = 0f
                 reverseGravity = false
 
-                // 2. THE INVISIBLE SEA BED (Y=10)
-                // This is a solid, invisible floor that spans the width of the screen.
-                platforms.add(Platform(Rectangle(0f, 10f, 2000f, 10f), PlatformType.INVISIBLE))
+                // 2. THE INVISIBLE FLOOR (Y=0)
+                // Anchored at the very bottom of the screen.
+                platforms.add(Platform(Rectangle(0f, 0f, 2000f, 5f), PlatformType.INVISIBLE))
 
-                // 3. THE GOAL
-                // Placing the mask high up so we have a destination to build towards.
+                // 3. THIN LASER WALLS (The Sandwich)
+                // Left Laser (Starts at x=0)
+                lasers.add(Laser(Rectangle(0f, 0f, 10f, 1000f), isSweeping = false))
+                // Right Laser (Starts at x=1000)
+                lasers.add(Laser(Rectangle(1000f, 0f, 10f, 1000f), isSweeping = false))
+
+                // 4. THE GOAL
                 maskX = 100f
                 maskY = 550f
-                // --- END STEP 1 ---
+                // --- END STEP 2 ---
             }
             3 -> {
                 // Chunk 3: The Compactor
@@ -700,6 +705,23 @@ class GameScreen(
             return
         }
 
+        // --- FORCED CHUNK 2 LOGIC (BRUTE FORCE) ---
+        if (currentLevel == 4 && currentChunk == 2) {
+             // 1. Move Walls (Speed 45f)
+             platforms.forEach { p ->
+                 if (p.rect.height == 1000f) {
+                     if (p.rect.x < 400f) p.rect.x += 45f * delta
+                     if (p.rect.x > 400f) p.rect.x -= 45f * delta
+                 }
+             }
+             // 2. Instant Death (Hard Reset)
+             if (platforms.any { it.type == PlatformType.DEADLY_RED && playerRect.overlaps(it.rect) }) {
+                 setupChunk(currentChunk)
+                 return
+             }
+        }
+        // ------------------------------------------
+
         // Strobe Logic (Chunk 3) - The Pulse
         if (horrorMode && currentChunk == 3) {
             chunk3FlashTimer += delta
@@ -827,6 +849,21 @@ class GameScreen(
         }
 
         // Level 4 Mechanics
+        // --- LASER WALL MOVEMENT ---
+        if (currentLevel == 4 && currentChunk == 2) {
+            lasers.forEach { l ->
+                if (l.rect.height == 1000f) { // Identify the walls
+                    if (l.rect.x < 450f) l.rect.x += 25f * delta // Left laser moves right (Slow)
+                    if (l.rect.x > 450f) l.rect.x -= 25f * delta // Right laser moves left (Slow)
+                }
+            }
+            // Ensure Laser collision calls setupLevel4() immediately
+            if (lasers.any { Intersector.overlaps(it.rect, playerRect) }) {
+                setupChunk(currentChunk)
+                return
+            }
+        }
+
         // Lasers
         val laserIter = lasers.iterator()
         while (laserIter.hasNext()) {
@@ -940,8 +977,11 @@ class GameScreen(
             }
 
             // Shark Collision
-            sharkRect.set(shark.x, shark.y, 120f, 60f) // approx
-            if (Intersector.overlaps(playerRect, sharkRect)) die()
+            // Safe Shark Logic: Skip collision if shark is at x=600 (Chunk 2 Friendly Shark)
+            if (currentLevel != 4 || currentChunk != 2 || shark.x != 600f) {
+                sharkRect.set(shark.x, shark.y, 120f, 60f) // approx
+                if (Intersector.overlaps(playerRect, sharkRect)) die()
+            }
         }
 
         // Bubbles
