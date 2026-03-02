@@ -313,27 +313,29 @@ class GameScreen(
                 // --- END CHUNK 1 GAP TUNE ---
             }
             2 -> {
-                // --- EMERGENCY RESET: STEP 1 ---
+                // --- REBUILD STEP 1: THE FOUNDATION ---
                 platforms.clear()
                 sharks.clear()
                 lasers.clear()
                 gameButtons.clear()
                 gravitySwitches.clear()
 
-                // 1. Player Spawn (Ultra-Low)
+                // 1. ULTRA-LOW SPAWN
+                // Positioned at y=15f to be standing exactly on the seabed.
                 playerX = 450f
-                playerY = 20f
+                playerY = 15f
                 velocityY = 0f
                 reverseGravity = false
 
                 // 2. THE INVISIBLE SEA BED (Y=10)
-                // This is the ONLY collision object for now.
+                // This is a solid, invisible floor that spans the width of the screen.
                 platforms.add(Platform(Rectangle(0f, 10f, 2000f, 10f), PlatformType.INVISIBLE))
 
-                // 3. The Goal
+                // 3. THE GOAL
+                // Placing the mask high up so we have a destination to build towards.
                 maskX = 100f
                 maskY = 550f
-                // --- END RESET ---
+                // --- END STEP 1 ---
             }
             3 -> {
                 // Chunk 3: The Compactor
