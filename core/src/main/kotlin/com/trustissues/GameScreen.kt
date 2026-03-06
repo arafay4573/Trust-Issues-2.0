@@ -313,32 +313,43 @@ class GameScreen(
                 // --- END CHUNK 1 GAP TUNE ---
             }
             2 -> {
-                // --- FORCE GROUND SPAWN ---
+                // --- REBUILD STEP 2: THE IDENTITY ROW ---
                 platforms.clear()
                 sharks.clear()
                 lasers.clear()
                 gameButtons.clear()
                 gravitySwitches.clear()
 
-                // 1. HARDSET PLAYER TO ZERO
-                playerX = 600f
-                playerY = 0f
+                // 1. POSITION PLAYER (10px above bottom)
+                playerX = 450f
+                playerY = 10f
                 velocityY = 0f
-                // player.isJumping = false -> handled by velocityY = 0
                 reverseGravity = false
 
                 // 2. THE INVISIBLE FLOOR (Y=0)
-                // Make the floor slightly thicker so the player doesn't fall through
-                platforms.add(Platform(Rectangle(0f, -20f, 2000f, 20f), PlatformType.INVISIBLE))
+                platforms.add(Platform(Rectangle(0f, -10f, 2000f, 20f), PlatformType.INVISIBLE))
 
-                // 3. SCREEN-EDGE LASER WALLS (Fixed Symmetry)
-                // Left Laser (Starts at x = -50)
+                // 3. THE LASER WALLS (Speed: 30f)
                 lasers.add(Laser(Rectangle(-50f, 0f, 15f, 2000f), isSweeping = false))
-                // Right Laser (Starts at x = 1250)
                 lasers.add(Laser(Rectangle(1250f, 0f, 15f, 2000f), isSweeping = false))
 
+                // 4. THE TRAP ROW (Y=150f)
+                // Object 1: SAFE SHARK (Target)
+                platforms.add(Platform(Rectangle(300f, 150f, 80f, 60f), PlatformType.SAFE_SHARK))
+
+                // Object 2: DEADLY PLATFORM
+                platforms.add(Platform(Rectangle(450f, 150f, 120f, 20f), PlatformType.DEADLY_RED))
+
+                // Object 3: DEADLY SHARK
+                sharks.add(Shark(650f, 150f, 0f, 650f, 650f))
+
+                // Object 4: TROLL SAFE PLATFORM (Too far right to use)
+                platforms.add(Platform(Rectangle(850f, 150f, 120f, 20f), PlatformType.NORMAL))
+
+                // 5. THE GOAL
                 maskX = 100f
                 maskY = 700f
+                // --- END STEP 2 ---
             }
             3 -> {
                 // Chunk 3: The Compactor
@@ -703,17 +714,23 @@ class GameScreen(
             return
         }
 
-        // --- SYMMETRICAL LASER MOVEMENT (CHUNK 2) ---
+        // --- THE IDENTITY CRISIS (CHUNK 2) ---
         if (currentLevel == 4 && currentChunk == 2) {
             lasers.forEach { l ->
                 if (l.rect.height == 2000f) {
-                    if (l.rect.x < 600f) l.rect.x += 35f * delta // Left wall moves in
-                    if (l.rect.x > 600f) l.rect.x -= 35f * delta // Right wall moves in
+                    if (l.rect.x < 600f) l.rect.x += 30f * delta // Left wall moves in
+                    if (l.rect.x > 600f) l.rect.x -= 30f * delta // Right wall moves in
                 }
             }
 
-            // 2. LASER DEATH CHECK
+            // Laser Death Check
             if (lasers.any { it.rect.overlaps(playerRect) }) {
+                setupChunk(currentChunk)
+                return
+            }
+
+            // Deadly Platform Check
+            if (platforms.any { it.type == PlatformType.DEADLY_RED && it.rect.overlaps(playerRect) }) {
                 setupChunk(currentChunk)
                 return
             }
@@ -755,7 +772,7 @@ class GameScreen(
             velocityY += gravity * delta
             playerY += velocityY * delta
 
-            // Exempt Level 4 Chunk 2 from the global floor catch (which snaps to 280f)
+            // Exempt Level 4 Chunk 2 from the global floor catch
             if (playerY < floorY && !isExemptLevel) {
                 playerY = floorY
                 velocityY = 0f
