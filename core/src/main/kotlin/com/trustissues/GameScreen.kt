@@ -313,35 +313,39 @@ class GameScreen(
                 // --- END CHUNK 1 GAP TUNE ---
             }
             2 -> {
-                // --- REBUILD STEP 4: COORDINATE & TYPE SYNC ---
+                // --- REBUILD STEP 5: SOLID FOUNDATION ---
                 platforms.clear()
                 sharks.clear()
                 lasers.clear()
                 gameButtons.clear()
                 gravitySwitches.clear()
 
-                // 1. PLAYER POSITION (Exactly 5px above seabed)
+                // 1. PLAYER POSITION (Walking in thin air)
                 playerX = 450f
-                playerY = 15f
+                playerY = 10f
                 velocityY = 0f
                 reverseGravity = false
 
-                // 2. INVISIBLE FLOOR (Y=10)
-                platforms.add(Platform(Rectangle(0f, 10f, 2000f, 10f), PlatformType.INVISIBLE))
+                // 2. EXTRA-THICK INVISIBLE FLOOR (Prevent falling through)
+                // We set the top at y=0 and make it 100px deep.
+                platforms.add(Platform(Rectangle(0f, -100f, 2000f, 100f), PlatformType.INVISIBLE))
 
-                // 3. THE TRAP ROW (Y=180f)
-                // First Shark (SAFE): Must have Platform physics to be standable.
-                platforms.add(Platform(Rectangle(300f, 180f, 80f, 60f), PlatformType.SAFE_SHARK))
+                // 3. THE TRAP ROW (Y=180f) - All 4 objects
+                // 1: Safe Shark (Solid)
+                platforms.add(Platform(Rectangle(200f, 180f, 80f, 60f), PlatformType.SAFE_SHARK))
 
-                // Red Platform (DEADLY): Kills from any side.
-                platforms.add(Platform(Rectangle(450f, 180f, 120f, 20f), PlatformType.DEADLY_RED))
+                // 2: Deadly Platform (Red - Center Left)
+                platforms.add(Platform(Rectangle(400f, 180f, 120f, 20f), PlatformType.DEADLY_RED))
 
-                // Second Shark (DEADLY): Standard shark object.
-                sharks.add(Shark(650f, 180f, 0f, 650f, 650f))
+                // 3: Deadly Shark (Center Right)
+                sharks.add(Shark(600f, 180f, 0f, 600f, 600f))
 
-                // 4. THE LASER WALLS (Speed: 30f)
-                lasers.add(Laser(Rectangle(-50f, 0f, 15f, 2000f), isSweeping = false))
-                lasers.add(Laser(Rectangle(1250f, 0f, 15f, 2000f), isSweeping = false))
+                // 4: Troll Platform (Normal - Far Right)
+                platforms.add(Platform(Rectangle(800f, 180f, 120f, 20f), PlatformType.NORMAL))
+
+                // 4. THE LASER WALLS (Closing in)
+                lasers.add(Laser(Rectangle(-100f, 0f, 20f, 2000f), isSweeping = false))
+                lasers.add(Laser(Rectangle(1100f, 0f, 20f, 2000f), isSweeping = false))
 
                 maskX = 100f
                 maskY = 700f
@@ -709,28 +713,28 @@ class GameScreen(
             return
         }
 
-        // --- CHUNK 2 LOGIC FIX (Crash Prevention & Identity Physics) ---
+        // --- CHUNK 2 LOGIC FIX (Floor Stability & Missing Platform) ---
         if (currentLevel == 4 && currentChunk == 2) {
-            // 1. WALL MOVEMENT
+            // 1. WALL MOVEMENT (35f Speed)
             lasers.forEach { l ->
                 if (l.rect.height == 2000f) {
-                    if (l.rect.x < 500f) l.rect.x += 30f * delta
-                    if (l.rect.x > 500f) l.rect.x -= 30f * delta
+                    if (l.rect.x < 500f) l.rect.x += 35f * delta
+                    if (l.rect.x > 500f) l.rect.x -= 35f * delta
                 }
             }
 
-            // 2. CONSOLIDATED DEATH CHECK (Prevents Hangs)
-            val touchedDeadly = platforms.any { it.type == PlatformType.DEADLY_RED && playerRect.overlaps(it.rect) } ||
-                                lasers.any { it.rect.overlaps(playerRect) } ||
-                                sharks.any {
-                                    sharkRect.set(it.x, it.y, 120f, 60f)
-                                    sharkRect.overlaps(playerRect)
-                                }
+            // 2. DEATH CHECK (With instant return to prevent hanging)
+            val isDead = lasers.any { it.rect.overlaps(playerRect) } ||
+                         platforms.any { it.type == PlatformType.DEADLY_RED && playerRect.overlaps(it.rect) } ||
+                         sharks.any {
+                             sharkRect.set(it.x, it.y, 120f, 60f)
+                             sharkRect.overlaps(playerRect)
+                         }
 
-            if (touchedDeadly) {
-                die() // Trigger the Roast text
-                setupChunk(currentChunk) // Reset Level
-                return // CRITICAL: Exit update to prevent game hang
+            if (isDead) {
+                die()
+                setupChunk(currentChunk)
+                return
             }
         }
         // ------------------------------------------
@@ -977,8 +981,11 @@ class GameScreen(
             }
 
             // Shark Collision
-            sharkRect.set(shark.x, shark.y, 120f, 60f) // approx
-            if (Intersector.overlaps(playerRect, sharkRect)) die()
+            // Safe Shark Logic: Skip collision if shark is at x=600 (Chunk 2 Friendly Shark)
+            if (currentLevel != 4 || currentChunk != 2 || shark.x != 600f) {
+                sharkRect.set(shark.x, shark.y, 120f, 60f) // approx
+                if (Intersector.overlaps(playerRect, sharkRect)) die()
+            }
         }
 
         // Bubbles
