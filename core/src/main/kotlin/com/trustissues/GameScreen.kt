@@ -313,52 +313,44 @@ class GameScreen(
                 // --- END CHUNK 1 GAP TUNE ---
             }
             2 -> {
-                // --- CHUNK 2 FINAL FORCE ---
+                // --- CHUNK 2 PERFECT LAYOUT ---
                 platforms.clear()
                 sharks.clear()
                 lasers.clear()
                 gameButtons.clear()
                 gravitySwitches.clear()
 
-                // 1. SPAWN & BASE (y=250f, dropped by 30px from standard 280f)
+                // 1. SPAWN & BASE (y=260f, dropped 20px from standard 280f)
                 playerX = 640f // Center
-                playerY = 250f
+                playerY = 260f
                 velocityY = 0f
                 reverseGravity = false
 
-                // Add an invisible floor slightly below the player so they don't fall forever
-                platforms.add(Platform(Rectangle(0f, 230f, 2000f, 20f), PlatformType.INVISIBLE))
+                // Invisible floor directly under the player to prevent falling
+                platforms.add(Platform(Rectangle(0f, 160f, 2000f, 100f), PlatformType.INVISIBLE))
 
-                // 2. SYNCED LASER WALLS
-                // Screen is 1280 wide. Left at 0, Right at 1280.
+                // 2. SYNCED LASER WALLS (Appear as soon as chunk starts from edges)
                 lasers.add(Laser(Rectangle(0f, 0f, 20f, 2000f), isSweeping = false))
                 lasers.add(Laser(Rectangle(1280f, 0f, 20f, 2000f), isSweeping = false))
 
-                // 3. LAYER 1 (y=370f)
-                // Safe Shark (Platform normal so standable)
-                platforms.add(Platform(Rectangle(300f, 370f, 120f, 60f), PlatformType.NORMAL))
-                // Red Platform (Deadly)
-                platforms.add(Platform(Rectangle(500f, 370f, 100f, 20f), PlatformType.DEADLY_RED))
-                // Deadly Shark
-                sharks.add(Shark(700f, 370f, 0f, 700f, 700f))
-                // Green Platform (Instant Crumble)
-                platforms.add(Platform(Rectangle(900f, 370f, 100f, 20f), PlatformType.CRUMBLING))
+                // 3. LAYER 1 (y=380f)
+                platforms.add(Platform(Rectangle(300f, 380f, 120f, 60f), PlatformType.SAFE_SHARK))
+                platforms.add(Platform(Rectangle(500f, 380f, 100f, 20f), PlatformType.DEADLY_RED))
+                sharks.add(Shark(700f, 380f, 0f, 700f, 700f))
+                platforms.add(Platform(Rectangle(900f, 380f, 100f, 20f), PlatformType.CRUMBLING)) // Instant Crumble
 
-                // 4. LAYER 2 (y=490f)
-                // 3 Green CRUMBLING platforms
-                platforms.add(Platform(Rectangle(400f, 490f, 100f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(550f, 490f, 100f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(700f, 490f, 100f, 20f), PlatformType.CRUMBLING))
+                // 4. LAYER 2 (y=500f)
+                platforms.add(Platform(Rectangle(400f, 500f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(550f, 500f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(700f, 500f, 100f, 20f), PlatformType.CRUMBLING))
 
-                // 5. LAYER 3 (y=610f)
-                // Safe Shark (Solid)
-                platforms.add(Platform(Rectangle(500f, 610f, 120f, 60f), PlatformType.NORMAL))
-                // Deadly Green Platform (Encoded as a Shark to prevent hang)
-                sharks.add(Shark(700f, 610f, 0f, 700f, 700f))
+                // 5. LAYER 3 (y=620f)
+                platforms.add(Platform(Rectangle(500f, 620f, 120f, 60f), PlatformType.SAFE_SHARK))
+                platforms.add(Platform(Rectangle(700f, 620f, 100f, 20f), PlatformType.DEADLY_RED)) // Deadly Green Platform
 
                 // The Goal
                 maskX = 600f
-                maskY = 650f // A little higher
+                maskY = 660f
             }
             3 -> {
                 // Chunk 3: The Compactor
@@ -723,7 +715,7 @@ class GameScreen(
             return
         }
 
-        // --- CHUNK 2 LOGIC FIX (Lowered Layout) ---
+        // --- CHUNK 2 PERFECT LOGIC ---
         if (currentLevel == 4 && currentChunk == 2) {
             // 1. Symmetrical Laser Movement (Center is 640, Speed 65f)
             lasers.forEach { l ->
@@ -734,9 +726,9 @@ class GameScreen(
             // 2. Instant Death Protection (No-Hang)
             val hitDeadly = lasers.any { it.rect.overlaps(playerRect) } ||
                             sharks.any { shark ->
-                                val isFakePlatform = (shark.x == 700f && shark.y == 610f)
-                                val w = if (isFakePlatform) 100f else 120f
-                                val h = if (isFakePlatform) 20f else 60f
+                                // Safe fallback if shark width isn't stored:
+                                val w = 120f
+                                val h = 60f
                                 sharkRect.set(shark.x, shark.y, w, h)
                                 sharkRect.overlaps(playerRect)
                             } ||
@@ -784,7 +776,6 @@ class GameScreen(
             velocityY += gravity * delta
             playerY += velocityY * delta
 
-            // Exempt Level 4 Chunk 2 from the global floor catch
             if (playerY < floorY && !isExemptLevel) {
                 playerY = floorY
                 velocityY = 0f
@@ -821,7 +812,7 @@ class GameScreen(
 
                     // RE-WRITTEN CLEAN LIMIT LOGIC
                     val actualLimit = when {
-                         currentLevel == 4 && currentChunk == 2 && plat.rect.x == 900f && plat.rect.y == 370f -> 0.1f // Instant crumble
+                         currentLevel == 4 && currentChunk == 2 && plat.rect.x == 900f && plat.rect.y == 380f -> 0.1f // Instant crumble
                          currentLevel == 3 && currentChunk == 3 -> 0.7f
                          currentLevel == 4 && currentChunk == 3 -> 0.8f
                          currentLevel == 3 || currentLevel == 4 -> 1.0f
@@ -1156,7 +1147,8 @@ class GameScreen(
 
             // 1. Draw Real Sharks
             for (shark in sharks) {
-                if (isVisible(shark.x, shark.y)) {
+                val isFakePlatform = currentLevel == 4 && currentChunk == 2 && shark.x == 700f && shark.y == 610f
+                if (!isFakePlatform && isVisible(shark.x, shark.y)) {
                     game.batch.draw(tex, shark.x, shark.y, width, height, 0, 0, tex.width, tex.height, shark.facingRight, false)
                 }
             }
