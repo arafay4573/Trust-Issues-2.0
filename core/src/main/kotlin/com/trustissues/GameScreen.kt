@@ -313,50 +313,51 @@ class GameScreen(
                 // --- END CHUNK 1 GAP TUNE ---
             }
             2 -> {
-                // --- CHUNK 2 PROPER LAYOUT ---
+                // --- CHUNK 2 LOWERED LAYOUT ---
                 platforms.clear()
                 sharks.clear()
                 lasers.clear()
                 gameButtons.clear()
                 gravitySwitches.clear()
 
-                // 1. SPAWN & BASE
-                // We use standard floorY (280f) which aligns with the UI buttons perfectly.
+                // 1. SPAWN & BASE (y=250, dropped by 30px from 280)
                 playerX = 640f // Center
-                playerY = 280f // Base along with buttons
+                playerY = 250f
                 velocityY = 0f
                 reverseGravity = false
 
+                // Add an invisible floor slightly below the player so they don't fall forever
+                platforms.add(Platform(Rectangle(0f, 230f, 2000f, 20f), PlatformType.INVISIBLE))
+
                 // 2. SYNCED LASER WALLS (Appear as soon as chunk starts from edges)
-                // Screen is 1280 wide. Edges are 0 and 1280.
                 lasers.add(Laser(Rectangle(0f, 0f, 20f, 2000f), isSweeping = false))
                 lasers.add(Laser(Rectangle(1280f, 0f, 20f, 2000f), isSweeping = false))
 
-                // 3. LAYER 1 (y=400, reachable jump from 280)
+                // 3. LAYER 1 (y=370, jump from 250)
                 // Safe Shark (Platform normal so standable)
-                platforms.add(Platform(Rectangle(300f, 400f, 120f, 60f), PlatformType.NORMAL))
+                platforms.add(Platform(Rectangle(300f, 370f, 120f, 60f), PlatformType.NORMAL))
                 // Red Platform (Deadly)
-                platforms.add(Platform(Rectangle(500f, 400f, 100f, 20f), PlatformType.DEADLY_RED))
+                platforms.add(Platform(Rectangle(500f, 370f, 100f, 20f), PlatformType.DEADLY_RED))
                 // Deadly Shark (Standard Shark logic)
-                sharks.add(Shark(700f, 400f, 0f, 700f, 700f))
+                sharks.add(Shark(700f, 370f, 0f, 700f, 700f))
                 // Green Platform (Instant Crumble)
-                platforms.add(Platform(Rectangle(900f, 400f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(900f, 370f, 100f, 20f), PlatformType.CRUMBLING))
 
-                // 4. LAYER 2 (y=520, jump from Layer 1)
+                // 4. LAYER 2 (y=490, jump from Layer 1)
                 // 3 Green CRUMBLING platforms
-                platforms.add(Platform(Rectangle(400f, 520f, 100f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(550f, 520f, 100f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(700f, 520f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(400f, 490f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(550f, 490f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(700f, 490f, 100f, 20f), PlatformType.CRUMBLING))
 
-                // 5. LAYER 3 (y=640, jump from Layer 2)
+                // 5. LAYER 3 (y=610, jump from Layer 2)
                 // Safe Shark (Solid)
-                platforms.add(Platform(Rectangle(500f, 640f, 120f, 60f), PlatformType.NORMAL))
+                platforms.add(Platform(Rectangle(500f, 610f, 120f, 60f), PlatformType.NORMAL))
                 // Deadly Green Platform (Encoded as a Shark to prevent hang)
-                sharks.add(Shark(700f, 640f, 0f, 700f, 700f))
+                sharks.add(Shark(700f, 610f, 0f, 700f, 700f))
 
                 // The Goal
                 maskX = 600f
-                maskY = 660f
+                maskY = 650f // A little higher
             }
             3 -> {
                 // Chunk 3: The Compactor
@@ -721,23 +722,24 @@ class GameScreen(
             return
         }
 
-        // --- CHUNK 2 LOGIC FIX (Proper Layout) ---
+        // --- CHUNK 2 LOGIC FIX (Lowered Layout) ---
         if (currentLevel == 4 && currentChunk == 2) {
-            // 1. Symmetrical Laser Movement (Center is 640, Speed 80f)
+            // 1. Symmetrical Laser Movement (Center is 640, Speed 65f)
             lasers.forEach { l ->
-                if (l.rect.x < 640f) l.rect.x += 80f * delta // Left laser moves right
-                else if (l.rect.x > 640f) l.rect.x -= 80f * delta // Right laser moves left
+                if (l.rect.x < 640f) l.rect.x += 65f * delta // Left laser moves right
+                else if (l.rect.x > 640f) l.rect.x -= 65f * delta // Right laser moves left
             }
 
             // 2. Instant Death Protection (No-Hang)
             val hitDeadly = lasers.any { it.rect.overlaps(playerRect) } ||
                             sharks.any { shark ->
-                                val isFakePlatform = (shark.x == 700f && shark.y == 640f)
+                                val isFakePlatform = (shark.x == 700f && shark.y == 370f) || (shark.x == 700f && shark.y == 610f)
                                 val w = if (isFakePlatform) 100f else 120f
                                 val h = if (isFakePlatform) 20f else 60f
                                 sharkRect.set(shark.x, shark.y, w, h)
                                 sharkRect.overlaps(playerRect)
-                            }
+                            } ||
+                            platforms.any { it.type == PlatformType.DEADLY_RED && playerRect.overlaps(it.rect) }
 
             if (hitDeadly && !this.isDead) {
                 die()
@@ -768,6 +770,7 @@ class GameScreen(
         if (isWalking) walkTime += delta * 15f else walkTime = 0f
 
         // Physics
+        val isExemptLevel = currentLevel == 3 || (currentLevel == 4 && currentChunk == 2)
         if (reverseGravity) {
             gravity = 3200f
             velocityY += gravity * delta
@@ -780,7 +783,8 @@ class GameScreen(
             velocityY += gravity * delta
             playerY += velocityY * delta
 
-            if (playerY < floorY && currentLevel != 3) {
+            // Exempt Level 4 Chunk 2 from the global floor catch
+            if (playerY < floorY && !isExemptLevel) {
                 playerY = floorY
                 velocityY = 0f
                 canJump = true
@@ -791,7 +795,7 @@ class GameScreen(
 
         // Platform Collision
         canJump = false // Reset per frame
-        if (!reverseGravity && playerY <= floorY + 1f && currentLevel != 3) canJump = true
+        if (!reverseGravity && playerY <= floorY + 1f && !isExemptLevel) canJump = true
 
         // --- CRITICAL FIX: Remove destroyed platforms so player falls! ---
         platforms.removeAll { it.state == PlatformState.DESTROYED }
@@ -816,7 +820,7 @@ class GameScreen(
 
                     // RE-WRITTEN CLEAN LIMIT LOGIC
                     val actualLimit = when {
-                         currentLevel == 4 && currentChunk == 2 && plat.rect.x == 900f && plat.rect.y == 400f -> 0.1f // Instant crumble for row 1 green platform
+                         currentLevel == 4 && currentChunk == 2 && plat.rect.x == 900f && plat.rect.y == 370f -> 0.1f // Instant crumble for trap platform
                          currentLevel == 3 && currentChunk == 3 -> 0.7f
                          currentLevel == 4 && currentChunk == 3 -> 0.8f
                          currentLevel == 3 || currentLevel == 4 -> 1.0f
@@ -827,11 +831,11 @@ class GameScreen(
             }
 
             // Physics Collision (Standard)
-            if (Intersector.overlaps(playerRect, plat.rect)) {
+            if (plat.type != PlatformType.DEADLY_RED && Intersector.overlaps(playerRect, plat.rect)) {
                 // Simple collision: Only land on top (or bottom if reversed?)
                 // Standard: Falling down onto platform
                 if (!reverseGravity && velocityY <= 0) {
-                     if (playerY - velocityY * delta >= plat.rect.y + plat.rect.height) {
+                     if (playerY - velocityY * delta >= plat.rect.y + plat.rect.height - 15f) {
                          playerY = plat.rect.y + plat.rect.height
                          velocityY = 0f
                          canJump = true
@@ -1087,7 +1091,7 @@ class GameScreen(
             if (plat.type == PlatformType.SAFE_SHARK) continue // Drawn in SpriteBatch
             // Skip drawing the fake safe shark platforms in shape renderer
             if (currentLevel == 4 && currentChunk == 2 && plat.type == PlatformType.NORMAL &&
-                ((plat.rect.x == 300f && plat.rect.y == 400f) || (plat.rect.x == 500f && plat.rect.y == 640f))) continue
+                ((plat.rect.x == 300f && plat.rect.y == 370f) || (plat.rect.x == 500f && plat.rect.y == 610f))) continue
 
             val isPlatformVisible = (currentLevel != 3 || currentChunk != 3) || isLightsOn || plat.state == PlatformState.CRUMBLING
             if (isPlatformVisible && isVisible(plat.rect.x, plat.rect.y)) {
@@ -1102,7 +1106,7 @@ class GameScreen(
         // Draw Fake Platforms encoded as Sharks
         if (currentLevel == 4 && currentChunk == 2) {
             for (shark in sharks) {
-                if ((shark.x == 700f && shark.y == 640f)) {
+                if ((shark.x == 700f && shark.y == 610f)) {
                     if (isVisible(shark.x, shark.y)) {
                         shapeRenderer.color = Color.GREEN
                         shapeRenderer.rect(shark.x, shark.y, 100f, 20f)
@@ -1167,7 +1171,7 @@ class GameScreen(
             // 1. Draw Real Sharks
             for (shark in sharks) {
                 // Skip drawing the deadly platform encoded as a shark
-                val isFakePlatform = currentLevel == 4 && currentChunk == 2 && (shark.x == 700f && shark.y == 640f)
+                val isFakePlatform = currentLevel == 4 && currentChunk == 2 && (shark.x == 700f && shark.y == 610f)
                 if (!isFakePlatform && isVisible(shark.x, shark.y)) {
                     game.batch.draw(tex, shark.x, shark.y, width, height, 0, 0, tex.width, tex.height, shark.facingRight, false)
                 }
@@ -1176,7 +1180,7 @@ class GameScreen(
             // 2. Draw Safe Sharks (Platforms)
             for (plat in platforms) {
                 val isFakeSafeShark = currentLevel == 4 && currentChunk == 2 && plat.type == PlatformType.NORMAL &&
-                                      ((plat.rect.x == 300f && plat.rect.y == 400f) || (plat.rect.x == 500f && plat.rect.y == 640f))
+                                      ((plat.rect.x == 300f && plat.rect.y == 370f) || (plat.rect.x == 500f && plat.rect.y == 610f))
                 if ((plat.type == PlatformType.SAFE_SHARK || isFakeSafeShark) && isVisible(plat.rect.x, plat.rect.y)) {
                     // Draw shark at platform position
                     game.batch.draw(tex, plat.rect.x, plat.rect.y, width, height, 0, 0, tex.width, tex.height, false, false)
