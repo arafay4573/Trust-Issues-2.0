@@ -75,6 +75,9 @@ class GameScreen(
     private var isLightsOn = false
     private var chunk3FlashTimer = 0f // Added for Level 3 Chunk 3 One-Time Flash
 
+    // Custom Level Specific State
+    private var tideSpeed = 30f // Used for Level 4 Chunk 3 Rising Tide
+
     // Assets
     private var sharkTexture: Texture? = null
     private var maskTexture: Texture? = null
@@ -105,7 +108,9 @@ class GameScreen(
         var sweepSpeed: Float = 200f,
         var minX: Float = 0f,
         var maxX: Float = 0f,
-        var movingRight: Boolean = true
+        var movingRight: Boolean = true,
+        var minY: Float = 0f,
+        var maxY: Float = 0f
     )
     private val lasers = mutableListOf<Laser>()
 
@@ -227,8 +232,6 @@ class GameScreen(
         }
 
         maskRect.set(maskX, maskY, maskWidth, maskHeight)
-        // Ensure playerRect is updated immediately so brute-force collision checks in update() don't fail on frame 1
-        playerRect.set(playerX, playerY, playerWidth, playerHeight)
     }
 
     private fun setupLevel1(chunk: Int) {
@@ -366,42 +369,59 @@ class GameScreen(
                 // --- END CHUNK 2 FINAL FIX ---
             }
             3 -> {
-                // Chunk 3: The Compactor
-                playerX = 100f; playerY = 280f
+                // Chunk 3: The Dud Switch (Vertical Ascent)
+                platforms.clear()
+                lasers.clear()
+                movingWalls.clear()
+                gameButtons.clear()
+                gravitySwitches.clear()
+                sharks.clear()
 
-                // Walls
-                val leftWall = MovingWall(Rectangle(-200f, 0f, 200f, 800f), 80f, isActive = true)
-                movingWalls.add(leftWall)
-                val rightWall = MovingWall(Rectangle(1400f, 0f, 200f, 800f), -80f, isActive = false)
-                movingWalls.add(rightWall)
+                // 1. Player Spawn (Bottom center of the shaft)
+                playerX = 640f
+                playerY = 100f
+                velocityY = 0f
+                reverseGravity = false
 
-                // Staircase UP
-                platforms.add(Platform(Rectangle(100f, 200f, 100f, 20f), PlatformType.NORMAL))
-                platforms.add(Platform(Rectangle(250f, 350f, 100f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(400f, 500f, 100f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(400f, 600f, 100f, 20f), PlatformType.CRUMBLING))
+                // 2. The Narrow Shaft Walls (Deadly if touched, to constrain movement)
+                // Left Wall
+                platforms.add(Platform(Rectangle(300f, 0f, 100f, 1000f), PlatformType.DEADLY_RED))
+                // Right Wall
+                platforms.add(Platform(Rectangle(880f, 0f, 100f, 1000f), PlatformType.DEADLY_RED))
 
-                // Roof Button (Stops Left, Starts Right)
-                gameButtons.add(GameButton(Rectangle(400f, 650f, 40f, 40f), onHit = {
-                    leftWall.isActive = false
-                    rightWall.isActive = true
+                // Reset Tide Speed for the new chunk
+                tideSpeed = 40f
+
+                // 3. The "Rising Tide" Floor
+                // We identify it uniquely by setting a specific height (e.g., 21f) to update its Y in the loop
+                platforms.add(Platform(Rectangle(400f, 0f, 480f, 21f), PlatformType.DEADLY_RED))
+
+                // Start Platform
+                platforms.add(Platform(Rectangle(600f, 80f, 80f, 20f), PlatformType.NORMAL))
+
+                // Ascent Platforms
+                platforms.add(Platform(Rectangle(450f, 250f, 80f, 20f), PlatformType.CRUMBLE_FAST))
+                platforms.add(Platform(Rectangle(750f, 400f, 80f, 20f), PlatformType.CRUMBLE_FAST))
+                platforms.add(Platform(Rectangle(500f, 550f, 80f, 20f), PlatformType.CRUMBLE_FAST))
+
+                // The Side Platform with the Dud Switch
+                platforms.add(Platform(Rectangle(400f, 400f, 60f, 20f), PlatformType.NORMAL))
+                gameButtons.add(GameButton(Rectangle(410f, 420f, 40f, 40f), onHit = {
+                    // Punish the player: Speed up the tide and drop a shark!
+                    sharks.add(Shark(playerX, playerY + 200f, 0f, playerX, playerX))
+                    tideSpeed = 150f // Tide rises extremely fast now!
                 }))
 
-                // Staircase DOWN
-                platforms.add(Platform(Rectangle(600f, 400f, 100f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(750f, 250f, 100f, 20f), PlatformType.CRUMBLING))
+                // The "Leap of Faith" Invisible Platform
+                platforms.add(Platform(Rectangle(750f, 650f, 80f, 20f), PlatformType.INVISIBLE))
 
-                // Vertical Laser Gate blocking Mask
-                val gateLaser = Laser(Rectangle(1000f, 0f, 50f, 800f), isSweeping = false)
-                lasers.add(gateLaser)
+                // 4. The Escape Mask
+                maskX = 640f
+                maskY = 800f
 
-                // Floor Button (Stops Right, Removes Laser)
-                gameButtons.add(GameButton(Rectangle(800f, 50f, 40f, 40f), onHit = {
-                    rightWall.isActive = false
-                    lasers.remove(gateLaser) // Open gate
-                }))
-
-                maskX = 1150f; maskY = 280f
+                // Horizontal Sweeping Lasers guarding the mask
+                lasers.add(Laser(Rectangle(400f, 750f, 480f, 15f), isSweeping = true, sweepSpeed = 150f, minY = 700f, maxY = 850f))
+                lasers.add(Laser(Rectangle(400f, 820f, 480f, 15f), isSweeping = true, sweepSpeed = -150f, minY = 700f, maxY = 850f))
             }
         }
     }
@@ -755,6 +775,33 @@ class GameScreen(
         }
         // ------------------------------------------
 
+        // --- FORCED CHUNK 3 LOGIC (VERTICAL ASCENT) ---
+        if (currentLevel == 4 && currentChunk == 3) {
+             platforms.forEach { p ->
+                 // 1. Rising Tide Logic (Identify by height == 21f)
+                 if (p.rect.height == 21f && p.type == PlatformType.DEADLY_RED) {
+                     p.rect.y += tideSpeed * delta
+                 }
+                 // 2. Leap of Faith (Invisible platform turns normal when jumping towards it)
+                 if (p.type == PlatformType.INVISIBLE && playerY > 550f && velocityY > 0f) {
+                     p.type = PlatformType.NORMAL // Reveal it
+                 }
+             }
+
+             // Instant Death from Deadly Red (Tide or Walls)
+             if (platforms.any { it.type == PlatformType.DEADLY_RED && playerRect.overlaps(it.rect) }) {
+                 die()
+                 return
+             }
+
+             // Fall through death (if falling below the tide or off screen)
+             if (playerY < 0f) {
+                 die("Fell into the abyss.")
+                 return
+             }
+        }
+        // ------------------------------------------
+
         // Strobe Logic (Chunk 3) - The Pulse
         if (horrorMode && currentChunk == 3) {
             chunk3FlashTimer += delta
@@ -891,12 +938,24 @@ class GameScreen(
         while (laserIter.hasNext()) {
             val laser = laserIter.next()
             if (laser.isSweeping) {
-                if (laser.movingRight) {
-                    laser.rect.x += laser.sweepSpeed * delta
-                    if (laser.rect.x > laser.maxX) laser.movingRight = false
-                } else {
-                    laser.rect.x -= laser.sweepSpeed * delta
-                    if (laser.rect.x < laser.minX) laser.movingRight = true
+                if (laser.maxX > laser.minX) {
+                    // Horizontal sweeping
+                    if (laser.movingRight) {
+                        laser.rect.x += laser.sweepSpeed * delta
+                        if (laser.rect.x > laser.maxX) laser.movingRight = false
+                    } else {
+                        laser.rect.x -= laser.sweepSpeed * delta
+                        if (laser.rect.x < laser.minX) laser.movingRight = true
+                    }
+                } else if (laser.maxY > laser.minY) {
+                    // Vertical sweeping
+                    if (laser.movingRight) { // reusing movingRight for movingUp
+                        laser.rect.y += laser.sweepSpeed * delta
+                        if (laser.rect.y > laser.maxY) laser.movingRight = false
+                    } else {
+                        laser.rect.y -= laser.sweepSpeed * delta
+                        if (laser.rect.y < laser.minY) laser.movingRight = true
+                    }
                 }
             }
             if (Intersector.overlaps(playerRect, laser.rect)) {

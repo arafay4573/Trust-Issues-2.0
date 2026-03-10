@@ -12,7 +12,7 @@ enum class PlatformState {
 
 class Platform(
     val rect: Rectangle,
-    val type: PlatformType,
+    var type: PlatformType,
     var state: PlatformState = PlatformState.ACTIVE
 ) {
     var crumbleTimer: Float = 0f
