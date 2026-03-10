@@ -313,50 +313,55 @@ class GameScreen(
                 // --- END CHUNK 1 GAP TUNE ---
             }
             2 -> {
-                // --- CHUNK 2: LOWEST LAYOUT ---
+                // --- START CHUNK 2 FINAL FIX ---
                 platforms.clear()
                 sharks.clear()
                 lasers.clear()
                 gameButtons.clear()
                 gravitySwitches.clear()
 
-                // 1. BASE SPAWN (Lowest possible layout)
-                playerX = 640f // Center
+                // 1. Absolute Bottom Spawn (beneath the first layer)
+                playerX = 640f
                 playerY = 100f
                 velocityY = 0f
                 reverseGravity = false
 
-                // 2. INVISIBLE FLOOR (Catches player safely)
-                platforms.add(Platform(Rectangle(0f, 80f, 2000f, 20f), PlatformType.INVISIBLE))
+                // 2. Base Floor
+                platforms.add(Platform(Rectangle(0f, 80f, 1280f, 20f), PlatformType.NORMAL))
 
-                // 3. SYNCED LASER WALLS (Start at edges)
-                lasers.add(Laser(Rectangle(0f, 0f, 20f, 2000f), isSweeping = false))
-                lasers.add(Laser(Rectangle(1280f, 0f, 20f, 2000f), isSweeping = false))
+                // 3. The Red Crusher Walls (Lethal)
+                // They start at edges and move towards the center
+                platforms.add(Platform(Rectangle(-200f, 0f, 200f, 1000f), PlatformType.DEADLY_RED))
+                platforms.add(Platform(Rectangle(1280f, 0f, 200f, 1000f), PlatformType.DEADLY_RED))
 
-                // 4. LAYER 1 (y=220f)
-                // Safe Shark (Platform normal so standable)
-                platforms.add(Platform(Rectangle(300f, 220f, 120f, 60f), PlatformType.SAFE_SHARK))
-                // Red Platform (Deadly)
-                platforms.add(Platform(Rectangle(500f, 220f, 100f, 20f), PlatformType.DEADLY_RED))
-                // Deadly Shark
-                sharks.add(Shark(700f, 220f, 0f, 700f, 700f))
-                // Green Platform (Instant Crumble)
-                platforms.add(Platform(Rectangle(900f, 220f, 100f, 20f), PlatformType.CRUMBLING))
+                // 4. The First Layer (Layer 1) - Must be higher than 100f to be "above" the player
+                val layer1Y = 220f
+                platforms.add(Platform(Rectangle(200f, layer1Y, 150f, 20f), PlatformType.DEADLY_RED)) // Fall-through trap
+                platforms.add(Platform(Rectangle(500f, layer1Y, 80f, 60f), PlatformType.SAFE_SHARK)) // Solid safe point
+                sharks.add(Shark(800f, layer1Y, 0f, 800f, 800f)) // Deadly shark trap
+                platforms.add(Platform(Rectangle(1000f, layer1Y, 150f, 20f), PlatformType.CRUMBLE_FAST)) // Instant crumble
 
-                // 5. LAYER 2 (y=340f) - 3 Green Platforms
-                platforms.add(Platform(Rectangle(400f, 340f, 100f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(550f, 340f, 100f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(700f, 340f, 100f, 20f), PlatformType.CRUMBLING))
+                // 5. The Second Layer (Layer 2) - 3 green platforms (crumbling)
+                val layer2Y = 340f
+                platforms.add(Platform(Rectangle(300f, layer2Y, 150f, 20f), PlatformType.CRUMBLE_FAST))
+                platforms.add(Platform(Rectangle(600f, layer2Y, 150f, 20f), PlatformType.CRUMBLE_FAST))
+                platforms.add(Platform(Rectangle(900f, layer2Y, 150f, 20f), PlatformType.CRUMBLE_FAST))
 
-                // 6. LAYER 3 (y=460f)
-                // Safe Shark (Saviour)
-                platforms.add(Platform(Rectangle(500f, 460f, 120f, 60f), PlatformType.SAFE_SHARK))
-                // Deadly Green Platform
-                platforms.add(Platform(Rectangle(700f, 460f, 100f, 20f), PlatformType.DEADLY_RED))
+                // 6. The Third Layer (Layer 3) - 1 safe shark and 1 deadly green platform
+                val layer3Y = 460f
+                platforms.add(Platform(Rectangle(400f, layer3Y, 80f, 60f), PlatformType.SAFE_SHARK)) // Safe
+                platforms.add(Platform(Rectangle(700f, layer3Y, 150f, 20f), PlatformType.DEADLY_RED)) // Deadly platform
 
-                // 7. OXYGEN MASK (As if it's the 4th layer)
-                maskX = 600f
-                maskY = 580f
+                // 7. Symmetrical moving lasers
+                // Laser on left sweeping right
+                lasers.add(Laser(Rectangle(0f, 80f, 15f, 600f), isSweeping = true, sweepSpeed = 80f, minX = 0f, maxX = 640f))
+                // Laser on right sweeping left
+                lasers.add(Laser(Rectangle(1280f, 80f, 15f, 600f), isSweeping = true, sweepSpeed = -80f, minX = 640f, maxX = 1280f))
+
+                // 8. The Goal (High up as if it's the 4th layer)
+                maskX = 640f
+                maskY = 600f
+                // --- END CHUNK 2 FINAL FIX ---
             }
             3 -> {
                 // Chunk 3: The Compactor
@@ -716,34 +721,35 @@ class GameScreen(
         if (isDead || isLevelComplete) {
             stateTimer += delta
             if (stateTimer >= 2.0f) {
-                stateTimer = -9999f // Prevent runnable queue spam and race condition crashes
-                Gdx.app.postRunnable { if (isDead) setupChunk(currentChunk) else completeChunk() }
+                // Prevent queue spam by resetting stateTimer below the threshold immediately
+                stateTimer = -9999f
+                val wasDead = isDead
+                Gdx.app.postRunnable {
+                    if (wasDead) setupChunk(currentChunk) else completeChunk()
+                }
             }
             return
         }
 
-        // --- CHUNK 2 LOGIC FIX (Final Sync & Physics) ---
+        // --- FORCED CHUNK 2 LOGIC (BRUTE FORCE) ---
         if (currentLevel == 4 && currentChunk == 2) {
-            // 1. Symmetrical Laser Movement (Center is 640, Speed 80f)
-            lasers.forEach { l ->
-                if (l.rect.x < 640f) l.rect.x += 80f * delta // Left laser moves right
-                else if (l.rect.x > 640f) l.rect.x -= 80f * delta // Right laser moves left
-            }
-
-            // 2. Instant Death Protection (No-Hang)
-            val hitDeadly = lasers.any { it.rect.overlaps(playerRect) } ||
-                            sharks.any { shark ->
-                                val w = 80f
-                                val h = 60f
-                                sharkRect.set(shark.x, shark.y, w, h)
-                                sharkRect.overlaps(playerRect)
-                            } ||
-                            platforms.any { it.type == PlatformType.DEADLY_RED && playerRect.overlaps(it.rect) }
-
-            if (hitDeadly && !this.isDead) {
-                die()
-                return // Let the standard `isDead` state timer handle the reset!
-            }
+             // 1. Move Walls (Speed 45f)
+             platforms.forEach { p ->
+                 if (p.rect.height == 1000f) {
+                     if (p.rect.x < 400f) p.rect.x += 45f * delta
+                     if (p.rect.x > 400f) p.rect.x -= 45f * delta
+                 }
+             }
+             // 2. Instant Death (Kill, don't hard reset immediately)
+             if (platforms.any { it.type == PlatformType.DEADLY_RED && playerRect.overlaps(it.rect) }) {
+                 die()
+                 return
+             }
+             // 3. Fall through death
+             if (playerY < 0f) {
+                 die("Dropped like a stone.")
+                 return
+             }
         }
         // ------------------------------------------
 
@@ -769,6 +775,8 @@ class GameScreen(
         if (isWalking) walkTime += delta * 15f else walkTime = 0f
 
         // Physics
+        val isExemptLevel = (currentLevel == 4 && currentChunk == 2) || currentLevel == 3
+
         if (reverseGravity) {
             gravity = 3200f
             velocityY += gravity * delta
@@ -781,7 +789,7 @@ class GameScreen(
             velocityY += gravity * delta
             playerY += velocityY * delta
 
-            if (playerY < floorY && currentLevel != 3) {
+            if (playerY < floorY && !isExemptLevel) {
                 playerY = floorY
                 velocityY = 0f
                 canJump = true
@@ -792,7 +800,7 @@ class GameScreen(
 
         // Platform Collision
         canJump = false // Reset per frame
-        if (!reverseGravity && playerY <= floorY + 1f && currentLevel != 3) canJump = true
+        if (!reverseGravity && playerY <= floorY + 1f && !isExemptLevel) canJump = true
 
         // --- CRITICAL FIX: Remove destroyed platforms so player falls! ---
         platforms.removeAll { it.state == PlatformState.DESTROYED }
@@ -817,7 +825,6 @@ class GameScreen(
 
                     // RE-WRITTEN CLEAN LIMIT LOGIC
                     val actualLimit = when {
-                         currentLevel == 4 && currentChunk == 2 && plat.rect.x == 900f && plat.rect.y == 220f -> 0.1f // Instant crumble
                          currentLevel == 3 && currentChunk == 3 -> 0.7f
                          currentLevel == 4 && currentChunk == 3 -> 0.8f
                          currentLevel == 3 || currentLevel == 4 -> 1.0f
@@ -828,11 +835,13 @@ class GameScreen(
             }
 
             // Physics Collision (Standard)
-            if (Intersector.overlaps(playerRect, plat.rect)) {
+            if (plat.type != PlatformType.DEADLY_RED && Intersector.overlaps(playerRect, plat.rect)) {
                 // Simple collision: Only land on top (or bottom if reversed?)
                 // Standard: Falling down onto platform
+                // Added -20f tolerance to make it easier to land on, especially for SAFE_SHARK
                 if (!reverseGravity && velocityY <= 0) {
-                     if (playerY - velocityY * delta >= plat.rect.y + plat.rect.height) {
+                     val tolerance = if (plat.type == PlatformType.SAFE_SHARK) 20f else 0f
+                     if (playerY - velocityY * delta >= plat.rect.y + plat.rect.height - tolerance) {
                          playerY = plat.rect.y + plat.rect.height
                          velocityY = 0f
                          canJump = true
@@ -1089,13 +1098,9 @@ class GameScreen(
 
             val isPlatformVisible = (currentLevel != 3 || currentChunk != 3) || isLightsOn || plat.state == PlatformState.CRUMBLING
             if (isPlatformVisible && isVisible(plat.rect.x, plat.rect.y)) {
-                // Draw specific DEADLY_RED as GREEN for Identity Row trap
-                val isFakeGreenPlatform = currentLevel == 4 && currentChunk == 2 && plat.rect.x == 700f && plat.rect.y == 460f
-                shapeRenderer.color = when {
-                    isFakeGreenPlatform -> Color.GREEN
-                    plat.type == PlatformType.DEADLY_RED -> Color.RED
-                    plat.state == PlatformState.CRUMBLING -> Color.RED
-                    else -> Color.GREEN
+                shapeRenderer.color = when(plat.type) {
+                    PlatformType.DEADLY_RED -> Color.RED
+                    else -> if (plat.state == PlatformState.CRUMBLING) Color.RED else Color.GREEN
                 }
                 shapeRenderer.rect(plat.rect.x, plat.rect.y, plat.rect.width, plat.rect.height)
             }
