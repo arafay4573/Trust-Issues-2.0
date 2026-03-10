@@ -313,30 +313,30 @@ class GameScreen(
                 // --- END CHUNK 1 GAP TUNE ---
             }
             2 -> {
-                // --- CHUNK 2 DRASTICALLY LOWERED ---
+                // --- CHUNK 2: LOWEST LAYOUT ---
                 platforms.clear()
                 sharks.clear()
                 lasers.clear()
                 gameButtons.clear()
                 gravitySwitches.clear()
 
-                // 1. BASE SPAWN (y=100f)
+                // 1. BASE SPAWN (Lowest possible layout)
                 playerX = 640f // Center
                 playerY = 100f
                 velocityY = 0f
                 reverseGravity = false
 
-                // 2. INVISIBLE FLOOR (y=80f)
-                platforms.add(Platform(Rectangle(0f, 60f, 2000f, 20f), PlatformType.INVISIBLE))
+                // 2. INVISIBLE FLOOR (Catches player safely)
+                platforms.add(Platform(Rectangle(0f, 80f, 2000f, 20f), PlatformType.INVISIBLE))
 
-                // 3. SYNCED LASER WALLS (Speed 80f towards center 640f)
+                // 3. SYNCED LASER WALLS (Start at edges)
                 lasers.add(Laser(Rectangle(0f, 0f, 20f, 2000f), isSweeping = false))
                 lasers.add(Laser(Rectangle(1280f, 0f, 20f, 2000f), isSweeping = false))
 
                 // 4. LAYER 1 (y=220f)
-                // Safe Shark (Solid, Standable)
+                // Safe Shark (Platform normal so standable)
                 platforms.add(Platform(Rectangle(300f, 220f, 120f, 60f), PlatformType.SAFE_SHARK))
-                // Deadly Red Platform
+                // Red Platform (Deadly)
                 platforms.add(Platform(Rectangle(500f, 220f, 100f, 20f), PlatformType.DEADLY_RED))
                 // Deadly Shark
                 sharks.add(Shark(700f, 220f, 0f, 700f, 700f))
@@ -351,12 +351,12 @@ class GameScreen(
                 // 6. LAYER 3 (y=460f)
                 // Safe Shark (Saviour)
                 platforms.add(Platform(Rectangle(500f, 460f, 120f, 60f), PlatformType.SAFE_SHARK))
-                // Deadly Green Platform (Using DEADLY_RED to kill, drawn as Green in update loop)
+                // Deadly Green Platform
                 platforms.add(Platform(Rectangle(700f, 460f, 100f, 20f), PlatformType.DEADLY_RED))
 
-                // The Goal
+                // 7. OXYGEN MASK (As if it's the 4th layer)
                 maskX = 600f
-                maskY = 500f
+                maskY = 580f
             }
             3 -> {
                 // Chunk 3: The Compactor
@@ -716,12 +716,13 @@ class GameScreen(
         if (isDead || isLevelComplete) {
             stateTimer += delta
             if (stateTimer >= 2.0f) {
+                stateTimer = -9999f // Prevent runnable queue spam and race condition crashes
                 Gdx.app.postRunnable { if (isDead) setupChunk(currentChunk) else completeChunk() }
             }
             return
         }
 
-        // --- CHUNK 2 LOGIC FIX (Lowered Layout) ---
+        // --- CHUNK 2 LOGIC FIX (Final Sync & Physics) ---
         if (currentLevel == 4 && currentChunk == 2) {
             // 1. Symmetrical Laser Movement (Center is 640, Speed 80f)
             lasers.forEach { l ->
@@ -731,12 +732,17 @@ class GameScreen(
 
             // 2. Instant Death Protection (No-Hang)
             val hitDeadly = lasers.any { it.rect.overlaps(playerRect) } ||
-                            sharks.any { sharkRect.set(it.x, it.y, 120f, 60f); sharkRect.overlaps(playerRect) } ||
+                            sharks.any { shark ->
+                                val w = 80f
+                                val h = 60f
+                                sharkRect.set(shark.x, shark.y, w, h)
+                                sharkRect.overlaps(playerRect)
+                            } ||
                             platforms.any { it.type == PlatformType.DEADLY_RED && playerRect.overlaps(it.rect) }
 
             if (hitDeadly && !this.isDead) {
                 die()
-                return // Let the standard `isDead` state timer handle the reset to prevent hangs/crashes!
+                return // Let the standard `isDead` state timer handle the reset!
             }
         }
         // ------------------------------------------
@@ -811,6 +817,7 @@ class GameScreen(
 
                     // RE-WRITTEN CLEAN LIMIT LOGIC
                     val actualLimit = when {
+                         currentLevel == 4 && currentChunk == 2 && plat.rect.x == 900f && plat.rect.y == 220f -> 0.1f // Instant crumble
                          currentLevel == 3 && currentChunk == 3 -> 0.7f
                          currentLevel == 4 && currentChunk == 3 -> 0.8f
                          currentLevel == 3 || currentLevel == 4 -> 1.0f
@@ -821,11 +828,11 @@ class GameScreen(
             }
 
             // Physics Collision (Standard)
-            if (plat.type != PlatformType.DEADLY_RED && Intersector.overlaps(playerRect, plat.rect)) {
+            if (Intersector.overlaps(playerRect, plat.rect)) {
                 // Simple collision: Only land on top (or bottom if reversed?)
                 // Standard: Falling down onto platform
                 if (!reverseGravity && velocityY <= 0) {
-                     if (playerY - velocityY * delta >= plat.rect.y + plat.rect.height - 20f) {
+                     if (playerY - velocityY * delta >= plat.rect.y + plat.rect.height) {
                          playerY = plat.rect.y + plat.rect.height
                          velocityY = 0f
                          canJump = true
@@ -1082,9 +1089,13 @@ class GameScreen(
 
             val isPlatformVisible = (currentLevel != 3 || currentChunk != 3) || isLightsOn || plat.state == PlatformState.CRUMBLING
             if (isPlatformVisible && isVisible(plat.rect.x, plat.rect.y)) {
-                shapeRenderer.color = when(plat.type) {
-                    PlatformType.DEADLY_RED -> Color.RED
-                    else -> if (plat.state == PlatformState.CRUMBLING) Color.RED else Color.GREEN
+                // Draw specific DEADLY_RED as GREEN for Identity Row trap
+                val isFakeGreenPlatform = currentLevel == 4 && currentChunk == 2 && plat.rect.x == 700f && plat.rect.y == 460f
+                shapeRenderer.color = when {
+                    isFakeGreenPlatform -> Color.GREEN
+                    plat.type == PlatformType.DEADLY_RED -> Color.RED
+                    plat.state == PlatformState.CRUMBLING -> Color.RED
+                    else -> Color.GREEN
                 }
                 shapeRenderer.rect(plat.rect.x, plat.rect.y, plat.rect.width, plat.rect.height)
             }
