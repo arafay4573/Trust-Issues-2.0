@@ -227,6 +227,8 @@ class GameScreen(
         }
 
         maskRect.set(maskX, maskY, maskWidth, maskHeight)
+        // Ensure playerRect is updated immediately so brute-force collision checks in update() don't fail on frame 1
+        playerRect.set(playerX, playerY, playerWidth, playerHeight)
     }
 
     private fun setupLevel1(chunk: Int) {
