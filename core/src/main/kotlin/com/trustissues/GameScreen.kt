@@ -387,19 +387,23 @@ class GameScreen(
                 platforms.add(Platform(Rectangle(50f, 80f, 200f, 20f), PlatformType.NORMAL))
 
                 // Layout: The "Troll Path" - horizontal series at y=200, then climbing left.
+                val trollPlatforms = mutableListOf<Platform>()
+
                 // 1. Button 1 Platform
-                platforms.add(Platform(Rectangle(250f, 200f, 100f, 20f), PlatformType.CRUMBLING))
+                trollPlatforms.add(Platform(Rectangle(250f, 200f, 100f, 20f), PlatformType.CRUMBLING))
                 // 2. The Shark Platform (Small, requires jump over)
-                platforms.add(Platform(Rectangle(430f, 200f, 80f, 20f), PlatformType.CRUMBLING))
-                // 3. Button 2 Platform
-                platforms.add(Platform(Rectangle(580f, 200f, 100f, 20f), PlatformType.CRUMBLING))
+                trollPlatforms.add(Platform(Rectangle(430f, 200f, 80f, 20f), PlatformType.CRUMBLING))
+                // 3. Mask Platform (formerly Button 2 Platform)
+                trollPlatforms.add(Platform(Rectangle(580f, 200f, 100f, 20f), PlatformType.CRUMBLING))
 
-                // 4. The Climb (Back left towards the mask)
-                platforms.add(Platform(Rectangle(480f, 320f, 150f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(280f, 440f, 150f, 20f), PlatformType.CRUMBLING))
+                // 4. The Climb (Back left towards the Button 2)
+                trollPlatforms.add(Platform(Rectangle(480f, 320f, 150f, 20f), PlatformType.CRUMBLING))
+                trollPlatforms.add(Platform(Rectangle(280f, 440f, 150f, 20f), PlatformType.CRUMBLING))
 
-                // 5. The Mask Platform (Extreme left above)
-                platforms.add(Platform(Rectangle(50f, 560f, 150f, 20f), PlatformType.CRUMBLING))
+                // 5. Button 2 Platform (Extreme left above)
+                trollPlatforms.add(Platform(Rectangle(50f, 560f, 150f, 20f), PlatformType.CRUMBLING))
+
+                platforms.addAll(trollPlatforms)
 
                 // 2. THE HAZARDS (SYMMETRICAL SWEEP)
                 // Use strictly positive sweepSpeed values (Initial: 15f)
@@ -413,30 +417,39 @@ class GameScreen(
 
                 // The Mask starts hidden off-screen
                 maskX = -2000f
-                maskY = 580f
+                maskY = 220f
 
                 // 3. THE BUTTON LOGIC
-                // Button 2 (Platform 3) - initially hidden
-                val button2 = GameButton(Rectangle(-2000f, 220f, 40f, 40f), false) {
-                    // Spawn Mask at top left platform
-                    maskX = 100f
-                    maskY = 580f
+                // Button 2 (Platform 6, top left) - initially hidden
+                val button2 = GameButton(Rectangle(-2000f, 580f, 40f, 40f), false) {
+                    // Spawn Mask at Platform 3 (bottom right)
+                    maskX = 610f
+                    maskY = 220f
+
+                    // Respawn platforms and reset them to ACTIVE so the player can go back
+                    for (plat in trollPlatforms) {
+                        plat.state = PlatformState.ACTIVE
+                        plat.crumbleTimer = 0f
+                        if (!platforms.contains(plat)) {
+                            platforms.add(plat)
+                        }
+                    }
                 }
                 gameButtons.add(button2)
 
                 // Button 1 (Platform 1)
                 val button1 = GameButton(Rectangle(280f, 220f, 40f, 40f), false) {
-                    // Increase laser speed significantly
-                    topLaser.sweepSpeed = 75f
-                    bottomLaser.sweepSpeed = 75f
+                    // Increase laser speed (Reduced to 45f to be challenging but fair)
+                    topLaser.sweepSpeed = 45f
+                    bottomLaser.sweepSpeed = 45f
 
                     // Spawn a Shark at the center of Platform 2 (x=410f, y=220f).
                     // The player must jump over it from Platform 1 to Platform 3.
                     sharks.add(Shark(410f, 220f, 0f, 410f, 410f))
 
-                    // Spawn Button 2 on Platform 3
-                    button2.rect.x = 610f
-                    button2.rect.y = 220f
+                    // Spawn Button 2 on Platform 6 (top left)
+                    button2.rect.x = 100f
+                    button2.rect.y = 580f
                 }
                 gameButtons.add(button1)
             }
