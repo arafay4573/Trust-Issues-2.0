@@ -39,6 +39,7 @@ class GameScreen(
     private val playerRect = Rectangle()
     private val maskRect = Rectangle()
     private val sharkRect = Rectangle()
+    private val echoRect = Rectangle()
 
     // Player Stats
     private val playerWidth = 25f
@@ -77,6 +78,19 @@ class GameScreen(
 
     // Custom Level Specific State
     private var tideSpeed = 30f // Used for Level 4 Chunk 3 Rising Tide
+
+    // Level 5 Specific State
+    data class PlayerRecord(val time: Float, val x: Float, val y: Float, val isCrouching: Boolean)
+    private val playerPath = mutableListOf<PlayerRecord>()
+    private var chunkTime = 0f
+    private var hasIdentitySwapped = false
+    private var lastGravityFlipTime = 0f
+    private var screenFlashColor: Color? = null
+    private var screenFlashTimer = 0f
+    private var echoX = 640f
+    private var echoY = 100f
+    private var echoHeight = 50f
+    private var echoActive = false
 
     // Assets
     private var sharkTexture: Texture? = null
@@ -229,6 +243,8 @@ class GameScreen(
             setupLevel3(chunk)
         } else if (currentLevel == 4) {
             setupLevel4(chunk)
+        } else if (currentLevel == 5) {
+            setupLevel5(chunk)
         }
 
         maskRect.set(maskX, maskY, maskWidth, maskHeight)
@@ -249,6 +265,53 @@ class GameScreen(
             3 -> {
                 sharks.add(Shark(800f, 280f, 300f, 0f, 1280f, isStalker = true))
                 maskX = 1200f
+            }
+        }
+    }
+
+    private fun setupLevel5(chunk: Int) {
+        when (chunk) {
+            1 -> {
+                // Chunk 1: The Mirror Trap
+                platforms.clear()
+                lasers.clear()
+                movingWalls.clear()
+                gameButtons.clear()
+                gravitySwitches.clear()
+                sharks.clear()
+                playerPath.clear()
+
+                // 1. The Opening State (Spawning the Ghost)
+                playerX = 640f
+                playerY = 100f
+                velocityY = 0f
+                reverseGravity = false
+                chunkTime = 0f
+                hasIdentitySwapped = false
+                lastGravityFlipTime = 0f
+                screenFlashColor = null
+                screenFlashTimer = 0f
+                echoActive = true
+
+                // Single green platform slightly wider than player
+                platforms.add(Platform(Rectangle(620f, 80f, 65f, 20f), PlatformType.NORMAL))
+
+                // The Walls: Symmetrical Red Laser Walls moving inward at 25f
+                movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 25f, isActive = true))
+                movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -25f, isActive = true))
+
+                // 2. The Path (The Crumbling Staircase)
+                // y=200, 300, 400, 500, 600, 700
+                platforms.add(Platform(Rectangle(540f, 200f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(660f, 300f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(540f, 400f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(660f, 500f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(540f, 600f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(660f, 700f, 80f, 20f), PlatformType.CRUMBLING))
+
+                // The Exit
+                maskX = 640f
+                maskY = 850f
             }
         }
     }
@@ -812,6 +875,91 @@ class GameScreen(
         // Update mask collision rect constantly (in case it moves, like in Level 4-3)
         maskRect.set(maskX, maskY, maskWidth, maskHeight)
 
+        // --- LEVEL 5 CHUNK 1 LOGIC (THE MIRROR TRAP) ---
+        if (currentLevel == 5 && currentChunk == 1 && !isDead && !isLevelComplete) {
+            chunkTime += delta
+
+            // Record player position
+            playerPath.add(PlayerRecord(chunkTime, playerX, playerY, playerHeight < normalHeight))
+
+            // Keep list bounded to ~3 seconds max history (assuming 60fps, ~180 frames)
+            // But we actually only need history up to 2.0s ago.
+            // We can prune older ones.
+            while (playerPath.isNotEmpty() && chunkTime - playerPath.first().time > 2.5f) {
+                playerPath.removeAt(0)
+            }
+
+            // Find Echo's position (2.0s ago)
+            val echoTargetTime = chunkTime - 2.0f
+            if (echoTargetTime >= 0f && echoActive) {
+                var closestRecord = playerPath.first()
+                for (record in playerPath) {
+                    if (record.time <= echoTargetTime) {
+                        closestRecord = record
+                    } else {
+                        break
+                    }
+                }
+                echoX = closestRecord.x
+                echoY = closestRecord.y
+                echoHeight = if (closestRecord.isCrouching) crouchHeight else normalHeight
+
+                // Echo Collision (Deadly)
+                echoRect.set(echoX, echoY, playerWidth, echoHeight)
+                if (Intersector.overlaps(playerRect, echoRect)) {
+                    die("You trusted the wrong thing just like You do in your life")
+                    return
+                }
+            } else {
+                // Before 2 seconds, Echo stays perfectly still at spawn
+                echoX = 640f
+                echoY = 100f
+                echoHeight = normalHeight
+            }
+
+            // --- The Gravity Glitch ---
+            val timeSinceFlip = chunkTime - lastGravityFlipTime
+            // Flash screen light blue at 4 seconds (1s before flip)
+            if (timeSinceFlip >= 4.0f && timeSinceFlip < 4.1f) {
+                screenFlashColor = Color.CYAN
+                screenFlashTimer = 0.1f
+            }
+            if (timeSinceFlip >= 5.0f) {
+                reverseGravity = !reverseGravity
+                lastGravityFlipTime = chunkTime
+            }
+
+            // --- The Identity Swap Finale ---
+            val triggerZoneY = 750f
+            if (playerY >= triggerZoneY && !hasIdentitySwapped) {
+                hasIdentitySwapped = true
+                // Swap positions
+                val tempX = playerX
+                val tempY = playerY
+                playerX = echoX
+                playerY = echoY
+                echoX = tempX
+                echoY = tempY
+
+                // Flash White
+                screenFlashColor = Color.WHITE
+                screenFlashTimer = 0.2f
+
+                // To ensure Echo continues from the old position smoothly, we can clear the path and inject the player's old position as the new start
+                // Actually, the prompt says "The Echo continues its path from the player's old position."
+                // Wait, if we swap positions, and the echo follows the recorded path, the echo will instantly snap back to following the old recorded path (which is at the bottom).
+                // So we need to rewrite the playerPath history such that the Echo thinks the player's history was at the top.
+                // The easiest way to achieve "Echo continues from player's old position" is to translate all historical records by the difference.
+                val deltaX = tempX - playerX
+                val deltaY = tempY - playerY
+                for (i in 0 until playerPath.size) {
+                    val r = playerPath[i]
+                    playerPath[i] = r.copy(x = r.x + deltaX, y = r.y + deltaY)
+                }
+            }
+        }
+        // ------------------------------------------
+
         // --- FORCED CHUNK 3 LOGIC (THE ULTIMATE TROLL) ---
         if (currentLevel == 4 && currentChunk == 3) {
              // Fall through death (if falling off screen)
@@ -855,7 +1003,7 @@ class GameScreen(
         if (isWalking) walkTime += delta * 15f else walkTime = 0f
 
         // Physics
-        val isExemptLevel = (currentLevel == 4 && (currentChunk == 2 || currentChunk == 3)) || currentLevel == 3
+        val isExemptLevel = (currentLevel == 4 && (currentChunk == 2 || currentChunk == 3)) || currentLevel == 3 || currentLevel == 5
 
         if (reverseGravity) {
             gravity = 3200f
@@ -863,7 +1011,7 @@ class GameScreen(
             playerY += velocityY * delta
 
             // Ceiling check
-            if (playerY > 720f) die("Gravity hurts.")
+            if (playerY > 720f && currentLevel != 5) die("Gravity hurts.")
         } else {
             gravity = -3200f
             velocityY += gravity * delta
@@ -893,18 +1041,16 @@ class GameScreen(
             // Skip if destroyed
             if (plat.state == PlatformState.DESTROYED) continue
 
-            // 1. Trigger Crumble on Touch (Level 2, 3, 4)
-            if ((currentLevel == 2 || currentLevel == 3 || currentLevel == 4) && plat.type == PlatformType.CRUMBLING) {
-                if (playerRect.overlaps(plat.rect)) {
-                    // DYNAMIC LIMITS
-                    // Level 4 Chunk 3: 0.8s (Ultra fast)
-                    // Level 4 Chunks 1 & 2: 1.0s (Fast)
-                    // Level 3 Chunk 3: 0.7s (Brutal)
-                    // Level 3 Chunks 1 & 2: 1.0s (Fast)
-                    // Level 2: 1.5s (Standard Training)
+            // 1. Trigger Crumble on Touch (Level 2, 3, 4, 5)
+            if ((currentLevel == 2 || currentLevel == 3 || currentLevel == 4 || currentLevel == 5) && plat.type == PlatformType.CRUMBLING) {
+                // Determine if Player or Echo overlaps (Level 5)
+                val isTouchedByPlayer = playerRect.overlaps(plat.rect)
+                val isTouchedByEcho = (currentLevel == 5 && currentChunk == 1 && echoActive && echoRect.overlaps(plat.rect))
 
-                    // RE-WRITTEN CLEAN LIMIT LOGIC
+                if (isTouchedByPlayer || isTouchedByEcho) {
+                    // DYNAMIC LIMITS
                     val actualLimit = when {
+                         currentLevel == 5 && currentChunk == 1 -> 1.2f // Level 5-1: 1.2s
                          currentLevel == 3 && currentChunk == 3 -> 0.7f
                          currentLevel == 3 || currentLevel == 4 -> 1.0f
                          else -> 1.5f
@@ -945,7 +1091,9 @@ class GameScreen(
         }
 
         // Floor Death Check - AFTER Platform Collision (Fix for Soft-Lock)
-        if (!reverseGravity && playerY < -100f) {
+        // Level 5 requires a deeper floor death check because of the identity swap to the bottom
+        val bottomLimit = if (currentLevel == 5) -200f else -100f
+        if (!reverseGravity && playerY < bottomLimit) {
             die("Darkness consumes you.")
         }
 
@@ -1247,6 +1395,21 @@ class GameScreen(
         shapeRenderer.rectLine(centerX, playerY + neckOffset, centerX, playerY + waistOffset, 3f)
         shapeRenderer.rectLine(centerX, playerY + waistOffset, centerX - 6f - legOffset, playerY, 3f)
         shapeRenderer.rectLine(centerX, playerY + waistOffset, centerX + 6f + legOffset, playerY, 3f)
+
+        // Draw Echo (Transparent Red) for Level 5
+        if (currentLevel == 5 && currentChunk == 1 && echoActive) {
+            shapeRenderer.color = Color(1f, 0f, 0f, 0.5f) // Transparent Red
+            val eCenterX = echoX + 12.5f
+            val eCrouch = echoHeight < normalHeight
+            val eHead = if (eCrouch) 22f else 44f
+            val eNeck = if (eCrouch) 15f else 38f
+            val eWaist = if (eCrouch) 5f else 18f
+            // Echo legs don't strictly need animation but we can leave them static or use walkTime
+            shapeRenderer.circle(eCenterX, echoY + eHead, 6f)
+            shapeRenderer.rectLine(eCenterX, echoY + eNeck, eCenterX, echoY + eWaist, 3f)
+            shapeRenderer.rectLine(eCenterX, echoY + eWaist, eCenterX - 6f, echoY, 3f)
+            shapeRenderer.rectLine(eCenterX, echoY + eWaist, eCenterX + 6f, echoY, 3f)
+        }
 
         shapeRenderer.end()
         Gdx.gl.glDisable(com.badlogic.gdx.graphics.GL20.GL_BLEND)
