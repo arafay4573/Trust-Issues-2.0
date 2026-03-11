@@ -426,9 +426,9 @@ class GameScreen(
                     maskX = 610f
                     maskY = 220f
 
-                    // Increase laser speed for the race back down to the mask
-                    topLaser.sweepSpeed = 35f
-                    bottomLaser.sweepSpeed = 35f
+                    // Increase laser speed significantly for the frantic race back down
+                    topLaser.sweepSpeed = 65f
+                    bottomLaser.sweepSpeed = 65f
 
                     // Respawn platforms and reset them to ACTIVE so the player can go back
                     for (plat in trollPlatforms) {
@@ -808,6 +808,9 @@ class GameScreen(
              }
         }
         // ------------------------------------------
+
+        // Update mask collision rect constantly (in case it moves, like in Level 4-3)
+        maskRect.set(maskX, maskY, maskWidth, maskHeight)
 
         // --- FORCED CHUNK 3 LOGIC (THE ULTIMATE TROLL) ---
         if (currentLevel == 4 && currentChunk == 3) {
