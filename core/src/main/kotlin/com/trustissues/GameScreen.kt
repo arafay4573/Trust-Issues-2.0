@@ -439,9 +439,9 @@ class GameScreen(
 
                 // Button 1 (Platform 1)
                 val button1 = GameButton(Rectangle(280f, 220f, 40f, 40f), false) {
-                    // Increase laser speed (Reduced to 45f to be challenging but fair)
-                    topLaser.sweepSpeed = 45f
-                    bottomLaser.sweepSpeed = 45f
+                    // Increase laser speed (Reduced to 35f to be challenging but fair)
+                    topLaser.sweepSpeed = 35f
+                    bottomLaser.sweepSpeed = 35f
 
                     // Spawn a Shark at the center of Platform 2 (x=410f, y=220f).
                     // The player must jump over it from Platform 1 to Platform 3.
