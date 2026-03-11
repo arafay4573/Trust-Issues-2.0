@@ -369,7 +369,7 @@ class GameScreen(
                 // --- END CHUNK 2 FINAL FIX ---
             }
             3 -> {
-                // Chunk 3: The Dud Switch (Vertical Ascent)
+                // Chunk 3: The Ultimate Troll
                 platforms.clear()
                 lasers.clear()
                 movingWalls.clear()
@@ -377,51 +377,56 @@ class GameScreen(
                 gravitySwitches.clear()
                 sharks.clear()
 
-                // 1. Player Spawn (Bottom center of the shaft)
-                playerX = 640f
+                // 1. SPAWN & ENVIRONMENT
+                // Grounded Spawn: Ensure the player starts at y=100f on a solid green platform located at y=80f. No hovering.
+                playerX = 100f
                 playerY = 100f
                 velocityY = 0f
                 reverseGravity = false
 
-                // 2. The Narrow Shaft Walls (Deadly if touched, to constrain movement)
-                // Left Wall
-                platforms.add(Platform(Rectangle(300f, 0f, 100f, 1000f), PlatformType.DEADLY_RED))
-                // Right Wall
-                platforms.add(Platform(Rectangle(880f, 0f, 100f, 1000f), PlatformType.DEADLY_RED))
+                platforms.add(Platform(Rectangle(50f, 80f, 200f, 20f), PlatformType.NORMAL))
 
-                // Reset Tide Speed for the new chunk
-                tideSpeed = 40f
+                // Layout: Zig-zag platform climb.
+                platforms.add(Platform(Rectangle(300f, 200f, 150f, 20f), PlatformType.NORMAL)) // Platform 1 (Left)
+                platforms.add(Platform(Rectangle(800f, 320f, 150f, 20f), PlatformType.NORMAL)) // Platform 2 (Right)
+                platforms.add(Platform(Rectangle(300f, 440f, 150f, 20f), PlatformType.NORMAL)) // Platform 3 (Left)
+                platforms.add(Platform(Rectangle(800f, 560f, 150f, 20f), PlatformType.NORMAL)) // Platform 4 (Right)
 
-                // 3. The "Rising Tide" Floor
-                // We identify it uniquely by setting a specific height (e.g., 21f) to update its Y in the loop
-                platforms.add(Platform(Rectangle(400f, 0f, 480f, 21f), PlatformType.DEADLY_RED))
+                // 2. THE HAZARDS (SYMMETRICAL SWEEP)
+                // Use strictly positive sweepSpeed values (Initial: 15f)
+                val topLaser = Laser(Rectangle(0f, 540f, 1280f, 15f), isSweeping = true, sweepSpeed = 15f, minY = 360f, maxY = 705f, movingRight = true)
+                lasers.add(topLaser)
 
-                // Start Platform
-                platforms.add(Platform(Rectangle(600f, 80f, 80f, 20f), PlatformType.NORMAL))
+                val bottomLaser = Laser(Rectangle(0f, 180f, 1280f, 15f), isSweeping = true, sweepSpeed = 15f, minY = 0f, maxY = 345f, movingRight = true)
+                lasers.add(bottomLaser)
 
-                // Ascent Platforms
-                platforms.add(Platform(Rectangle(450f, 250f, 80f, 20f), PlatformType.CRUMBLE_FAST))
-                platforms.add(Platform(Rectangle(750f, 400f, 80f, 20f), PlatformType.CRUMBLE_FAST))
-                platforms.add(Platform(Rectangle(500f, 550f, 80f, 20f), PlatformType.CRUMBLE_FAST))
+                // The Mask starts hidden off-screen
+                maskX = -2000f
+                maskY = 650f
 
-                // The Side Platform with the Dud Switch
-                platforms.add(Platform(Rectangle(400f, 400f, 60f, 20f), PlatformType.NORMAL))
-                gameButtons.add(GameButton(Rectangle(410f, 420f, 40f, 40f), onHit = {
-                    // Punish the player: Speed up the tide and drop a shark!
-                    sharks.add(Shark(playerX, playerY + 200f, 0f, playerX, playerX))
-                    tideSpeed = 150f // Tide rises extremely fast now!
-                }))
+                // 3. THE BUTTON LOGIC
+                // Button 2 (Right Platform, y=340f) - initially hidden
+                val button2 = GameButton(Rectangle(-2000f, 340f, 40f, 40f), false) {
+                    // Spawn Mask at very top
+                    maskX = 640f
+                    maskY = 650f
+                }
+                gameButtons.add(button2)
 
-                // The "Leap of Faith" Invisible Platform
-                platforms.add(Platform(Rectangle(750f, 650f, 80f, 20f), PlatformType.INVISIBLE))
+                // Button 1 (Left Platform, y=200f)
+                val button1 = GameButton(Rectangle(350f, 220f, 40f, 40f), false) {
+                    // Increase laser speed to 40f
+                    topLaser.sweepSpeed = 40f
+                    bottomLaser.sweepSpeed = 40f
 
-                // 4. The Escape Mask
-                maskX = 640f
-                maskY = 800f
+                    // Spawn a Shark at x=400f, y=220f
+                    sharks.add(Shark(400f, 220f, 0f, 400f, 400f))
 
-                // Horizontal Sweeping Lasers guarding the mask
-                lasers.add(Laser(Rectangle(400f, 750f, 480f, 15f), isSweeping = true, sweepSpeed = 150f, minY = 700f, maxY = 850f))
-                lasers.add(Laser(Rectangle(400f, 820f, 480f, 15f), isSweeping = true, sweepSpeed = -150f, minY = 700f, maxY = 850f))
+                    // Spawn Button 2
+                    button2.rect.x = 850f
+                    button2.rect.y = 340f
+                }
+                gameButtons.add(button1)
             }
         }
     }
@@ -775,28 +780,22 @@ class GameScreen(
         }
         // ------------------------------------------
 
-        // --- FORCED CHUNK 3 LOGIC (VERTICAL ASCENT) ---
+        // --- FORCED CHUNK 3 LOGIC (THE ULTIMATE TROLL) ---
         if (currentLevel == 4 && currentChunk == 3) {
-             platforms.forEach { p ->
-                 // 1. Rising Tide Logic (Identify by height == 21f)
-                 if (p.rect.height == 21f && p.type == PlatformType.DEADLY_RED) {
-                     p.rect.y += tideSpeed * delta
-                 }
-                 // 2. Leap of Faith (Invisible platform turns normal when jumping towards it)
-                 if (p.type == PlatformType.INVISIBLE && playerY > 550f && velocityY > 0f) {
-                     p.type = PlatformType.NORMAL // Reveal it
-                 }
-             }
-
-             // Instant Death from Deadly Red (Tide or Walls)
-             if (platforms.any { it.type == PlatformType.DEADLY_RED && playerRect.overlaps(it.rect) }) {
-                 die()
+             // Fall through death (if falling off screen)
+             if (playerY < -50f) {
+                 die("Dropped like a stone.")
                  return
              }
 
-             // Fall through death (if falling below the tide or off screen)
-             if (playerY < 0f) {
-                 die("Fell into the abyss.")
+             // The Ultimate Troll: Mask is the trap!
+             if (!isDead && Intersector.overlaps(playerRect, maskRect)) {
+                 val trollRoasts = listOf(
+                     "All this for a drop of blood",
+                     "You ain't no Newton",
+                     "Yeah you trusted the wrong thing just like You do in your life"
+                 )
+                 die(trollRoasts.random())
                  return
              }
         }
@@ -1058,10 +1057,18 @@ class GameScreen(
             }
 
             // Shark Collision
-            // Safe Shark Logic: Skip collision if shark is at x=600 (Chunk 2 Friendly Shark)
-            if (currentLevel != 4 || currentChunk != 2 || shark.x != 600f) {
-                sharkRect.set(shark.x, shark.y, 120f, 60f) // approx
-                if (Intersector.overlaps(playerRect, sharkRect)) die()
+            // The Ultimate Troll: In Level 4 Chunk 3, hitting the shark at y=220f means winning
+            if (currentLevel == 4 && currentChunk == 3 && shark.y == 220f) {
+                sharkRect.set(shark.x, shark.y, 120f, 60f)
+                if (Intersector.overlaps(playerRect, sharkRect)) {
+                    win() // Touch the shark to win!
+                }
+            } else {
+                // Safe Shark Logic: Skip collision if shark is at x=600 (Chunk 2 Friendly Shark)
+                if (currentLevel != 4 || currentChunk != 2 || shark.x != 600f) {
+                    sharkRect.set(shark.x, shark.y, 120f, 60f) // approx
+                    if (Intersector.overlaps(playerRect, sharkRect)) die()
+                }
             }
         }
 
@@ -1078,12 +1085,16 @@ class GameScreen(
             if (b.y > 720f) bubbleIter.remove()
         }
 
-        if (!isDead && Intersector.overlaps(playerRect, maskRect)) win()
+        // Default Win Condition (Ignore in Level 4 Chunk 3)
+        if (currentLevel != 4 || currentChunk != 3) {
+            if (!isDead && Intersector.overlaps(playerRect, maskRect)) win()
+        }
     }
 
     private fun die(customMessage: String? = null) {
         if (isDead) return
         isDead = true
+        stateTimer = -9999f // STABILITY: Prevent game-hanging loops upon death
         val roast = customMessage ?: deathRoasts.random()
         messageLabel?.setText(roast)
         messageLabel?.color = Color.RED
