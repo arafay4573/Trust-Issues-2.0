@@ -1094,7 +1094,6 @@ class GameScreen(
     private fun die(customMessage: String? = null) {
         if (isDead) return
         isDead = true
-        stateTimer = -9999f // STABILITY: Prevent game-hanging loops upon death
         val roast = customMessage ?: deathRoasts.random()
         messageLabel?.setText(roast)
         messageLabel?.color = Color.RED
