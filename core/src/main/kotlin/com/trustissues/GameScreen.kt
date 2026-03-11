@@ -426,6 +426,10 @@ class GameScreen(
                     maskX = 610f
                     maskY = 220f
 
+                    // Increase laser speed for the race back down to the mask
+                    topLaser.sweepSpeed = 35f
+                    bottomLaser.sweepSpeed = 35f
+
                     // Respawn platforms and reset them to ACTIVE so the player can go back
                     for (plat in trollPlatforms) {
                         plat.state = PlatformState.ACTIVE
@@ -439,9 +443,9 @@ class GameScreen(
 
                 // Button 1 (Platform 1)
                 val button1 = GameButton(Rectangle(280f, 220f, 40f, 40f), false) {
-                    // Increase laser speed (Reduced to 35f to be challenging but fair)
-                    topLaser.sweepSpeed = 35f
-                    bottomLaser.sweepSpeed = 35f
+                    // Make the laser "turtle slow" for the climb up
+                    topLaser.sweepSpeed = 5f
+                    bottomLaser.sweepSpeed = 5f
 
                     // Spawn a Shark at the center of Platform 2 (x=410f, y=220f).
                     // The player must jump over it from Platform 1 to Platform 3.
