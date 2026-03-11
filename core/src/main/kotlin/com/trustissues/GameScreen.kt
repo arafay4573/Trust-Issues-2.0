@@ -386,18 +386,20 @@ class GameScreen(
 
                 platforms.add(Platform(Rectangle(50f, 80f, 200f, 20f), PlatformType.NORMAL))
 
-                // Layout: Zig-zag platform climb.
-                platforms.add(Platform(Rectangle(300f, 200f, 150f, 20f), PlatformType.NORMAL)) // Platform 1 (Left)
-                platforms.add(Platform(Rectangle(800f, 320f, 150f, 20f), PlatformType.NORMAL)) // Platform 2 (Right)
-                platforms.add(Platform(Rectangle(300f, 440f, 150f, 20f), PlatformType.NORMAL)) // Platform 3 (Left)
-                platforms.add(Platform(Rectangle(800f, 560f, 150f, 20f), PlatformType.NORMAL)) // Platform 4 (Right)
+                // Layout: Zig-zag platform climb. (These should be crumbling)
+                platforms.add(Platform(Rectangle(300f, 200f, 150f, 20f), PlatformType.CRUMBLING)) // Platform 1 (Left)
+                platforms.add(Platform(Rectangle(800f, 320f, 150f, 20f), PlatformType.CRUMBLING)) // Platform 2 (Right)
+                platforms.add(Platform(Rectangle(300f, 440f, 150f, 20f), PlatformType.CRUMBLING)) // Platform 3 (Left)
+                platforms.add(Platform(Rectangle(800f, 560f, 150f, 20f), PlatformType.CRUMBLING)) // Platform 4 (Right)
 
                 // 2. THE HAZARDS (SYMMETRICAL SWEEP)
                 // Use strictly positive sweepSpeed values (Initial: 15f)
-                val topLaser = Laser(Rectangle(0f, 540f, 1280f, 15f), isSweeping = true, sweepSpeed = 15f, minY = 360f, maxY = 705f, movingRight = true)
+                // They start off-screen to give the player breathing room and move towards each other.
+                // Distance to cover is 372.5 for both.
+                val topLaser = Laser(Rectangle(0f, 740f, 1280f, 15f), isSweeping = true, sweepSpeed = 15f, minY = 367.5f, maxY = 740f, movingRight = false) // movingRight = false means moving DOWN for vertical lasers
                 lasers.add(topLaser)
 
-                val bottomLaser = Laser(Rectangle(0f, 180f, 1280f, 15f), isSweeping = true, sweepSpeed = 15f, minY = 0f, maxY = 345f, movingRight = true)
+                val bottomLaser = Laser(Rectangle(0f, -20f, 1280f, 15f), isSweeping = true, sweepSpeed = 15f, minY = -20f, maxY = 352.5f, movingRight = true) // movingRight = true means moving UP for vertical lasers
                 lasers.add(bottomLaser)
 
                 // The Mask starts hidden off-screen
@@ -823,7 +825,7 @@ class GameScreen(
         if (isWalking) walkTime += delta * 15f else walkTime = 0f
 
         // Physics
-        val isExemptLevel = (currentLevel == 4 && currentChunk == 2) || currentLevel == 3
+        val isExemptLevel = (currentLevel == 4 && (currentChunk == 2 || currentChunk == 3)) || currentLevel == 3
 
         if (reverseGravity) {
             gravity = 3200f
@@ -874,7 +876,6 @@ class GameScreen(
                     // RE-WRITTEN CLEAN LIMIT LOGIC
                     val actualLimit = when {
                          currentLevel == 3 && currentChunk == 3 -> 0.7f
-                         currentLevel == 4 && currentChunk == 3 -> 0.8f
                          currentLevel == 3 || currentLevel == 4 -> 1.0f
                          else -> 1.5f
                     }
