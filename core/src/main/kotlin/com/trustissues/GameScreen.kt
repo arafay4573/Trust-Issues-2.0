@@ -313,6 +313,51 @@ class GameScreen(
                 maskX = 640f
                 maskY = 850f
             }
+            2 -> {
+                // Chunk 2: The Flappy Bird Escape
+                platforms.clear()
+                lasers.clear()
+                movingWalls.clear()
+                gameButtons.clear()
+                gravitySwitches.clear()
+                sharks.clear()
+                playerPath.clear()
+
+                playerX = 640f
+                playerY = 100f
+                velocityY = 0f
+                reverseGravity = true // Antigravity pulling up
+                chunkTime = 0f
+                echoActive = true // "climb up before ur shadow"
+
+                // Platforms to "stick" on (pulling up)
+                platforms.add(Platform(Rectangle(600f, 200f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(540f, 300f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(660f, 400f, 80f, 20f), PlatformType.CRUMBLING))
+
+                // 2nd last top platform
+                platforms.add(Platform(Rectangle(540f, 500f, 100f, 20f), PlatformType.CRUMBLING))
+
+                // top platform (underneath it)
+                platforms.add(Platform(Rectangle(640f, 600f, 100f, 20f), PlatformType.CRUMBLING))
+
+                // The button that appears at start when gravity reverts
+                // Initially hide it far away
+                val button = GameButton(Rectangle(-2000f, 100f, 40f, 40f), false) {
+                    // Mask appears "a lil to left and 3 platforms above u"
+                    // Player is around x=640, y=100. 3 platforms above = ~400f. A lil to left = 500f.
+                    maskX = 500f
+                    maskY = 400f
+                }
+                gameButtons.add(button)
+
+                // Safe platform at start to land on when gravity reverts
+                platforms.add(Platform(Rectangle(600f, 80f, 80f, 20f), PlatformType.NORMAL))
+
+                maskX = -2000f
+                maskY = 800f
+            }
+
         }
     }
 
@@ -780,12 +825,21 @@ class GameScreen(
         jumpZone.addListener(object : InputListener() {
             override fun touchDown(event: InputEvent?, x: Float, y: Float, pointer: Int, button: Int): Boolean {
                 if (!isPaused && !isDead && !isLevelComplete) {
-                    if (reverseGravity) {
-                        // In reverse, jump pushes DOWN
-                        if (canJump) velocityY = -jumpStrength
+                    if (currentLevel == 5 && currentChunk == 2) {
+                        // Flappy bird mode jump: push up slightly (or down if reversed)
+                        if (reverseGravity) {
+                            velocityY = -450f // fly "down" (push towards floor)
+                        } else {
+                            velocityY = 450f // fly "up"
+                        }
                     } else {
-                        // Normal jump
-                        if (canJump) velocityY = jumpStrength
+                        if (reverseGravity) {
+                            // In reverse, jump pushes DOWN
+                            if (canJump) velocityY = -jumpStrength
+                        } else {
+                            // Normal jump
+                            if (canJump) velocityY = jumpStrength
+                        }
                     }
                 }
                 return true
@@ -874,6 +928,59 @@ class GameScreen(
 
         // Update mask collision rect constantly (in case it moves, like in Level 4-3)
         maskRect.set(maskX, maskY, maskWidth, maskHeight)
+
+
+        // --- LEVEL 5 CHUNK 2 LOGIC (Flappy Bird) ---
+        if (currentLevel == 5 && currentChunk == 2 && !isDead && !isLevelComplete) {
+            chunkTime += delta
+
+            // "suddenly gravity appears and u fall back on the platform where u started"
+            // Revert gravity when player reaches the top platform (e.g. y > 580f)
+            if (reverseGravity && playerY > 580f) {
+                reverseGravity = false
+                // Spawn button at the start platform
+                if (gameButtons.isNotEmpty()) {
+                    gameButtons[0].rect.x = 620f
+                    gameButtons[0].rect.y = 100f
+                }
+            }
+
+            // Flappy bird logic: gravity needs to feel slightly different if we want a true flappy bird
+            // But we'll keep baseGravity, and just let them fly.
+            // The echo continues to follow the player
+            playerPath.add(PlayerRecord(chunkTime, playerX, playerY, playerHeight < normalHeight))
+            while (playerPath.isNotEmpty() && chunkTime - playerPath.first().time > 2.5f) {
+                playerPath.removeAt(0)
+            }
+
+            val echoTargetTime = chunkTime - 2.0f
+            if (echoTargetTime >= 0f && echoActive) {
+                var closestRecord = playerPath.first()
+                for (record in playerPath) {
+                    if (record.time <= echoTargetTime) {
+                        closestRecord = record
+                    } else {
+                        break
+                    }
+                }
+                echoX = closestRecord.x
+                echoY = closestRecord.y
+                echoHeight = if (closestRecord.isCrouching) crouchHeight else normalHeight
+
+                echoRect.set(echoX, echoY, playerWidth, echoHeight)
+                if (Intersector.overlaps(playerRect, echoRect)) {
+                    die("Your past caught up to you.")
+                    return
+                }
+            } else {
+                echoX = 640f
+                echoY = 100f
+                echoHeight = normalHeight
+            }
+
+            // Since jumping is handled via touch input, we must modify the jumpZone listener
+            // but we can't easily do it here in update. We will modify the input listener in createUi.
+        }
 
         // --- LEVEL 5 CHUNK 1 LOGIC (THE MIRROR TRAP) ---
         if (currentLevel == 5 && currentChunk == 1 && !isDead && !isLevelComplete) {
