@@ -386,11 +386,20 @@ class GameScreen(
 
                 platforms.add(Platform(Rectangle(50f, 80f, 200f, 20f), PlatformType.NORMAL))
 
-                // Layout: Zig-zag platform climb. (These should be crumbling)
-                platforms.add(Platform(Rectangle(300f, 200f, 150f, 20f), PlatformType.CRUMBLING)) // Platform 1 (Left)
-                platforms.add(Platform(Rectangle(800f, 320f, 150f, 20f), PlatformType.CRUMBLING)) // Platform 2 (Right)
-                platforms.add(Platform(Rectangle(300f, 440f, 150f, 20f), PlatformType.CRUMBLING)) // Platform 3 (Left)
-                platforms.add(Platform(Rectangle(800f, 560f, 150f, 20f), PlatformType.CRUMBLING)) // Platform 4 (Right)
+                // Layout: The "Troll Path" - horizontal series at y=200, then climbing left.
+                // 1. Button 1 Platform
+                platforms.add(Platform(Rectangle(250f, 200f, 100f, 20f), PlatformType.CRUMBLING))
+                // 2. The Shark Platform (Small, requires jump over)
+                platforms.add(Platform(Rectangle(430f, 200f, 80f, 20f), PlatformType.CRUMBLING))
+                // 3. Button 2 Platform
+                platforms.add(Platform(Rectangle(580f, 200f, 100f, 20f), PlatformType.CRUMBLING))
+
+                // 4. The Climb (Back left towards the mask)
+                platforms.add(Platform(Rectangle(480f, 320f, 150f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(280f, 440f, 150f, 20f), PlatformType.CRUMBLING))
+
+                // 5. The Mask Platform (Extreme left above)
+                platforms.add(Platform(Rectangle(50f, 560f, 150f, 20f), PlatformType.CRUMBLING))
 
                 // 2. THE HAZARDS (SYMMETRICAL SWEEP)
                 // Use strictly positive sweepSpeed values (Initial: 15f)
@@ -404,29 +413,30 @@ class GameScreen(
 
                 // The Mask starts hidden off-screen
                 maskX = -2000f
-                maskY = 650f
+                maskY = 580f
 
                 // 3. THE BUTTON LOGIC
-                // Button 2 (Right Platform, y=340f) - initially hidden
-                val button2 = GameButton(Rectangle(-2000f, 340f, 40f, 40f), false) {
-                    // Spawn Mask at very top
-                    maskX = 640f
-                    maskY = 650f
+                // Button 2 (Platform 3) - initially hidden
+                val button2 = GameButton(Rectangle(-2000f, 220f, 40f, 40f), false) {
+                    // Spawn Mask at top left platform
+                    maskX = 100f
+                    maskY = 580f
                 }
                 gameButtons.add(button2)
 
-                // Button 1 (Left Platform, y=200f)
-                val button1 = GameButton(Rectangle(350f, 220f, 40f, 40f), false) {
-                    // Increase laser speed to 40f
-                    topLaser.sweepSpeed = 40f
-                    bottomLaser.sweepSpeed = 40f
+                // Button 1 (Platform 1)
+                val button1 = GameButton(Rectangle(280f, 220f, 40f, 40f), false) {
+                    // Increase laser speed significantly
+                    topLaser.sweepSpeed = 75f
+                    bottomLaser.sweepSpeed = 75f
 
-                    // Spawn a Shark at x=400f, y=220f
-                    sharks.add(Shark(400f, 220f, 0f, 400f, 400f))
+                    // Spawn a Shark at the center of Platform 2 (x=410f, y=220f).
+                    // The player must jump over it from Platform 1 to Platform 3.
+                    sharks.add(Shark(410f, 220f, 0f, 410f, 410f))
 
-                    // Spawn Button 2
-                    button2.rect.x = 850f
-                    button2.rect.y = 340f
+                    // Spawn Button 2 on Platform 3
+                    button2.rect.x = 610f
+                    button2.rect.y = 220f
                 }
                 gameButtons.add(button1)
             }
