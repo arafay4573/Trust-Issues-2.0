@@ -438,9 +438,11 @@ class GameScreen(
                 platforms.add(Platform(Rectangle(600f, 80f, 80f, 20f), PlatformType.NORMAL))
 
                 // The Shark
-                val centerShark = Shark(580f, 360f, 0f, 580f, 580f)
+                val centerShark = Shark(580f, 360f, 150f, 300f, 860f)
                 sharks.add(centerShark)
-                platforms.add(Platform(Rectangle(580f, 360f, 120f, 60f), PlatformType.SAFE_SHARK))
+                val centerSharkPlatform = Platform(Rectangle(580f, 360f, 120f, 60f), PlatformType.SAFE_SHARK)
+                centerSharkPlatform.rect.width = 120.2f // Unique identifier for syncing
+                platforms.add(centerSharkPlatform)
 
                 // The Walls
                 val leftWall = MovingWall(Rectangle(-400f, 0f, 400f, 1500f), speed = 50f, isActive = true)
@@ -456,10 +458,10 @@ class GameScreen(
                 maskY = 600f
 
                 // Buttons
-                // Button 1: Slows the Crusher Walls (Bottom Left)
+                // Button 1: Stops the Crusher Walls (Bottom Left)
                 val btn1 = GameButton(Rectangle(100f, 100f, 40f, 40f), false) {
-                    leftWall.speed = 10f
-                    rightWall.speed = -10f
+                    leftWall.speed = 0f
+                    rightWall.speed = 0f
                 }
                 gameButtons.add(btn1)
 
@@ -469,10 +471,12 @@ class GameScreen(
                 }
                 gameButtons.add(btn2)
 
-                // Button 3: Spawns a second "Mirror Shark" to help you reach the top (Bottom Right)
+                // Button 3: Spawns a second "Mirror Shark" to help you reach the top (Bottom Right), and speeds up walls
                 val btn3 = GameButton(Rectangle(1140f, 100f, 40f, 40f), false) {
                     sharks.add(Shark(900f, 480f, 0f, 900f, 900f))
                     platforms.add(Platform(Rectangle(900f, 480f, 120f, 60f), PlatformType.SAFE_SHARK))
+                    leftWall.speed = 200f
+                    rightWall.speed = -200f
                 }
                 gameButtons.add(btn3)
 
@@ -1177,33 +1181,19 @@ class GameScreen(
                 }
             }
 
-            // Fake Mask Touch
-            if (!fakeMaskTouched && Intersector.overlaps(playerRect, maskRect) && gameButtons.all { it.isPressed }) {
-                fakeMaskTouched = true
-                maskX = -2000f // Vanish
-                maskY = -2000f
-                maskRect.set(maskX, maskY, maskWidth, maskHeight) // update right away to avoid double trigger
-                ceilingLaserDrop = true
-                lasers[0].sweepSpeed = 500f // Positive speed
-                lasers[0].isSweeping = true
-                lasers[0].movingRight = false // movingRight = false means downwards
-                lasers[0].minY = -1000f // let it drop all the way
-                lasers[0].maxY = 740f
-
-                die("All this for a drop of blood... the Shark was the way.")
-                // Prevent real death flag so we can still win, but show the roast
-                isDead = false
+            // Real Win: The mask actually kills you
+            if (!fakeMaskTouched && Intersector.overlaps(playerRect, maskRect)) {
+                die("The mask was a lie.")
+                return
             }
 
-            // Real Win: Stand on the SAFE_SHARK after the fake mask has been touched
-            if (fakeMaskTouched && !isDead) {
-                for (plat in platforms) {
-                    if (plat.type == PlatformType.SAFE_SHARK) {
-                        // Check if player is standing on it (Y is roughly on top and X overlaps)
-                        if (playerY >= plat.rect.y + plat.rect.height - 10f && playerY <= plat.rect.y + plat.rect.height + 10f) {
-                            if (playerX + playerWidth > plat.rect.x && playerX < plat.rect.x + plat.rect.width) {
-                                win()
-                            }
+            // Stand on the center shark to win (only if all buttons are pressed)
+            if (!isDead && gameButtons.all { it.isPressed }) {
+                for (shark in sharks) {
+                    if (shark.speed > 0f && shark.y == 360f) { // The center patrolling shark
+                        sharkRect.set(shark.x, shark.y, 120f, 60f)
+                        if (Intersector.overlaps(playerRect, sharkRect)) {
+                            win()
                         }
                     }
                 }
@@ -1546,6 +1536,12 @@ class GameScreen(
                         }
                     }
                 }
+            } else if (currentLevel == 5 && currentChunk == 3) {
+                for (plat in platforms) {
+                    if (plat.type == PlatformType.SAFE_SHARK && plat.rect.width == 120.2f && shark.y == 360f) {
+                        plat.rect.x = shark.x
+                    }
+                }
             }
 
             // Shark Collision
@@ -1561,7 +1557,16 @@ class GameScreen(
                 val isSafeSharkLevel5 = (currentLevel == 5 && currentChunk == 2)
                 if ((currentLevel != 4 || currentChunk != 2 || shark.x != 600f) && !isSafeSharkLevel5) {
                     sharkRect.set(shark.x, shark.y, 120f, 60f) // approx
-                    if (Intersector.overlaps(playerRect, sharkRect)) die()
+                    if (Intersector.overlaps(playerRect, sharkRect)) {
+                        // In Level 5 Chunk 3, the center shark is deadly if buttons aren't pressed,
+                        // but if all buttons are pressed, touching it wins the game (handled earlier).
+                        // If we are here and overlapping, and it's the center shark, and buttons ARE pressed, we don't die.
+                        if (currentLevel == 5 && currentChunk == 3 && shark.y == 360f && gameButtons.all { it.isPressed }) {
+                            // Do not die
+                        } else {
+                            die()
+                        }
+                    }
                 }
             }
         }
