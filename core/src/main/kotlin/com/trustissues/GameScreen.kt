@@ -475,8 +475,8 @@ class GameScreen(
                 val btn3 = GameButton(Rectangle(1140f, 100f, 40f, 40f), false) {
                     sharks.add(Shark(900f, 480f, 0f, 900f, 900f))
                     platforms.add(Platform(Rectangle(900f, 480f, 120f, 60f), PlatformType.SAFE_SHARK))
-                    leftWall.speed = 200f
-                    rightWall.speed = -200f
+                    leftWall.speed = 100f
+                    rightWall.speed = -100f
                 }
                 gameButtons.add(btn3)
 
