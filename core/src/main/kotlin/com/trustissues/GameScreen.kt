@@ -794,9 +794,9 @@ class GameScreen(
                     // "tap the jump button again and again to fly ofk like flappy bird"
                     if (currentLevel == 5 && currentChunk == 1) {
                         if (reverseGravity) {
-                            velocityY = -450f
+                            velocityY = -jumpStrength
                         } else {
-                            velocityY = 450f
+                            velocityY = jumpStrength
                         }
                     } else {
                         if (reverseGravity) {
