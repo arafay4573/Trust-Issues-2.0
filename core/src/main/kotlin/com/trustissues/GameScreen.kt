@@ -316,7 +316,7 @@ class GameScreen(
                     // "mask appears in the left side of the screen about to be cruhed by the left wall approaching it"
                     // Left wall starts at -200, moves 25f/s. After ~6s, it's at x= -50.
                     // Let's spawn mask at x=200, y=400 so player flies up to it.
-                    maskX = 200f
+                    maskX = 350f
                     maskY = 400f
                 }
                 gameButtons.add(button)
