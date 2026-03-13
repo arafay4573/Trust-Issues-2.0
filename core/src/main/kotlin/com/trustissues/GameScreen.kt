@@ -272,7 +272,7 @@ class GameScreen(
     private fun setupLevel5(chunk: Int) {
         when (chunk) {
             1 -> {
-                // Chunk 1: The Mirror Trap
+                // Chunk 1: The Flappy Bird Escape
                 platforms.clear()
                 lasers.clear()
                 movingWalls.clear()
@@ -281,83 +281,49 @@ class GameScreen(
                 sharks.clear()
                 playerPath.clear()
 
-                // 1. The Opening State (Spawning the Ghost)
                 playerX = 640f
                 playerY = 100f
                 velocityY = 0f
-                reverseGravity = false
+                reverseGravity = false // Start normal gravity
                 chunkTime = 0f
                 hasIdentitySwapped = false
                 lastGravityFlipTime = 0f
                 screenFlashColor = null
                 screenFlashTimer = 0f
-                echoActive = true
+                echoActive = true // "climb up before ur shadow"
 
-                // Single green platform slightly wider than player
-                platforms.add(Platform(Rectangle(620f, 80f, 65f, 20f), PlatformType.NORMAL))
+                // Safe platform at start to land on when gravity reverts
+                platforms.add(Platform(Rectangle(600f, 80f, 80f, 20f), PlatformType.NORMAL))
 
                 // The Walls: Symmetrical Red Laser Walls moving inward at 25f
                 movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 25f, isActive = true))
                 movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -25f, isActive = true))
 
-                // 2. The Path (The Crumbling Staircase)
-                // y=200, 300, 400, 500, 600, 700
+                // Platforms to "stick" on (climbing up)
                 platforms.add(Platform(Rectangle(540f, 200f, 80f, 20f), PlatformType.CRUMBLING))
                 platforms.add(Platform(Rectangle(660f, 300f, 80f, 20f), PlatformType.CRUMBLING))
                 platforms.add(Platform(Rectangle(540f, 400f, 80f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(660f, 500f, 80f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(540f, 600f, 80f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(660f, 700f, 80f, 20f), PlatformType.CRUMBLING))
-
-                // The Exit
-                maskX = 640f
-                maskY = 850f
-            }
-            2 -> {
-                // Chunk 2: The Flappy Bird Escape
-                platforms.clear()
-                lasers.clear()
-                movingWalls.clear()
-                gameButtons.clear()
-                gravitySwitches.clear()
-                sharks.clear()
-                playerPath.clear()
-
-                playerX = 640f
-                playerY = 100f
-                velocityY = 0f
-                reverseGravity = true // Antigravity pulling up
-                chunkTime = 0f
-                echoActive = true // "climb up before ur shadow"
-
-                // Platforms to "stick" on (pulling up)
-                platforms.add(Platform(Rectangle(600f, 200f, 80f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(540f, 300f, 80f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(660f, 400f, 80f, 20f), PlatformType.CRUMBLING))
 
                 // 2nd last top platform
-                platforms.add(Platform(Rectangle(540f, 500f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(660f, 500f, 100f, 20f), PlatformType.CRUMBLING))
 
-                // top platform (underneath it)
-                platforms.add(Platform(Rectangle(640f, 600f, 100f, 20f), PlatformType.CRUMBLING))
+                // top platform (underneath it when gravity reverses)
+                platforms.add(Platform(Rectangle(540f, 600f, 100f, 20f), PlatformType.CRUMBLING))
 
                 // The button that appears at start when gravity reverts
                 // Initially hide it far away
                 val button = GameButton(Rectangle(-2000f, 100f, 40f, 40f), false) {
-                    // Mask appears "a lil to left and 3 platforms above u"
-                    // Player is around x=640, y=100. 3 platforms above = ~400f. A lil to left = 500f.
-                    maskX = 500f
+                    // "mask appears in the left side of the screen about to be cruhed by the left wall approaching it"
+                    // Left wall starts at -200, moves 25f/s. After ~6s, it's at x= -50.
+                    // Let's spawn mask at x=200, y=400 so player flies up to it.
+                    maskX = 200f
                     maskY = 400f
                 }
                 gameButtons.add(button)
 
-                // Safe platform at start to land on when gravity reverts
-                platforms.add(Platform(Rectangle(600f, 80f, 80f, 20f), PlatformType.NORMAL))
-
                 maskX = -2000f
                 maskY = 800f
             }
-
         }
     }
 
@@ -825,19 +791,17 @@ class GameScreen(
         jumpZone.addListener(object : InputListener() {
             override fun touchDown(event: InputEvent?, x: Float, y: Float, pointer: Int, button: Int): Boolean {
                 if (!isPaused && !isDead && !isLevelComplete) {
-                    if (currentLevel == 5 && currentChunk == 2) {
-                        // Flappy bird mode jump: push up slightly (or down if reversed)
+                    // "tap the jump button again and again to fly ofk like flappy bird"
+                    if (currentLevel == 5 && currentChunk == 1) {
                         if (reverseGravity) {
-                            velocityY = -450f // fly "down" (push towards floor)
+                            velocityY = -450f
                         } else {
-                            velocityY = 450f // fly "up"
+                            velocityY = 450f
                         }
                     } else {
                         if (reverseGravity) {
-                            // In reverse, jump pushes DOWN
                             if (canJump) velocityY = -jumpStrength
                         } else {
-                            // Normal jump
                             if (canJump) velocityY = jumpStrength
                         }
                     }
@@ -930,23 +894,32 @@ class GameScreen(
         maskRect.set(maskX, maskY, maskWidth, maskHeight)
 
 
-        // --- LEVEL 5 CHUNK 2 LOGIC (Flappy Bird) ---
-        if (currentLevel == 5 && currentChunk == 2 && !isDead && !isLevelComplete) {
+        // --- LEVEL 5 CHUNK 1 LOGIC (Flappy Bird) ---
+        if (currentLevel == 5 && currentChunk == 1 && !isDead && !isLevelComplete) {
             chunkTime += delta
 
-            // "suddenly gravity appears and u fall back on the platform where u started"
-            // Revert gravity when player reaches the top platform (e.g. y > 580f)
-            if (reverseGravity && playerY > 580f) {
+            // "antigravity appears a lil late...it should appear after 3 sec in the game....and then after 3 the gravity happens again"
+            if (chunkTime >= 3.0f && chunkTime < 6.0f && !reverseGravity) {
+                reverseGravity = true
+                screenFlashColor = com.badlogic.gdx.graphics.Color.CYAN
+                screenFlashTimer = 0.1f
+            } else if (chunkTime >= 6.0f && reverseGravity) {
                 reverseGravity = false
-                // Spawn button at the start platform
+                // "as soon as gravity happens after antigravity there must appear a button on the first platform"
                 if (gameButtons.isNotEmpty()) {
                     gameButtons[0].rect.x = 620f
                     gameButtons[0].rect.y = 100f
                 }
+                screenFlashColor = com.badlogic.gdx.graphics.Color.CYAN
+                screenFlashTimer = 0.1f
             }
 
-            // Flappy bird logic: gravity needs to feel slightly different if we want a true flappy bird
-            // But we'll keep baseGravity, and just let them fly.
+            // "if u fly off the screen u die" (top ceiling death)
+            if (playerY > 720f) {
+                die("Flew too close to the sun.")
+                return
+            }
+
             // The echo continues to follow the player
             playerPath.add(PlayerRecord(chunkTime, playerX, playerY, playerHeight < normalHeight))
             while (playerPath.isNotEmpty() && chunkTime - playerPath.first().time > 2.5f) {
@@ -968,7 +941,7 @@ class GameScreen(
                 echoHeight = if (closestRecord.isCrouching) crouchHeight else normalHeight
 
                 echoRect.set(echoX, echoY, playerWidth, echoHeight)
-                if (Intersector.overlaps(playerRect, echoRect)) {
+                if (com.badlogic.gdx.math.Intersector.overlaps(playerRect, echoRect)) {
                     die("Your past caught up to you.")
                     return
                 }
@@ -976,93 +949,6 @@ class GameScreen(
                 echoX = 640f
                 echoY = 100f
                 echoHeight = normalHeight
-            }
-
-            // Since jumping is handled via touch input, we must modify the jumpZone listener
-            // but we can't easily do it here in update. We will modify the input listener in createUi.
-        }
-
-        // --- LEVEL 5 CHUNK 1 LOGIC (THE MIRROR TRAP) ---
-        if (currentLevel == 5 && currentChunk == 1 && !isDead && !isLevelComplete) {
-            chunkTime += delta
-
-            // Record player position
-            playerPath.add(PlayerRecord(chunkTime, playerX, playerY, playerHeight < normalHeight))
-
-            // Keep list bounded to ~3 seconds max history (assuming 60fps, ~180 frames)
-            // But we actually only need history up to 2.0s ago.
-            // We can prune older ones.
-            while (playerPath.isNotEmpty() && chunkTime - playerPath.first().time > 2.5f) {
-                playerPath.removeAt(0)
-            }
-
-            // Find Echo's position (2.0s ago)
-            val echoTargetTime = chunkTime - 2.0f
-            if (echoTargetTime >= 0f && echoActive) {
-                var closestRecord = playerPath.first()
-                for (record in playerPath) {
-                    if (record.time <= echoTargetTime) {
-                        closestRecord = record
-                    } else {
-                        break
-                    }
-                }
-                echoX = closestRecord.x
-                echoY = closestRecord.y
-                echoHeight = if (closestRecord.isCrouching) crouchHeight else normalHeight
-
-                // Echo Collision (Deadly)
-                echoRect.set(echoX, echoY, playerWidth, echoHeight)
-                if (Intersector.overlaps(playerRect, echoRect)) {
-                    die("You trusted the wrong thing just like You do in your life")
-                    return
-                }
-            } else {
-                // Before 2 seconds, Echo stays perfectly still at spawn
-                echoX = 640f
-                echoY = 100f
-                echoHeight = normalHeight
-            }
-
-            // --- The Gravity Glitch ---
-            val timeSinceFlip = chunkTime - lastGravityFlipTime
-            // Flash screen light blue at 4 seconds (1s before flip)
-            if (timeSinceFlip >= 4.0f && timeSinceFlip < 4.1f) {
-                screenFlashColor = Color.CYAN
-                screenFlashTimer = 0.1f
-            }
-            if (timeSinceFlip >= 5.0f) {
-                reverseGravity = !reverseGravity
-                lastGravityFlipTime = chunkTime
-            }
-
-            // --- The Identity Swap Finale ---
-            val triggerZoneY = 750f
-            if (playerY >= triggerZoneY && !hasIdentitySwapped) {
-                hasIdentitySwapped = true
-                // Swap positions
-                val tempX = playerX
-                val tempY = playerY
-                playerX = echoX
-                playerY = echoY
-                echoX = tempX
-                echoY = tempY
-
-                // Flash White
-                screenFlashColor = Color.WHITE
-                screenFlashTimer = 0.2f
-
-                // To ensure Echo continues from the old position smoothly, we can clear the path and inject the player's old position as the new start
-                // Actually, the prompt says "The Echo continues its path from the player's old position."
-                // Wait, if we swap positions, and the echo follows the recorded path, the echo will instantly snap back to following the old recorded path (which is at the bottom).
-                // So we need to rewrite the playerPath history such that the Echo thinks the player's history was at the top.
-                // The easiest way to achieve "Echo continues from player's old position" is to translate all historical records by the difference.
-                val deltaX = tempX - playerX
-                val deltaY = tempY - playerY
-                for (i in 0 until playerPath.size) {
-                    val r = playerPath[i]
-                    playerPath[i] = r.copy(x = r.x + deltaX, y = r.y + deltaY)
-                }
             }
         }
         // ------------------------------------------
