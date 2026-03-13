@@ -74,7 +74,7 @@ class GameScreen(
     private var mirrorActive = false
     private var mirrorX = 0f
     private var mirrorY = 0f
-    private val mirrorRect = Rectangle()
+    private val mirrorRect = com.badlogic.gdx.math.Rectangle()
 
     // Horror Mode State
     private var horrorMode = false
@@ -345,30 +345,30 @@ class GameScreen(
                 maskY = 800f
 
                 // Central Laser Wall (prevents crossing early)
-                lasers.add(Laser(Rectangle(635f, 0f, 10f, 500f)))
+                lasers.add(Laser(com.badlogic.gdx.math.Rectangle(635f, 0f, 10f, 500f)))
 
                 // Step 1: The Squeeze (Crumbling Platforms up both sides)
                 // Left Side (Player)
-                platforms.add(Platform(Rectangle(100f, 80f, 80f, 20f), PlatformType.NORMAL)) // Start
-                platforms.add(Platform(Rectangle(200f, 200f, 80f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(100f, 320f, 80f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(250f, 440f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(com.badlogic.gdx.math.Rectangle(100f, 80f, 80f, 20f), PlatformType.NORMAL)) // Start
+                platforms.add(Platform(com.badlogic.gdx.math.Rectangle(200f, 200f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(com.badlogic.gdx.math.Rectangle(100f, 320f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(com.badlogic.gdx.math.Rectangle(250f, 440f, 80f, 20f), PlatformType.CRUMBLING))
 
                 // Right Side (Mirror)
-                platforms.add(Platform(Rectangle(1280f - 180f, 80f, 80f, 20f), PlatformType.NORMAL)) // Mirror Start
-                platforms.add(Platform(Rectangle(1280f - 280f, 200f, 80f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(1280f - 180f, 320f, 80f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(1280f - 330f, 440f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(com.badlogic.gdx.math.Rectangle(1280f - 180f, 80f, 80f, 20f), PlatformType.NORMAL)) // Mirror Start
+                platforms.add(Platform(com.badlogic.gdx.math.Rectangle(1280f - 280f, 200f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(com.badlogic.gdx.math.Rectangle(1280f - 180f, 320f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(com.badlogic.gdx.math.Rectangle(1280f - 330f, 440f, 80f, 20f), PlatformType.CRUMBLING))
 
                 // The Walls: Symmetrical Red Laser Walls moving inward at 10f
-                movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 10f, isActive = true))
-                movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -10f, isActive = true))
+                movingWalls.add(MovingWall(com.badlogic.gdx.math.Rectangle(-200f, 0f, 200f, 1500f), speed = 10f, isActive = true))
+                movingWalls.add(MovingWall(com.badlogic.gdx.math.Rectangle(1280f, 0f, 200f, 1500f), speed = -10f, isActive = true))
 
                 // Step 2: The Inversion Button (Halfway, x=300, y=550)
-                platforms.add(Platform(Rectangle(280f, 550f, 60f, 20f), PlatformType.NORMAL))
-                platforms.add(Platform(Rectangle(1280f - 340f, 550f, 60f, 20f), PlatformType.NORMAL))
+                platforms.add(Platform(com.badlogic.gdx.math.Rectangle(280f, 550f, 60f, 20f), PlatformType.NORMAL))
+                platforms.add(Platform(com.badlogic.gdx.math.Rectangle(1280f - 340f, 550f, 60f, 20f), PlatformType.NORMAL))
 
-                val inversionBtn = GameButton(Rectangle(290f, 570f, 40f, 40f), false) {
+                val inversionBtn = GameButton(com.badlogic.gdx.math.Rectangle(290f, 570f, 40f, 40f), false) {
                     isControlsInverted = true
                     // Spawn mask at center for Step 3
                     maskX = 640f - 16f
@@ -377,8 +377,8 @@ class GameScreen(
                 gameButtons.add(inversionBtn)
 
                 // Step 3: The Safe Sharks (Act as moving platforms)
-                platforms.add(Platform(Rectangle(350f, 530f, 120f, 60f), PlatformType.SAFE_SHARK))
-                platforms.add(Platform(Rectangle(810f, 530f, 120f, 60f), PlatformType.SAFE_SHARK))
+                platforms.add(Platform(com.badlogic.gdx.math.Rectangle(350f, 530f, 120f, 60f), PlatformType.SAFE_SHARK))
+                platforms.add(Platform(com.badlogic.gdx.math.Rectangle(810f, 530f, 120f, 60f), PlatformType.SAFE_SHARK))
             }
         }
     }
@@ -495,7 +495,7 @@ class GameScreen(
 
                 // 8. The Goal (High up as if it's the 4th layer)
                 maskX = 640f
-                maskY = 550f
+                maskY = 600f
                 // --- END CHUNK 2 FINAL FIX ---
             }
             3 -> {
@@ -1030,10 +1030,7 @@ class GameScreen(
 
         // --- LEVEL 5 CHUNK 2 LOGIC (The Mirror Maze) ---
         if (currentLevel == 5 && currentChunk == 2 && !isDead && !isLevelComplete) {
-            if (playerY > 720f) {
-                die("Flew too close to the sun.")
-                return
-            }
+            chunkTime += delta
 
             // Move the safe sharks
             for (plat in platforms) {
@@ -1076,7 +1073,6 @@ class GameScreen(
                 }
             }
         }
-        // ------------------------------------------
 
         // --- FORCED CHUNK 3 LOGIC (THE ULTIMATE TROLL) ---
         if (currentLevel == 4 && currentChunk == 3) {
@@ -1535,7 +1531,7 @@ class GameScreen(
             shapeRenderer.rectLine(mCenterX, mirrorY + mWaist, mCenterX + 6f + mLegOffset, mirrorY, 3f)
         }
 
-        // Draw Echo (Transparent Red) for Level 5 Chunk 1
+        // Draw Echo (Transparent Red) for Level 5
         if (currentLevel == 5 && currentChunk == 1 && echoActive) {
             shapeRenderer.color = Color(1f, 0f, 0f, 0.5f) // Transparent Red
             val eCenterX = echoX + 12.5f
