@@ -316,32 +316,20 @@ class GameScreen(
                 platforms.add(Platform(Rectangle(300f, 500f, 80f, 20f), PlatformType.CRUMBLING))
                 platforms.add(Platform(Rectangle(600f, 580f, 80f, 20f), PlatformType.CRUMBLING))
 
+                // Randomly patrolling sharks as requested by the user: "random sharks petrol the screen"
+                sharks.add(Shark(400f, 400f, 120f, 100f, 500f))
+                sharks.add(Shark(800f, 500f, 150f, 700f, 1100f))
+
                 // The Shark Swap
                 // Spawn two sharks at y=600.
-
-                // 1. "The one that looks like a DeadlyShark must have a SafeShark (Solid) hitbox."
-                // To look like a DeadlyShark, we add a regular Shark object.
-                // But to make it safe, we must map its hitbox logic or bypass the death.
-                // It's easier to handle this in `update` by making it a SafeShark platform
-                // and just drawing a shark sprite instead of adding it to the `sharks` list,
-                // BUT the requirement implies it needs a SafeShark (Solid) *hitbox*, meaning it's a solid platform.
-                // The existing codebase draws `PlatformType.SAFE_SHARK` using the `sharkTexture` anyway.
-                // Wait, `SAFE_SHARK` platforms DO draw using `sharkTexture`. And they ARE solid platforms.
-                // So "looks like a SafeShark" = `SAFE_SHARK` platform.
-                // "looks like a DeadlyShark" = regular `Shark` object.
-                // So if we need one that *looks* like a SafeShark but has a *DeadlyShark* hitbox, we need a platform that draws like a shark but is deadly.
-                // And we need one that *looks* like a DeadlyShark but has a *SafeShark* hitbox. But they both look the SAME in the game (they both use sharkTexture). The only difference is behavior.
-                // Let's assume the user means: One patrols like a DeadlyShark but is actually solid (SafeShark logic). The other sits still like a SafeShark but is actually deadly (DeadlyShark logic).
-                // Actually, let's strictly follow the instruction:
-                // "The one that looks like a SafeShark must have a DeadlyShark hitbox." -> We will add a Platform that is drawn as a SafeShark, but its type is `DEADLY_RED`.
-                // "The one that looks like a DeadlyShark must have a SafeShark (Solid) hitbox." -> We will add a Shark to the `sharks` list so it patrols/animates, but we'll add a corresponding `SAFE_SHARK` platform that follows it and we will EXEMPT the shark from killing the player.
-
-                // Deadly Shark that looks like a Safe Shark (stationary solid platform visually, but deadly hitbox)
+                // 1. "The one that looks like a SafeShark must have a DeadlyShark hitbox."
+                // A SafeShark looks like a shark but is solid (a platform). We make it DEADLY_RED but width 120.4f to identify it.
                 val trapShark = Platform(Rectangle(800f, 600f, 120f, 60f), PlatformType.DEADLY_RED)
                 trapShark.rect.width = 120.4f // Unique width mapping to draw it as a shark in SpriteBatch
                 platforms.add(trapShark)
 
-                // Safe Shark that looks like a Deadly Shark (patrolling shark, but solid hitbox and no death)
+                // 2. "The one that looks like a DeadlyShark must have a SafeShark (Solid) hitbox."
+                // Looks like a regular patrolling shark, so we add a Shark.
                 sharks.add(Shark(400f, 600f, 100f, 300f, 900f))
                 val safePlat = Platform(Rectangle(400f, 600f, 120f, 60f), PlatformType.SAFE_SHARK)
                 safePlat.rect.width = 120.3f // Unique width mapping to sync its position with the patrolling shark
@@ -1148,6 +1136,7 @@ class GameScreen(
         maskRect.set(maskX, maskY, maskWidth, maskHeight)
 
 
+
         // --- LEVEL 6 CHUNK 1 LOGIC (The Refraction Engine & Tide) ---
         if (currentLevel == 6 && currentChunk == 1 && !isDead && !isLevelComplete) {
             chunkTime += delta
@@ -1553,6 +1542,12 @@ class GameScreen(
                     die("You ain't no Newton")
                 }
             }
+        } else if (currentLevel == 6 && currentChunk == 1) {
+            for (plat in platforms) {
+                if (plat.type == PlatformType.DEADLY_RED && Intersector.overlaps(playerRect, plat.rect)) {
+                    die() // Triggers specific roast in die()
+                }
+            }
         }
 
         // Mirror Logic Level 5 Chunk 2
@@ -1745,11 +1740,6 @@ class GameScreen(
     private fun die(customMessage: String? = null) {
         if (isDead) return
         isDead = true
-
-        if (currentLevel == 6 && currentChunk == 1) {
-            stateTimer = -9999f
-        }
-
         var roast = customMessage ?: deathRoasts.random()
 
         if (currentLevel == 6 && currentChunk == 1) {
