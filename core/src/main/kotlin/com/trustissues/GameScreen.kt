@@ -255,6 +255,7 @@ class GameScreen(
         }
 
         maskRect.set(maskX, maskY, maskWidth, maskHeight)
+        playerRect.set(playerX, playerY, playerWidth, playerHeight)
     }
 
     private fun setupLevel1(chunk: Int) {
