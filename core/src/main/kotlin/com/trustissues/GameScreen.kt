@@ -97,6 +97,12 @@ class GameScreen(
     private val mirrorRect = Rectangle()
     private var mirrorActive = false
 
+    // Level 5 Chunk 3
+    private var isCageActive = false
+    private var cageAngle = 0f
+    private var fakeMaskTouched = false
+    private var ceilingLaserDrop = false
+
     // Assets
     private var sharkTexture: Texture? = null
     private var maskTexture: Texture? = null
@@ -404,6 +410,78 @@ class GameScreen(
                     platforms.add(sharkPlatB)
                 }
                 gameButtons.add(button)
+            }
+            3 -> {
+                // Chunk 3: The Grand Betrayal
+                platforms.clear()
+                lasers.clear()
+                movingWalls.clear()
+                gameButtons.clear()
+                gravitySwitches.clear()
+                sharks.clear()
+                playerPath.clear()
+
+                playerX = 640f
+                playerY = 100f
+                velocityY = 0f
+                reverseGravity = false
+                isControlsInverted = false
+                mirrorActive = false
+                echoActive = true
+                chunkTime = 0f
+                isCageActive = true
+                cageAngle = 0f
+                fakeMaskTouched = false
+                ceilingLaserDrop = false
+
+                // Safe platform at start to land on
+                platforms.add(Platform(Rectangle(600f, 80f, 80f, 20f), PlatformType.NORMAL))
+
+                // The Shark
+                val centerShark = Shark(580f, 360f, 0f, 580f, 580f)
+                sharks.add(centerShark)
+                platforms.add(Platform(Rectangle(580f, 360f, 120f, 60f), PlatformType.SAFE_SHARK))
+
+                // The Walls
+                val leftWall = MovingWall(Rectangle(-400f, 0f, 400f, 1500f), speed = 50f, isActive = true)
+                val rightWall = MovingWall(Rectangle(1280f, 0f, 400f, 1500f), speed = -50f, isActive = true)
+                movingWalls.add(leftWall)
+                movingWalls.add(rightWall)
+
+                // Ceiling Laser
+                lasers.add(Laser(Rectangle(0f, 740f, 1280f, 15f), isSweeping = false))
+
+                // The Mask
+                maskX = 640f - 16f
+                maskY = 600f
+
+                // Buttons
+                // Button 1: Slows the Crusher Walls (Bottom Left)
+                val btn1 = GameButton(Rectangle(100f, 100f, 40f, 40f), false) {
+                    leftWall.speed = 10f
+                    rightWall.speed = -10f
+                }
+                gameButtons.add(btn1)
+
+                // Button 2: Stops the spinning laser cage around the Mask (Top Left)
+                val btn2 = GameButton(Rectangle(100f, 600f, 40f, 40f), false) {
+                    isCageActive = false
+                }
+                gameButtons.add(btn2)
+
+                // Button 3: Spawns a second "Mirror Shark" to help you reach the top (Bottom Right)
+                val btn3 = GameButton(Rectangle(1140f, 100f, 40f, 40f), false) {
+                    sharks.add(Shark(900f, 480f, 0f, 900f, 900f))
+                    platforms.add(Platform(Rectangle(900f, 480f, 120f, 60f), PlatformType.SAFE_SHARK))
+                }
+                gameButtons.add(btn3)
+
+                // Button 4: Opens the "Gate" to the Mask (Top Right)
+                val btn4 = GameButton(Rectangle(1140f, 600f, 40f, 40f), false) {
+                    // We can visually represent this by removing a platform blocking the mask, or just as a requirement.
+                    // For now, it just clicks.
+                }
+                gameButtons.add(btn4)
             }
         }
     }
@@ -872,9 +950,9 @@ class GameScreen(
         jumpZone.addListener(object : InputListener() {
             override fun touchDown(event: InputEvent?, x: Float, y: Float, pointer: Int, button: Int): Boolean {
                 if (!isPaused && !isDead && !isLevelComplete) {
-                    val currentJumpStrength = if (currentLevel == 5 && currentChunk == 2) 500f else jumpStrength
+                    val currentJumpStrength = if (currentLevel == 5 && (currentChunk == 2 || currentChunk == 3)) 500f else jumpStrength
                     // "tap the jump button again and again to fly ofk like flappy bird"
-                    if (currentLevel == 5 && (currentChunk == 1 || currentChunk == 2)) {
+                    if (currentLevel == 5 && (currentChunk == 1 || currentChunk == 2 || currentChunk == 3)) {
                         if (reverseGravity) {
                             velocityY = -currentJumpStrength
                         } else {
@@ -1033,6 +1111,104 @@ class GameScreen(
                 echoHeight = normalHeight
             }
         }
+
+        // --- LEVEL 5 CHUNK 3 LOGIC (The Grand Betrayal) ---
+        if (currentLevel == 5 && currentChunk == 3 && !isDead && !isLevelComplete) {
+            chunkTime += delta
+
+            // The Echo follows with 3-second delay
+            playerPath.add(PlayerRecord(chunkTime, playerX, playerY, playerHeight < normalHeight))
+            while (playerPath.isNotEmpty() && chunkTime - playerPath.first().time > 3.5f) {
+                playerPath.removeAt(0)
+            }
+
+            val echoTargetTime = chunkTime - 3.0f
+            if (echoTargetTime >= 0f && echoActive) {
+                var closestRecord = playerPath.first()
+                for (record in playerPath) {
+                    if (record.time <= echoTargetTime) {
+                        closestRecord = record
+                    } else {
+                        break
+                    }
+                }
+                echoX = closestRecord.x
+                echoY = closestRecord.y
+                echoHeight = if (closestRecord.isCrouching) crouchHeight else normalHeight
+
+                echoRect.set(echoX, echoY, playerWidth, echoHeight)
+                if (com.badlogic.gdx.math.Intersector.overlaps(playerRect, echoRect)) {
+                    die("Your past caught up to you.")
+                    return
+                }
+            } else {
+                echoX = 640f
+                echoY = 100f
+                echoHeight = normalHeight
+            }
+
+            // Spinning Laser Cage
+            if (isCageActive && !fakeMaskTouched) {
+                cageAngle += 90f * delta
+
+                // Collision with spinning cage
+                val cx = maskX + maskWidth / 2f
+                val cy = maskY + maskHeight / 2f
+                val radius = 50f
+                var hitCage = false
+                for (i in 0..3) {
+                    val angle = cageAngle + i * 90f
+                    val rad = Math.toRadians(angle.toDouble())
+                    val endX = cx + (Math.cos(rad) * radius).toFloat()
+                    val endY = cy + (Math.sin(rad) * radius).toFloat()
+
+                    // Simple segment intersection with playerRect
+                    if (Intersector.intersectSegmentRectangle(
+                            com.badlogic.gdx.math.Vector2(cx, cy),
+                            com.badlogic.gdx.math.Vector2(endX, endY),
+                            playerRect
+                        )) {
+                        hitCage = true
+                    }
+                }
+                if (hitCage) {
+                    die("Curiosity killed the cat, lasers just grilled it.")
+                    return
+                }
+            }
+
+            // Fake Mask Touch
+            if (!fakeMaskTouched && Intersector.overlaps(playerRect, maskRect) && gameButtons.all { it.isPressed }) {
+                fakeMaskTouched = true
+                maskX = -2000f // Vanish
+                maskY = -2000f
+                maskRect.set(maskX, maskY, maskWidth, maskHeight) // update right away to avoid double trigger
+                ceilingLaserDrop = true
+                lasers[0].sweepSpeed = 500f // Positive speed
+                lasers[0].isSweeping = true
+                lasers[0].movingRight = false // movingRight = false means downwards
+                lasers[0].minY = -1000f // let it drop all the way
+                lasers[0].maxY = 740f
+
+                die("All this for a drop of blood... the Shark was the way.")
+                // Prevent real death flag so we can still win, but show the roast
+                isDead = false
+            }
+
+            // Real Win: Stand on the SAFE_SHARK after the fake mask has been touched
+            if (fakeMaskTouched && !isDead) {
+                for (plat in platforms) {
+                    if (plat.type == PlatformType.SAFE_SHARK) {
+                        // Check if player is standing on it (Y is roughly on top and X overlaps)
+                        if (playerY >= plat.rect.y + plat.rect.height - 10f && playerY <= plat.rect.y + plat.rect.height + 10f) {
+                            if (playerX + playerWidth > plat.rect.x && playerX < plat.rect.x + plat.rect.width) {
+                                win()
+                            }
+                        }
+                    }
+                }
+            }
+        }
         // ------------------------------------------
 
         // --- FORCED CHUNK 3 LOGIC (THE ULTIMATE TROLL) ---
@@ -1083,7 +1259,7 @@ class GameScreen(
         // Physics
         val isExemptLevel = (currentLevel == 4 && (currentChunk == 2 || currentChunk == 3)) || currentLevel == 3 || currentLevel == 5
 
-        val currentGravity = if (currentLevel == 5 && currentChunk == 2) -1800f else -3200f
+        val currentGravity = if (currentLevel == 5 && (currentChunk == 2 || currentChunk == 3)) -1800f else -3200f
         if (reverseGravity) {
             gravity = -currentGravity // Flip gravity positive
             velocityY += gravity * delta
@@ -1403,11 +1579,15 @@ class GameScreen(
             if (b.y > 720f) bubbleIter.remove()
         }
 
+        // Ceiling drop is handled by normal sweeping logic.
+
         // Default Win Condition (Ignore in Level 4 Chunk 3)
         if (currentLevel == 5 && currentChunk == 2) {
             if (!isDead && Intersector.overlaps(playerRect, maskRect) && Intersector.overlaps(mirrorRect, maskRect)) {
                 win()
             }
+        } else if (currentLevel == 5 && currentChunk == 3) {
+            // Ignore default win, handled in logic block
         } else if (currentLevel != 4 || currentChunk != 3) {
             if (!isDead && Intersector.overlaps(playerRect, maskRect)) win()
         }
@@ -1416,6 +1596,9 @@ class GameScreen(
     private fun die(customMessage: String? = null) {
         if (isDead) return
         isDead = true
+        if (currentLevel == 5 && currentChunk == 3) {
+            stateTimer = -9999f
+        }
         val roast = customMessage ?: deathRoasts.random()
         messageLabel?.setText(roast)
         messageLabel?.color = Color.RED
@@ -1540,7 +1723,7 @@ class GameScreen(
         shapeRenderer.rectLine(centerX, playerY + waistOffset, centerX + 6f + legOffset, playerY, 3f)
 
         // Draw Echo (Transparent Red) for Level 5
-        if (currentLevel == 5 && currentChunk == 1 && echoActive) {
+        if (currentLevel == 5 && (currentChunk == 1 || currentChunk == 3) && echoActive) {
             shapeRenderer.color = Color(1f, 0f, 0f, 0.5f) // Transparent Red
             val eCenterX = echoX + 12.5f
             val eCrouch = echoHeight < normalHeight
@@ -1569,6 +1752,22 @@ class GameScreen(
             shapeRenderer.rectLine(mCenterX, mirrorRect.y + mNeck, mCenterX, mirrorRect.y + mWaist, 3f)
             shapeRenderer.rectLine(mCenterX, mirrorRect.y + mWaist, mCenterX - 6f - mLegOffset, mirrorRect.y, 3f)
             shapeRenderer.rectLine(mCenterX, mirrorRect.y + mWaist, mCenterX + 6f + mLegOffset, mirrorRect.y, 3f)
+        }
+
+        // Draw spinning laser cage for Level 5 Chunk 3
+        if (currentLevel == 5 && currentChunk == 3 && isCageActive && !fakeMaskTouched) {
+            shapeRenderer.color = Color(1f, 0.1f, 0.1f, 0.8f) // Same transparent red as lasers
+            val centerX = maskX + maskWidth / 2f
+            val centerY = maskY + maskHeight / 2f
+            val radius = 50f
+            for (i in 0..3) {
+                val angle = cageAngle + i * 90f
+                val rad = Math.toRadians(angle.toDouble())
+                val endX = centerX + (Math.cos(rad) * radius).toFloat()
+                val endY = centerY + (Math.sin(rad) * radius).toFloat()
+                // Just draw a line or thin rect, since we need to check collision let's draw a rect line
+                shapeRenderer.rectLine(centerX, centerY, endX, endY, 4f)
+            }
         }
 
         shapeRenderer.end()
