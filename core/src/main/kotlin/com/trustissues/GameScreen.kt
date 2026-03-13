@@ -69,6 +69,12 @@ class GameScreen(
     private var allowScreenWrap = false
     private var isPaused = false
 
+    // Refraction Engine State
+    private var renderOffset = 0f
+    private var renderOffsetY = 0f
+    private var tideTimer = 0f
+    private var tideTargetOffset = 50f
+
     // Horror Mode State
     private var horrorMode = false
     private var flashlightRadius = 300f // Default 300f
@@ -240,6 +246,11 @@ class GameScreen(
         isControlsInverted = false
         mirrorActive = false
 
+        renderOffset = 0f
+        renderOffsetY = 0f
+        tideTimer = 0f
+        tideTargetOffset = 50f
+
         horrorMode = (currentLevel == 3)
         strobeTimer = 0f
         isLightsOn = false
@@ -258,10 +269,89 @@ class GameScreen(
             setupLevel4(chunk)
         } else if (currentLevel == 5) {
             setupLevel5(chunk)
+        } else if (currentLevel == 6) {
+            setupLevel6(chunk)
         }
 
         maskRect.set(maskX, maskY, maskWidth, maskHeight)
         playerRect.set(playerX, playerY, playerWidth, playerHeight)
+    }
+
+    private fun setupLevel6(chunk: Int) {
+        when (chunk) {
+            1 -> {
+                // Level 6-1: The Bubbling Abyss (The Refraction Engine)
+                platforms.clear()
+                lasers.clear()
+                movingWalls.clear()
+                gameButtons.clear()
+                gravitySwitches.clear()
+                sharks.clear()
+
+                playerX = 640f
+                playerY = 100f
+                velocityY = 0f
+                reverseGravity = false
+
+                // Refraction active
+                renderOffset = 50f
+                renderOffsetY = 0f
+                tideTimer = 0f
+                tideTargetOffset = -50f
+
+                echoActive = true
+
+                // Safe platform at start
+                platforms.add(Platform(Rectangle(600f, 80f, 80f, 20f), PlatformType.NORMAL))
+
+                // The Walls: Symmetrical Red Laser Walls
+                movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 25f, isActive = true))
+                movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -25f, isActive = true))
+
+                // 6 zig-zag CRUMBLING platforms
+                platforms.add(Platform(Rectangle(300f, 180f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(600f, 260f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(900f, 340f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(600f, 420f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(300f, 500f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(600f, 580f, 80f, 20f), PlatformType.CRUMBLING))
+
+                // The Shark Swap
+                // Spawn two sharks at y=600.
+
+                // 1. "The one that looks like a DeadlyShark must have a SafeShark (Solid) hitbox."
+                // To look like a DeadlyShark, we add a regular Shark object.
+                // But to make it safe, we must map its hitbox logic or bypass the death.
+                // It's easier to handle this in `update` by making it a SafeShark platform
+                // and just drawing a shark sprite instead of adding it to the `sharks` list,
+                // BUT the requirement implies it needs a SafeShark (Solid) *hitbox*, meaning it's a solid platform.
+                // The existing codebase draws `PlatformType.SAFE_SHARK` using the `sharkTexture` anyway.
+                // Wait, `SAFE_SHARK` platforms DO draw using `sharkTexture`. And they ARE solid platforms.
+                // So "looks like a SafeShark" = `SAFE_SHARK` platform.
+                // "looks like a DeadlyShark" = regular `Shark` object.
+                // So if we need one that *looks* like a SafeShark but has a *DeadlyShark* hitbox, we need a platform that draws like a shark but is deadly.
+                // And we need one that *looks* like a DeadlyShark but has a *SafeShark* hitbox. But they both look the SAME in the game (they both use sharkTexture). The only difference is behavior.
+                // Let's assume the user means: One patrols like a DeadlyShark but is actually solid (SafeShark logic). The other sits still like a SafeShark but is actually deadly (DeadlyShark logic).
+                // Actually, let's strictly follow the instruction:
+                // "The one that looks like a SafeShark must have a DeadlyShark hitbox." -> We will add a Platform that is drawn as a SafeShark, but its type is `DEADLY_RED`.
+                // "The one that looks like a DeadlyShark must have a SafeShark (Solid) hitbox." -> We will add a Shark to the `sharks` list so it patrols/animates, but we'll add a corresponding `SAFE_SHARK` platform that follows it and we will EXEMPT the shark from killing the player.
+
+                // Deadly Shark that looks like a Safe Shark (stationary solid platform visually, but deadly hitbox)
+                val trapShark = Platform(Rectangle(800f, 600f, 120f, 60f), PlatformType.DEADLY_RED)
+                trapShark.rect.width = 120.4f // Unique width mapping to draw it as a shark in SpriteBatch
+                platforms.add(trapShark)
+
+                // Safe Shark that looks like a Deadly Shark (patrolling shark, but solid hitbox and no death)
+                sharks.add(Shark(400f, 600f, 100f, 300f, 900f))
+                val safePlat = Platform(Rectangle(400f, 600f, 120f, 60f), PlatformType.SAFE_SHARK)
+                safePlat.rect.width = 120.3f // Unique width mapping to sync its position with the patrolling shark
+                platforms.add(safePlat)
+
+                maskX = 640f - 16f
+                maskY = 660f
+                renderOffsetY = 100f // "The Mask sprite is refracted 100px up."
+            }
+        }
     }
 
     private fun setupLevel1(chunk: Int) {
@@ -1058,6 +1148,52 @@ class GameScreen(
         maskRect.set(maskX, maskY, maskWidth, maskHeight)
 
 
+        // --- LEVEL 6 CHUNK 1 LOGIC (The Refraction Engine & Tide) ---
+        if (currentLevel == 6 && currentChunk == 1 && !isDead && !isLevelComplete) {
+            chunkTime += delta
+            tideTimer += delta
+
+            // The Tide: Every 4 seconds, lerp renderOffset between 50f and -50f
+            if (tideTimer >= 4.0f) {
+                tideTimer = 0f
+                tideTargetOffset = if (tideTargetOffset == 50f) -50f else 50f
+            }
+
+            // Lerp renderOffset towards tideTargetOffset
+            renderOffset = com.badlogic.gdx.math.MathUtils.lerp(renderOffset, tideTargetOffset, delta * 2f)
+
+            // The echo continues to follow the player
+            playerPath.add(PlayerRecord(chunkTime, playerX, playerY, playerHeight < normalHeight))
+            while (playerPath.isNotEmpty() && chunkTime - playerPath.first().time > 2.5f) {
+                playerPath.removeAt(0)
+            }
+
+            val echoTargetTime = chunkTime - 2.0f
+            if (echoTargetTime >= 0f && echoActive) {
+                var closestRecord = playerPath.first()
+                for (record in playerPath) {
+                    if (record.time <= echoTargetTime) {
+                        closestRecord = record
+                    } else {
+                        break
+                    }
+                }
+                echoX = closestRecord.x
+                echoY = closestRecord.y
+                echoHeight = if (closestRecord.isCrouching) crouchHeight else normalHeight
+
+                echoRect.set(echoX, echoY, playerWidth, echoHeight)
+                if (com.badlogic.gdx.math.Intersector.overlaps(playerRect, echoRect)) {
+                    die("Your past caught up to you.")
+                    return
+                }
+            } else {
+                echoX = 640f
+                echoY = 100f
+                echoHeight = normalHeight
+            }
+        }
+
         // --- LEVEL 5 CHUNK 1 LOGIC (Flappy Bird) ---
         if (currentLevel == 5 && currentChunk == 1 && !isDead && !isLevelComplete) {
             chunkTime += delta
@@ -1543,6 +1679,13 @@ class GameScreen(
                         plat.rect.x = shark.x
                     }
                 }
+            } else if (currentLevel == 6 && currentChunk == 1) {
+                // Sync the safe shark platform logic for the "Deadly Shark" (patrolling one)
+                for (plat in platforms) {
+                    if (plat.type == PlatformType.SAFE_SHARK && plat.rect.width == 120.3f && shark.y == 600f) {
+                        plat.rect.x = shark.x
+                    }
+                }
             }
 
             // Shark Collision
@@ -1556,7 +1699,8 @@ class GameScreen(
                 // Safe Shark Logic: Skip collision if shark is at x=600 (Chunk 2 Friendly Shark)
                 // Also skip deadly collision for Level 5 Chunk 2 Safe Sharks
                 val isSafeSharkLevel5 = (currentLevel == 5 && currentChunk == 2)
-                if ((currentLevel != 4 || currentChunk != 2 || shark.x != 600f) && !isSafeSharkLevel5) {
+                val isSafeSharkLevel6 = (currentLevel == 6 && currentChunk == 1 && shark.y == 600f)
+                if ((currentLevel != 4 || currentChunk != 2 || shark.x != 600f) && !isSafeSharkLevel5 && !isSafeSharkLevel6) {
                     sharkRect.set(shark.x, shark.y, 120f, 60f) // approx
                     if (Intersector.overlaps(playerRect, sharkRect)) {
                         // In Level 5 Chunk 3, the sharks are deadly if buttons aren't pressed,
@@ -1601,7 +1745,22 @@ class GameScreen(
     private fun die(customMessage: String? = null) {
         if (isDead) return
         isDead = true
-        val roast = customMessage ?: deathRoasts.random()
+
+        if (currentLevel == 6 && currentChunk == 1) {
+            stateTimer = -9999f
+        }
+
+        var roast = customMessage ?: deathRoasts.random()
+
+        if (currentLevel == 6 && currentChunk == 1) {
+            val refracRoasts = listOf(
+                "Your eyes are lying, Rafay. Just like she did.",
+                "Physics don't care about what you 'see'.",
+                "You're chasing ghosts in a haunted ocean."
+            )
+            roast = refracRoasts.random()
+        }
+
         messageLabel?.setText(roast)
         messageLabel?.color = Color.RED
         messageLabel?.isVisible = true
@@ -1673,6 +1832,8 @@ class GameScreen(
             if (plat.state == PlatformState.DESTROYED) continue
             if (plat.type == PlatformType.INVISIBLE) continue // Do not draw invisible platforms
             if (plat.type == PlatformType.SAFE_SHARK) continue // Drawn in SpriteBatch
+            // Skip the deadly trap shark drawing as platform
+            if (plat.type == PlatformType.DEADLY_RED && plat.rect.width == 120.4f) continue
 
             val isPlatformVisible = (currentLevel != 3 || currentChunk != 3) || isLightsOn || plat.state == PlatformState.CRUMBLING
             if (isPlatformVisible && isVisible(plat.rect.x, plat.rect.y)) {
@@ -1680,7 +1841,7 @@ class GameScreen(
                     PlatformType.DEADLY_RED -> Color.RED
                     else -> if (plat.state == PlatformState.CRUMBLING) Color.RED else Color.GREEN
                 }
-                shapeRenderer.rect(plat.rect.x, plat.rect.y, plat.rect.width, plat.rect.height)
+                shapeRenderer.rect(plat.rect.x + renderOffset, plat.rect.y, plat.rect.width, plat.rect.height)
             }
         }
 
@@ -1688,31 +1849,31 @@ class GameScreen(
         for (sw in gravitySwitches) {
             if (sw.isActive && isVisible(sw.rect.x, sw.rect.y)) {
                 shapeRenderer.color = Color.BLUE
-                shapeRenderer.rect(sw.rect.x, sw.rect.y, sw.rect.width, sw.rect.height)
+                shapeRenderer.rect(sw.rect.x + renderOffset, sw.rect.y, sw.rect.width, sw.rect.height)
             }
         }
 
         // Draw Moving Walls
         shapeRenderer.color = Color.DARK_GRAY
         for (wall in movingWalls) {
-            shapeRenderer.rect(wall.rect.x, wall.rect.y, wall.rect.width, wall.rect.height)
+            shapeRenderer.rect(wall.rect.x + renderOffset, wall.rect.y, wall.rect.width, wall.rect.height)
         }
 
         // Draw Game Buttons
         for (btn in gameButtons) {
             shapeRenderer.color = if (btn.isPressed) Color.GRAY else Color.YELLOW
-            shapeRenderer.rect(btn.rect.x, btn.rect.y, btn.rect.width, btn.rect.height)
+            shapeRenderer.rect(btn.rect.x + renderOffset, btn.rect.y, btn.rect.width, btn.rect.height)
         }
 
         // Draw Lasers (Transparent Red)
         shapeRenderer.color = Color(1f, 0.1f, 0.1f, 0.8f)
         for (laser in lasers) {
-             shapeRenderer.rect(laser.rect.x, laser.rect.y, laser.rect.width, laser.rect.height)
+             shapeRenderer.rect(laser.rect.x + renderOffset, laser.rect.y, laser.rect.width, laser.rect.height)
         }
 
         // Draw Player (Procedural Shapes)
         shapeRenderer.color = if (horrorMode) Color.GRAY else Color.BLACK
-        val centerX = playerX + 12.5f
+        val centerX = playerX + 12.5f + renderOffset
         val isCrouching = playerHeight < normalHeight
         val headOffset = if (isCrouching) 22f else 44f
         val neckOffset = if (isCrouching) 15f else 38f
@@ -1724,10 +1885,10 @@ class GameScreen(
         shapeRenderer.rectLine(centerX, playerY + waistOffset, centerX - 6f - legOffset, playerY, 3f)
         shapeRenderer.rectLine(centerX, playerY + waistOffset, centerX + 6f + legOffset, playerY, 3f)
 
-        // Draw Echo (Transparent Red) for Level 5
-        if (currentLevel == 5 && (currentChunk == 1 || currentChunk == 3) && echoActive) {
+        // Draw Echo (Transparent Red) for Level 5 (and Level 6)
+        if (((currentLevel == 5 && (currentChunk == 1 || currentChunk == 3)) || (currentLevel == 6 && currentChunk == 1)) && echoActive) {
             shapeRenderer.color = Color(1f, 0f, 0f, 0.5f) // Transparent Red
-            val eCenterX = echoX + 12.5f
+            val eCenterX = echoX + 12.5f + renderOffset
             val eCrouch = echoHeight < normalHeight
             val eHead = if (eCrouch) 22f else 44f
             val eNeck = if (eCrouch) 15f else 38f
@@ -1742,7 +1903,7 @@ class GameScreen(
         // Draw Mirror Player (Deadly Red) for Level 5 Chunk 2
         if (currentLevel == 5 && currentChunk == 2 && mirrorActive) {
             shapeRenderer.color = Color.RED // Deadly Red
-            val mCenterX = mirrorRect.x + 12.5f
+            val mCenterX = mirrorRect.x + 12.5f + renderOffset
             val mCrouch = mirrorRect.height < normalHeight
             val mHead = if (mCrouch) 22f else 44f
             val mNeck = if (mCrouch) 15f else 38f
@@ -1759,7 +1920,7 @@ class GameScreen(
         // Draw spinning laser cage for Level 5 Chunk 3
         if (currentLevel == 5 && currentChunk == 3 && isCageActive && !fakeMaskTouched) {
             shapeRenderer.color = Color(1f, 0.1f, 0.1f, 0.8f) // Same transparent red as lasers
-            val centerX = maskX + maskWidth / 2f
+            val centerX = maskX + maskWidth / 2f + renderOffset
             val centerY = maskY + maskHeight / 2f
             val radius = 50f
             for (i in 0..3) {
@@ -1788,15 +1949,15 @@ class GameScreen(
             // 1. Draw Real Sharks
             for (shark in sharks) {
                 if (isVisible(shark.x, shark.y)) {
-                    game.batch.draw(tex, shark.x, shark.y, width, height, 0, 0, tex.width, tex.height, shark.facingRight, false)
+                    game.batch.draw(tex, shark.x + renderOffset, shark.y, width, height, 0, 0, tex.width, tex.height, shark.facingRight, false)
                 }
             }
 
             // 2. Draw Safe Sharks (Platforms)
             for (plat in platforms) {
-                if (plat.type == PlatformType.SAFE_SHARK && isVisible(plat.rect.x, plat.rect.y)) {
+                if ((plat.type == PlatformType.SAFE_SHARK || (plat.type == PlatformType.DEADLY_RED && plat.rect.width == 120.4f)) && isVisible(plat.rect.x, plat.rect.y)) {
                     // Draw shark at platform position
-                    game.batch.draw(tex, plat.rect.x, plat.rect.y, width, height, 0, 0, tex.width, tex.height, false, false)
+                    game.batch.draw(tex, plat.rect.x + renderOffset, plat.rect.y, width, height, 0, 0, tex.width, tex.height, false, false)
                 }
             }
         }
@@ -1805,7 +1966,7 @@ class GameScreen(
         maskTexture?.let { tex ->
             val hideMask = (currentLevel == 3 && currentChunk == 3 && !isLightsOn)
             if (!hideMask && isVisible(maskX, maskY)) {
-                game.batch.draw(tex, maskX, maskY, 32f, 32f)
+                game.batch.draw(tex, maskX + renderOffset, maskY + renderOffsetY, 32f, 32f)
             }
         }
 
