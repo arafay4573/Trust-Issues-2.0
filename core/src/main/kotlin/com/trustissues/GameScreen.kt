@@ -69,6 +69,13 @@ class GameScreen(
     private var allowScreenWrap = false
     private var isPaused = false
 
+    // Mirror State
+    private var isControlsInverted = false
+    private var mirrorActive = false
+    private var mirrorX = 0f
+    private var mirrorY = 0f
+    private val mirrorRect = Rectangle()
+
     // Horror Mode State
     private var horrorMode = false
     private var flashlightRadius = 300f // Default 300f
@@ -272,7 +279,7 @@ class GameScreen(
     private fun setupLevel5(chunk: Int) {
         when (chunk) {
             1 -> {
-                // Chunk 1: The Flappy Bird Escape
+                // Chunk 1: The Mirror Trap
                 platforms.clear()
                 lasers.clear()
                 movingWalls.clear()
@@ -281,48 +288,97 @@ class GameScreen(
                 sharks.clear()
                 playerPath.clear()
 
+                // 1. The Opening State (Spawning the Ghost)
                 playerX = 640f
                 playerY = 100f
                 velocityY = 0f
-                reverseGravity = false // Start normal gravity
+                reverseGravity = false
                 chunkTime = 0f
                 hasIdentitySwapped = false
                 lastGravityFlipTime = 0f
                 screenFlashColor = null
                 screenFlashTimer = 0f
-                echoActive = true // "climb up before ur shadow"
+                echoActive = true
 
-                // Safe platform at start to land on when gravity reverts
-                platforms.add(Platform(Rectangle(600f, 80f, 80f, 20f), PlatformType.NORMAL))
+                // Single green platform slightly wider than player
+                platforms.add(Platform(Rectangle(620f, 80f, 65f, 20f), PlatformType.NORMAL))
 
                 // The Walls: Symmetrical Red Laser Walls moving inward at 25f
                 movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 25f, isActive = true))
                 movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -25f, isActive = true))
 
-                // Platforms to "stick" on (climbing up)
+                // 2. The Path (The Crumbling Staircase)
+                // y=200, 300, 400, 500, 600, 700
                 platforms.add(Platform(Rectangle(540f, 200f, 80f, 20f), PlatformType.CRUMBLING))
                 platforms.add(Platform(Rectangle(660f, 300f, 80f, 20f), PlatformType.CRUMBLING))
                 platforms.add(Platform(Rectangle(540f, 400f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(660f, 500f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(540f, 600f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(660f, 700f, 80f, 20f), PlatformType.CRUMBLING))
 
-                // 2nd last top platform
-                platforms.add(Platform(Rectangle(660f, 500f, 100f, 20f), PlatformType.CRUMBLING))
+                // The Exit
+                maskX = 640f
+                maskY = 850f
+            }
+            2 -> {
+                // Chunk 2: The Mirror Maze
+                platforms.clear()
+                lasers.clear()
+                movingWalls.clear()
+                gameButtons.clear()
+                gravitySwitches.clear()
+                sharks.clear()
+                playerPath.clear()
 
-                // top platform (underneath it when gravity reverses)
-                platforms.add(Platform(Rectangle(540f, 600f, 100f, 20f), PlatformType.CRUMBLING))
+                playerX = 100f
+                playerY = 100f
+                velocityY = 0f
+                reverseGravity = false
+                chunkTime = 0f
 
-                // The button that appears at start when gravity reverts
-                // Initially hide it far away
-                val button = GameButton(Rectangle(-2000f, 100f, 40f, 40f), false) {
-                    // "mask appears in the left side of the screen about to be cruhed by the left wall approaching it"
-                    // Left wall starts at -200, moves 25f/s. After ~6s, it's at x= -50.
-                    // Let's spawn mask at x=200, y=400 so player flies up to it.
-                    maskX = 350f
-                    maskY = 400f
-                }
-                gameButtons.add(button)
+                mirrorActive = true
+                isControlsInverted = false
+                mirrorX = 1280f - playerWidth - playerX
+                mirrorY = playerY
 
                 maskX = -2000f
                 maskY = 800f
+
+                lasers.add(Laser(Rectangle(635f, 0f, 10f, 500f)))
+
+                platforms.add(Platform(Rectangle(100f, 80f, 80f, 20f), PlatformType.NORMAL))
+                platforms.add(Platform(Rectangle(200f, 200f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(100f, 320f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(250f, 440f, 80f, 20f), PlatformType.CRUMBLING))
+
+                platforms.add(Platform(Rectangle(1280f - 180f, 80f, 80f, 20f), PlatformType.NORMAL))
+                platforms.add(Platform(Rectangle(1280f - 280f, 200f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(1280f - 180f, 320f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(1280f - 330f, 440f, 80f, 20f), PlatformType.CRUMBLING))
+
+                lasers.add(Laser(Rectangle(0f, 0f, 20f, 720f)))
+                lasers.add(Laser(Rectangle(1260f, 0f, 20f, 720f)))
+
+                platforms.add(Platform(Rectangle(280f, 550f, 60f, 20f), PlatformType.NORMAL))
+                platforms.add(Platform(Rectangle(1280f - 340f, 550f, 60f, 20f), PlatformType.NORMAL))
+
+                val inversionBtn = GameButton(Rectangle(290f, 570f, 40f, 40f), false) {
+                    isControlsInverted = true
+                    maskX = 640f - 16f
+                    maskY = 600f
+                }
+                gameButtons.add(inversionBtn)
+
+                // Left floor with gap
+                lasers.add(Laser(Rectangle(0f, 500f, 250f, 10f)))
+                lasers.add(Laser(Rectangle(330f, 500f, 305f, 10f)))
+
+                // Right floor with gap
+                lasers.add(Laser(Rectangle(645f, 500f, 305f, 10f)))
+                lasers.add(Laser(Rectangle(1030f, 500f, 250f, 10f)))
+
+                lasers.add(Laser(Rectangle(0f, 700f, 635f, 10f)))
+                lasers.add(Laser(Rectangle(645f, 700f, 635f, 10f)))
             }
         }
     }
@@ -791,8 +847,7 @@ class GameScreen(
         jumpZone.addListener(object : InputListener() {
             override fun touchDown(event: InputEvent?, x: Float, y: Float, pointer: Int, button: Int): Boolean {
                 if (!isPaused && !isDead && !isLevelComplete) {
-                    // "tap the jump button again and again to fly ofk like flappy bird"
-                    if (currentLevel == 5 && currentChunk == 1) {
+                    if (currentLevel == 5 && (currentChunk == 1 || currentChunk == 2)) {
                         if (reverseGravity) {
                             velocityY = -jumpStrength
                         } else {
@@ -800,8 +855,10 @@ class GameScreen(
                         }
                     } else {
                         if (reverseGravity) {
+                            // In reverse, jump pushes DOWN
                             if (canJump) velocityY = -jumpStrength
                         } else {
+                            // Normal jump
                             if (canJump) velocityY = jumpStrength
                         }
                     }
@@ -894,38 +951,58 @@ class GameScreen(
         maskRect.set(maskX, maskY, maskWidth, maskHeight)
 
 
-        // --- LEVEL 5 CHUNK 1 LOGIC (Flappy Bird) ---
-        if (currentLevel == 5 && currentChunk == 1 && !isDead && !isLevelComplete) {
-            chunkTime += delta
-
-            // "antigravity appears a lil late...it should appear after 3 sec in the game....and then after 3 the gravity happens again"
-            if (chunkTime >= 3.0f && chunkTime < 6.0f && !reverseGravity) {
-                reverseGravity = true
-                screenFlashColor = com.badlogic.gdx.graphics.Color.CYAN
-                screenFlashTimer = 0.1f
-            } else if (chunkTime >= 6.0f && reverseGravity) {
-                reverseGravity = false
-                // "as soon as gravity happens after antigravity there must appear a button on the first platform"
-                if (gameButtons.isNotEmpty()) {
-                    gameButtons[0].rect.x = 620f
-                    gameButtons[0].rect.y = 100f
-                }
-                screenFlashColor = com.badlogic.gdx.graphics.Color.CYAN
-                screenFlashTimer = 0.1f
-            }
-
-            // "if u fly off the screen u die" (top ceiling death)
+        // --- LEVEL 5 CHUNK 2 LOGIC (The Mirror Maze) ---
+        if (currentLevel == 5 && currentChunk == 2 && !isDead && !isLevelComplete) {
             if (playerY > 720f) {
                 die("Flew too close to the sun.")
                 return
             }
 
-            // The echo continues to follow the player
+            if (mirrorActive) {
+                mirrorY = playerY
+                mirrorX = 1280f - playerWidth - playerX
+                mirrorRect.set(mirrorX, mirrorY, playerWidth, playerHeight)
+
+                for (laser in lasers) {
+                    if (com.badlogic.gdx.math.Intersector.overlaps(mirrorRect, laser.rect)) {
+                        die("You couldn't even trust yourself.")
+                        return
+                    }
+                }
+                for (wall in movingWalls) {
+                    if (wall.isActive && com.badlogic.gdx.math.Intersector.overlaps(mirrorRect, wall.rect)) {
+                        die("Your reflection was crushed.")
+                        return
+                    }
+                }
+
+                if (com.badlogic.gdx.math.Intersector.overlaps(playerRect, maskRect) &&
+                    com.badlogic.gdx.math.Intersector.overlaps(mirrorRect, maskRect)) {
+                    win()
+                    return
+                } else if (com.badlogic.gdx.math.Intersector.overlaps(playerRect, mirrorRect)) {
+                    die("You ain't no Newton.")
+                    return
+                }
+            }
+        }
+        // ------------------------------------------
+
+        // --- LEVEL 5 CHUNK 1 LOGIC (THE MIRROR TRAP) ---
+        if (currentLevel == 5 && currentChunk == 1 && !isDead && !isLevelComplete) {
+            chunkTime += delta
+
+            // Record player position
             playerPath.add(PlayerRecord(chunkTime, playerX, playerY, playerHeight < normalHeight))
+
+            // Keep list bounded to ~3 seconds max history (assuming 60fps, ~180 frames)
+            // But we actually only need history up to 2.0s ago.
+            // We can prune older ones.
             while (playerPath.isNotEmpty() && chunkTime - playerPath.first().time > 2.5f) {
                 playerPath.removeAt(0)
             }
 
+            // Find Echo's position (2.0s ago)
             val echoTargetTime = chunkTime - 2.0f
             if (echoTargetTime >= 0f && echoActive) {
                 var closestRecord = playerPath.first()
@@ -940,15 +1017,58 @@ class GameScreen(
                 echoY = closestRecord.y
                 echoHeight = if (closestRecord.isCrouching) crouchHeight else normalHeight
 
+                // Echo Collision (Deadly)
                 echoRect.set(echoX, echoY, playerWidth, echoHeight)
-                if (com.badlogic.gdx.math.Intersector.overlaps(playerRect, echoRect)) {
-                    die("Your past caught up to you.")
+                if (Intersector.overlaps(playerRect, echoRect)) {
+                    die("You trusted the wrong thing just like You do in your life")
                     return
                 }
             } else {
+                // Before 2 seconds, Echo stays perfectly still at spawn
                 echoX = 640f
                 echoY = 100f
                 echoHeight = normalHeight
+            }
+
+            // --- The Gravity Glitch ---
+            val timeSinceFlip = chunkTime - lastGravityFlipTime
+            // Flash screen light blue at 4 seconds (1s before flip)
+            if (timeSinceFlip >= 4.0f && timeSinceFlip < 4.1f) {
+                screenFlashColor = Color.CYAN
+                screenFlashTimer = 0.1f
+            }
+            if (timeSinceFlip >= 5.0f) {
+                reverseGravity = !reverseGravity
+                lastGravityFlipTime = chunkTime
+            }
+
+            // --- The Identity Swap Finale ---
+            val triggerZoneY = 750f
+            if (playerY >= triggerZoneY && !hasIdentitySwapped) {
+                hasIdentitySwapped = true
+                // Swap positions
+                val tempX = playerX
+                val tempY = playerY
+                playerX = echoX
+                playerY = echoY
+                echoX = tempX
+                echoY = tempY
+
+                // Flash White
+                screenFlashColor = Color.WHITE
+                screenFlashTimer = 0.2f
+
+                // To ensure Echo continues from the old position smoothly, we can clear the path and inject the player's old position as the new start
+                // Actually, the prompt says "The Echo continues its path from the player's old position."
+                // Wait, if we swap positions, and the echo follows the recorded path, the echo will instantly snap back to following the old recorded path (which is at the bottom).
+                // So we need to rewrite the playerPath history such that the Echo thinks the player's history was at the top.
+                // The easiest way to achieve "Echo continues from player's old position" is to translate all historical records by the difference.
+                val deltaX = tempX - playerX
+                val deltaY = tempY - playerY
+                for (i in 0 until playerPath.size) {
+                    val r = playerPath[i]
+                    playerPath[i] = r.copy(x = r.x + deltaX, y = r.y + deltaY)
+                }
             }
         }
         // ------------------------------------------
@@ -983,8 +1103,14 @@ class GameScreen(
 
         playerHeight = if (isDownPressed) crouchHeight else normalHeight
         isWalking = false
-        if (isLeftPressed) { playerX -= moveSpeed * delta; isWalking = true }
-        if (isRightPressed) { playerX += moveSpeed * delta; isWalking = true }
+        var actualLeft = isLeftPressed
+        var actualRight = isRightPressed
+        if (isControlsInverted) {
+            actualLeft = isRightPressed
+            actualRight = isLeftPressed
+        }
+        if (actualLeft) { playerX -= moveSpeed * delta; isWalking = true }
+        if (actualRight) { playerX += moveSpeed * delta; isWalking = true }
 
         if (allowScreenWrap) {
              if (playerX < -40f) playerX = 1280f
@@ -1257,8 +1383,8 @@ class GameScreen(
             if (b.y > 720f) bubbleIter.remove()
         }
 
-        // Default Win Condition (Ignore in Level 4 Chunk 3)
-        if (currentLevel != 4 || currentChunk != 3) {
+        // Default Win Condition (Ignore in Level 4 Chunk 3 and Level 5 Chunk 2)
+        if ((currentLevel != 4 || currentChunk != 3) && (currentLevel != 5 || currentChunk != 2)) {
             if (!isDead && Intersector.overlaps(playerRect, maskRect)) win()
         }
     }
@@ -1388,6 +1514,21 @@ class GameScreen(
         shapeRenderer.rectLine(centerX, playerY + neckOffset, centerX, playerY + waistOffset, 3f)
         shapeRenderer.rectLine(centerX, playerY + waistOffset, centerX - 6f - legOffset, playerY, 3f)
         shapeRenderer.rectLine(centerX, playerY + waistOffset, centerX + 6f + legOffset, playerY, 3f)
+
+        // Draw Mirror Player (Solid Red) for Level 5 Chunk 2
+        if (currentLevel == 5 && currentChunk == 2 && mirrorActive) {
+            shapeRenderer.color = Color.RED
+            val mCenterX = mirrorX + 12.5f
+            val mCrouch = playerHeight < normalHeight
+            val mHead = if (mCrouch) 22f else 44f
+            val mNeck = if (mCrouch) 15f else 38f
+            val mWaist = if (mCrouch) 5f else 18f
+            val mLegOffset = if (mCrouch) 0f else (Math.sin(walkTime.toDouble()).toFloat() * 6f)
+            shapeRenderer.circle(mCenterX, mirrorY + mHead, 6f)
+            shapeRenderer.rectLine(mCenterX, mirrorY + mNeck, mCenterX, mirrorY + mWaist, 3f)
+            shapeRenderer.rectLine(mCenterX, mirrorY + mWaist, mCenterX - 6f - mLegOffset, mirrorY, 3f)
+            shapeRenderer.rectLine(mCenterX, mirrorY + mWaist, mCenterX + 6f + mLegOffset, mirrorY, 3f)
+        }
 
         // Draw Echo (Transparent Red) for Level 5
         if (currentLevel == 5 && currentChunk == 1 && echoActive) {
