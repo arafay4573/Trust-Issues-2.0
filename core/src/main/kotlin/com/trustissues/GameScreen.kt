@@ -92,6 +92,11 @@ class GameScreen(
     private var echoHeight = 50f
     private var echoActive = false
 
+    // Level 5 Chunk 2
+    private var isControlsInverted = false
+    private val mirrorRect = Rectangle()
+    private var mirrorActive = false
+
     // Assets
     private var sharkTexture: Texture? = null
     private var maskTexture: Texture? = null
@@ -226,6 +231,8 @@ class GameScreen(
         isPaused = false
         pauseGroup?.isVisible = false
         messageLabel?.isVisible = false
+        isControlsInverted = false
+        mirrorActive = false
 
         horrorMode = (currentLevel == 3)
         strobeTimer = 0f
@@ -291,6 +298,7 @@ class GameScreen(
                 screenFlashColor = null
                 screenFlashTimer = 0f
                 echoActive = true // "climb up before ur shadow"
+                mirrorActive = false
 
                 // Safe platform at start to land on when gravity reverts
                 platforms.add(Platform(Rectangle(600f, 80f, 80f, 20f), PlatformType.NORMAL))
@@ -323,6 +331,78 @@ class GameScreen(
 
                 maskX = -2000f
                 maskY = 800f
+            }
+            2 -> {
+                // Chunk 2: The Mirror Maze & Shark Sync
+                platforms.clear()
+                lasers.clear()
+                movingWalls.clear()
+                gameButtons.clear()
+                gravitySwitches.clear()
+                sharks.clear()
+
+                playerX = 540f
+                playerY = 100f
+                velocityY = 0f
+                reverseGravity = false
+                isControlsInverted = false
+                mirrorActive = true
+
+                // Set initial mirror pos
+                mirrorRect.set(1280f - playerWidth - playerX, playerY, playerWidth, normalHeight)
+
+                // Center faint line - maybe no explicit object, just part of background, or invisible laser? We can just not draw it, instruction says "faint vertical line". Let's add an inactive laser as a visual.
+                lasers.add(Laser(Rectangle(639f, 0f, 2f, 720f), isSweeping = false)) // Just visual if we don't check collision
+
+                // Safe platforms at start
+                platforms.add(Platform(Rectangle(490f, 80f, 100f, 20f), PlatformType.NORMAL))
+                platforms.add(Platform(Rectangle(690f, 80f, 100f, 20f), PlatformType.NORMAL))
+
+                // Crushing Walls from x=0 and x=1280
+                movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 25f, isActive = true))
+                movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -25f, isActive = true))
+
+                // Horizontal DEADLY_RED laser at the top (Ceiling)
+                platforms.add(Platform(Rectangle(0f, 700f, 1280f, 20f), PlatformType.DEADLY_RED))
+
+                // Staircase of Crumbling Platforms
+                platforms.add(Platform(Rectangle(400f, 180f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(800f, 180f, 80f, 20f), PlatformType.CRUMBLING))
+
+                platforms.add(Platform(Rectangle(300f, 280f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(900f, 280f, 80f, 20f), PlatformType.CRUMBLING))
+
+                platforms.add(Platform(Rectangle(400f, 380f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(800f, 380f, 80f, 20f), PlatformType.CRUMBLING))
+
+                // The Inversion Gate platforms
+                val leftPlat = Platform(Rectangle(350f, 500f, 100f, 20f), PlatformType.NORMAL)
+                val rightPlat = Platform(Rectangle(830f, 500f, 100f, 20f), PlatformType.NORMAL)
+                platforms.add(leftPlat)
+                platforms.add(rightPlat)
+
+                // The Mask in the center
+                maskX = 640f - 16f
+                maskY = 550f
+
+                // The Button
+                val button = GameButton(Rectangle(380f, 520f, 40f, 40f), false) {
+                    isControlsInverted = true
+                    // Activate Two Safe Sharks
+                    val sharkA = Shark(350f, 440f, 100f, 350f, 520f, facingRight = true)
+                    val sharkB = Shark(810f, 440f, 100f, 640f, 810f, facingRight = false)
+                    sharks.add(sharkA)
+                    sharks.add(sharkB)
+
+                    val sharkPlatA = Platform(Rectangle(350f, 440f, 120f, 60f), PlatformType.SAFE_SHARK)
+                    val sharkPlatB = Platform(Rectangle(810f, 440f, 120f, 60f), PlatformType.SAFE_SHARK)
+                    // Mark an identifier to help with mapping just in case
+                    sharkPlatA.rect.width = 119.9f // Unique width mapping
+                    sharkPlatB.rect.width = 120.1f
+                    platforms.add(sharkPlatA)
+                    platforms.add(sharkPlatB)
+                }
+                gameButtons.add(button)
             }
         }
     }
@@ -791,18 +871,19 @@ class GameScreen(
         jumpZone.addListener(object : InputListener() {
             override fun touchDown(event: InputEvent?, x: Float, y: Float, pointer: Int, button: Int): Boolean {
                 if (!isPaused && !isDead && !isLevelComplete) {
+                    val currentJumpStrength = if (currentLevel == 5 && currentChunk == 2) 500f else jumpStrength
                     // "tap the jump button again and again to fly ofk like flappy bird"
-                    if (currentLevel == 5 && currentChunk == 1) {
+                    if (currentLevel == 5 && (currentChunk == 1 || currentChunk == 2)) {
                         if (reverseGravity) {
-                            velocityY = -jumpStrength
+                            velocityY = -currentJumpStrength
                         } else {
-                            velocityY = jumpStrength
+                            velocityY = currentJumpStrength
                         }
                     } else {
                         if (reverseGravity) {
-                            if (canJump) velocityY = -jumpStrength
+                            if (canJump) velocityY = -currentJumpStrength
                         } else {
-                            if (canJump) velocityY = jumpStrength
+                            if (canJump) velocityY = currentJumpStrength
                         }
                     }
                 }
@@ -983,8 +1064,11 @@ class GameScreen(
 
         playerHeight = if (isDownPressed) crouchHeight else normalHeight
         isWalking = false
-        if (isLeftPressed) { playerX -= moveSpeed * delta; isWalking = true }
-        if (isRightPressed) { playerX += moveSpeed * delta; isWalking = true }
+        val leftInput = if (isControlsInverted) isRightPressed else isLeftPressed
+        val rightInput = if (isControlsInverted) isLeftPressed else isRightPressed
+
+        if (leftInput) { playerX -= moveSpeed * delta; isWalking = true }
+        if (rightInput) { playerX += moveSpeed * delta; isWalking = true }
 
         if (allowScreenWrap) {
              if (playerX < -40f) playerX = 1280f
@@ -998,15 +1082,16 @@ class GameScreen(
         // Physics
         val isExemptLevel = (currentLevel == 4 && (currentChunk == 2 || currentChunk == 3)) || currentLevel == 3 || currentLevel == 5
 
+        val currentGravity = if (currentLevel == 5 && currentChunk == 2) -1800f else -3200f
         if (reverseGravity) {
-            gravity = 3200f
+            gravity = -currentGravity // Flip gravity positive
             velocityY += gravity * delta
             playerY += velocityY * delta
 
             // Ceiling check
             if (playerY > 720f && currentLevel != 5) die("Gravity hurts.")
         } else {
-            gravity = -3200f
+            gravity = currentGravity
             velocityY += gravity * delta
             playerY += velocityY * delta
 
@@ -1039,11 +1124,13 @@ class GameScreen(
                 // Determine if Player or Echo overlaps (Level 5)
                 val isTouchedByPlayer = playerRect.overlaps(plat.rect)
                 val isTouchedByEcho = (currentLevel == 5 && currentChunk == 1 && echoActive && echoRect.overlaps(plat.rect))
+                val isTouchedByMirror = (currentLevel == 5 && currentChunk == 2 && mirrorActive && mirrorRect.overlaps(plat.rect))
 
-                if (isTouchedByPlayer || isTouchedByEcho) {
+                if (isTouchedByPlayer || isTouchedByEcho || isTouchedByMirror) {
                     // DYNAMIC LIMITS
                     val actualLimit = when {
                          currentLevel == 5 && currentChunk == 1 -> 1.2f // Level 5-1: 1.2s
+                         currentLevel == 5 && currentChunk == 2 -> 1.0f // Level 5-2: 1.0s
                          currentLevel == 3 && currentChunk == 3 -> 0.7f
                          currentLevel == 3 || currentLevel == 4 -> 1.0f
                          else -> 1.5f
@@ -1130,7 +1217,8 @@ class GameScreen(
                 }
             }
             if (Intersector.overlaps(playerRect, laser.rect)) {
-                die("Grilled to perfection. Serve with a side of failure.")
+                if (currentLevel == 5 && currentChunk == 2) die("You ain't no Newton")
+                else die("Grilled to perfection. Serve with a side of failure.")
             }
         }
 
@@ -1140,7 +1228,8 @@ class GameScreen(
                 wall.rect.x += wall.speed * delta
                 // Check if wall crushes player
                 if (Intersector.overlaps(playerRect, wall.rect)) {
-                    die("Squished like a bug. And just as insignificant.")
+                    if (currentLevel == 5 && currentChunk == 2) die("You ain't no Newton")
+                    else die("Squished like a bug. And just as insignificant.")
                 }
             }
         }
@@ -1150,6 +1239,46 @@ class GameScreen(
             if (!btn.isPressed && Intersector.overlaps(playerRect, btn.rect)) {
                 btn.isPressed = true
                 btn.onHit?.invoke()
+            }
+        }
+
+        // Check Deadly Red Collision specifically for player
+        if (currentLevel == 5 && currentChunk == 2) {
+            for (plat in platforms) {
+                if (plat.type == PlatformType.DEADLY_RED && Intersector.overlaps(playerRect, plat.rect)) {
+                    die("You ain't no Newton")
+                }
+            }
+        }
+
+        // Mirror Logic Level 5 Chunk 2
+        if (currentLevel == 5 && currentChunk == 2 && mirrorActive) {
+            mirrorRect.set(1280f - playerWidth - playerX, playerY, playerWidth, playerHeight)
+
+            // Mirror collisions
+            if (Intersector.overlaps(playerRect, mirrorRect)) {
+                die("You ain't no Newton")
+            }
+
+            // Check lasers and walls for mirror
+            for (laser in lasers) {
+                if (Intersector.overlaps(mirrorRect, laser.rect)) {
+                    die("You ain't no Newton")
+                }
+            }
+            for (wall in movingWalls) {
+                if (wall.isActive && Intersector.overlaps(mirrorRect, wall.rect)) {
+                    die("You ain't no Newton")
+                }
+            }
+
+            // Mirror Platform Collision
+            for (plat in platforms) {
+                if (plat.state == PlatformState.DESTROYED) continue
+
+                if (plat.type == PlatformType.DEADLY_RED && Intersector.overlaps(mirrorRect, plat.rect)) {
+                    die("You ain't no Newton")
+                }
             }
         }
 
@@ -1228,6 +1357,20 @@ class GameScreen(
                 }
             }
 
+            // Sync SAFE_SHARK platforms
+            if (currentLevel == 5 && currentChunk == 2) {
+                for (plat in platforms) {
+                    if (plat.type == PlatformType.SAFE_SHARK) {
+                        // Use exact unique widths to sync
+                        if (shark.patrolLeft < 640f && plat.rect.width == 119.9f) {
+                            plat.rect.x = shark.x
+                        } else if (shark.patrolLeft >= 640f && plat.rect.width == 120.1f) {
+                            plat.rect.x = shark.x
+                        }
+                    }
+                }
+            }
+
             // Shark Collision
             // The Ultimate Troll: In Level 4 Chunk 3, hitting the shark at y=220f means winning
             if (currentLevel == 4 && currentChunk == 3 && shark.y == 220f) {
@@ -1237,7 +1380,9 @@ class GameScreen(
                 }
             } else {
                 // Safe Shark Logic: Skip collision if shark is at x=600 (Chunk 2 Friendly Shark)
-                if (currentLevel != 4 || currentChunk != 2 || shark.x != 600f) {
+                // Also skip deadly collision for Level 5 Chunk 2 Safe Sharks
+                val isSafeSharkLevel5 = (currentLevel == 5 && currentChunk == 2)
+                if ((currentLevel != 4 || currentChunk != 2 || shark.x != 600f) && !isSafeSharkLevel5) {
                     sharkRect.set(shark.x, shark.y, 120f, 60f) // approx
                     if (Intersector.overlaps(playerRect, sharkRect)) die()
                 }
@@ -1258,7 +1403,11 @@ class GameScreen(
         }
 
         // Default Win Condition (Ignore in Level 4 Chunk 3)
-        if (currentLevel != 4 || currentChunk != 3) {
+        if (currentLevel == 5 && currentChunk == 2) {
+            if (!isDead && Intersector.overlaps(playerRect, maskRect) && Intersector.overlaps(mirrorRect, maskRect)) {
+                win()
+            }
+        } else if (currentLevel != 4 || currentChunk != 3) {
             if (!isDead && Intersector.overlaps(playerRect, maskRect)) win()
         }
     }
@@ -1266,6 +1415,9 @@ class GameScreen(
     private fun die(customMessage: String? = null) {
         if (isDead) return
         isDead = true
+        if (customMessage == "You ain't no Newton") {
+            stateTimer = -9999f
+        }
         val roast = customMessage ?: deathRoasts.random()
         messageLabel?.setText(roast)
         messageLabel?.color = Color.RED
@@ -1402,6 +1554,23 @@ class GameScreen(
             shapeRenderer.rectLine(eCenterX, echoY + eNeck, eCenterX, echoY + eWaist, 3f)
             shapeRenderer.rectLine(eCenterX, echoY + eWaist, eCenterX - 6f, echoY, 3f)
             shapeRenderer.rectLine(eCenterX, echoY + eWaist, eCenterX + 6f, echoY, 3f)
+        }
+
+        // Draw Mirror Player (Deadly Red) for Level 5 Chunk 2
+        if (currentLevel == 5 && currentChunk == 2 && mirrorActive) {
+            shapeRenderer.color = Color.RED // Deadly Red
+            val mCenterX = mirrorRect.x + 12.5f
+            val mCrouch = mirrorRect.height < normalHeight
+            val mHead = if (mCrouch) 22f else 44f
+            val mNeck = if (mCrouch) 15f else 38f
+            val mWaist = if (mCrouch) 5f else 18f
+            // Mirror legs animation is opposite phase or same? Let's keep it same or inverse
+            val mLegOffset = if (mCrouch) 0f else (Math.sin(walkTime.toDouble()).toFloat() * -6f)
+
+            shapeRenderer.circle(mCenterX, mirrorRect.y + mHead, 6f)
+            shapeRenderer.rectLine(mCenterX, mirrorRect.y + mNeck, mCenterX, mirrorRect.y + mWaist, 3f)
+            shapeRenderer.rectLine(mCenterX, mirrorRect.y + mWaist, mCenterX - 6f - mLegOffset, mirrorRect.y, 3f)
+            shapeRenderer.rectLine(mCenterX, mirrorRect.y + mWaist, mCenterX + 6f + mLegOffset, mirrorRect.y, 3f)
         }
 
         shapeRenderer.end()
