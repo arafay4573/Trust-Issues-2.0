@@ -1416,9 +1416,6 @@ class GameScreen(
     private fun die(customMessage: String? = null) {
         if (isDead) return
         isDead = true
-        if (customMessage == "You ain't no Newton") {
-            stateTimer = -9999f
-        }
         val roast = customMessage ?: deathRoasts.random()
         messageLabel?.setText(roast)
         messageLabel?.color = Color.RED
