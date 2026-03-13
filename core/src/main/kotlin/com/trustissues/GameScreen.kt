@@ -1596,9 +1596,6 @@ class GameScreen(
     private fun die(customMessage: String? = null) {
         if (isDead) return
         isDead = true
-        if (currentLevel == 5 && currentChunk == 3) {
-            stateTimer = -9999f
-        }
         val roast = customMessage ?: deathRoasts.random()
         messageLabel?.setText(roast)
         messageLabel?.color = Color.RED
