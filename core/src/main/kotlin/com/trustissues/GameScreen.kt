@@ -344,41 +344,41 @@ class GameScreen(
                 maskX = -2000f
                 maskY = 800f
 
+                // Central Laser Wall (prevents crossing early)
                 lasers.add(Laser(Rectangle(635f, 0f, 10f, 500f)))
 
-                platforms.add(Platform(Rectangle(100f, 80f, 80f, 20f), PlatformType.NORMAL))
+                // Step 1: The Squeeze (Crumbling Platforms up both sides)
+                // Left Side (Player)
+                platforms.add(Platform(Rectangle(100f, 80f, 80f, 20f), PlatformType.NORMAL)) // Start
                 platforms.add(Platform(Rectangle(200f, 200f, 80f, 20f), PlatformType.CRUMBLING))
                 platforms.add(Platform(Rectangle(100f, 320f, 80f, 20f), PlatformType.CRUMBLING))
                 platforms.add(Platform(Rectangle(250f, 440f, 80f, 20f), PlatformType.CRUMBLING))
 
-                platforms.add(Platform(Rectangle(1280f - 180f, 80f, 80f, 20f), PlatformType.NORMAL))
+                // Right Side (Mirror)
+                platforms.add(Platform(Rectangle(1280f - 180f, 80f, 80f, 20f), PlatformType.NORMAL)) // Mirror Start
                 platforms.add(Platform(Rectangle(1280f - 280f, 200f, 80f, 20f), PlatformType.CRUMBLING))
                 platforms.add(Platform(Rectangle(1280f - 180f, 320f, 80f, 20f), PlatformType.CRUMBLING))
                 platforms.add(Platform(Rectangle(1280f - 330f, 440f, 80f, 20f), PlatformType.CRUMBLING))
 
-                lasers.add(Laser(Rectangle(0f, 0f, 20f, 720f)))
-                lasers.add(Laser(Rectangle(1260f, 0f, 20f, 720f)))
+                // The Walls: Symmetrical Red Laser Walls moving inward at 10f
+                movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 10f, isActive = true))
+                movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -10f, isActive = true))
 
+                // Step 2: The Inversion Button (Halfway, x=300, y=550)
                 platforms.add(Platform(Rectangle(280f, 550f, 60f, 20f), PlatformType.NORMAL))
                 platforms.add(Platform(Rectangle(1280f - 340f, 550f, 60f, 20f), PlatformType.NORMAL))
 
                 val inversionBtn = GameButton(Rectangle(290f, 570f, 40f, 40f), false) {
                     isControlsInverted = true
+                    // Spawn mask at center for Step 3
                     maskX = 640f - 16f
-                    maskY = 600f
+                    maskY = 550f
                 }
                 gameButtons.add(inversionBtn)
 
-                // Left floor with gap
-                lasers.add(Laser(Rectangle(0f, 500f, 250f, 10f)))
-                lasers.add(Laser(Rectangle(330f, 500f, 305f, 10f)))
-
-                // Right floor with gap
-                lasers.add(Laser(Rectangle(645f, 500f, 305f, 10f)))
-                lasers.add(Laser(Rectangle(1030f, 500f, 250f, 10f)))
-
-                lasers.add(Laser(Rectangle(0f, 700f, 635f, 10f)))
-                lasers.add(Laser(Rectangle(645f, 700f, 635f, 10f)))
+                // Step 3: The Safe Sharks (Act as moving platforms)
+                platforms.add(Platform(Rectangle(350f, 530f, 120f, 60f), PlatformType.SAFE_SHARK))
+                platforms.add(Platform(Rectangle(810f, 530f, 120f, 60f), PlatformType.SAFE_SHARK))
             }
         }
     }
@@ -495,7 +495,7 @@ class GameScreen(
 
                 // 8. The Goal (High up as if it's the 4th layer)
                 maskX = 640f
-                maskY = 600f
+                maskY = 550f
                 // --- END CHUNK 2 FINAL FIX ---
             }
             3 -> {
@@ -847,20 +847,12 @@ class GameScreen(
         jumpZone.addListener(object : InputListener() {
             override fun touchDown(event: InputEvent?, x: Float, y: Float, pointer: Int, button: Int): Boolean {
                 if (!isPaused && !isDead && !isLevelComplete) {
-                    if (currentLevel == 5 && (currentChunk == 1 || currentChunk == 2)) {
-                        if (reverseGravity) {
-                            velocityY = -jumpStrength
-                        } else {
-                            velocityY = jumpStrength
-                        }
+                    if (reverseGravity) {
+                        // In reverse, jump pushes DOWN
+                        if (canJump) velocityY = -jumpStrength
                     } else {
-                        if (reverseGravity) {
-                            // In reverse, jump pushes DOWN
-                            if (canJump) velocityY = -jumpStrength
-                        } else {
-                            // Normal jump
-                            if (canJump) velocityY = jumpStrength
-                        }
+                        // Normal jump
+                        if (canJump) velocityY = jumpStrength
                     }
                 }
                 return true
@@ -950,44 +942,6 @@ class GameScreen(
         // Update mask collision rect constantly (in case it moves, like in Level 4-3)
         maskRect.set(maskX, maskY, maskWidth, maskHeight)
 
-
-        // --- LEVEL 5 CHUNK 2 LOGIC (The Mirror Maze) ---
-        if (currentLevel == 5 && currentChunk == 2 && !isDead && !isLevelComplete) {
-            if (playerY > 720f) {
-                die("Flew too close to the sun.")
-                return
-            }
-
-            if (mirrorActive) {
-                mirrorY = playerY
-                mirrorX = 1280f - playerWidth - playerX
-                mirrorRect.set(mirrorX, mirrorY, playerWidth, playerHeight)
-
-                for (laser in lasers) {
-                    if (com.badlogic.gdx.math.Intersector.overlaps(mirrorRect, laser.rect)) {
-                        die("You couldn't even trust yourself.")
-                        return
-                    }
-                }
-                for (wall in movingWalls) {
-                    if (wall.isActive && com.badlogic.gdx.math.Intersector.overlaps(mirrorRect, wall.rect)) {
-                        die("Your reflection was crushed.")
-                        return
-                    }
-                }
-
-                if (com.badlogic.gdx.math.Intersector.overlaps(playerRect, maskRect) &&
-                    com.badlogic.gdx.math.Intersector.overlaps(mirrorRect, maskRect)) {
-                    win()
-                    return
-                } else if (com.badlogic.gdx.math.Intersector.overlaps(playerRect, mirrorRect)) {
-                    die("You ain't no Newton.")
-                    return
-                }
-            }
-        }
-        // ------------------------------------------
-
         // --- LEVEL 5 CHUNK 1 LOGIC (THE MIRROR TRAP) ---
         if (currentLevel == 5 && currentChunk == 1 && !isDead && !isLevelComplete) {
             chunkTime += delta
@@ -1068,6 +1022,57 @@ class GameScreen(
                 for (i in 0 until playerPath.size) {
                     val r = playerPath[i]
                     playerPath[i] = r.copy(x = r.x + deltaX, y = r.y + deltaY)
+                }
+            }
+        }
+        // ------------------------------------------
+
+
+        // --- LEVEL 5 CHUNK 2 LOGIC (The Mirror Maze) ---
+        if (currentLevel == 5 && currentChunk == 2 && !isDead && !isLevelComplete) {
+            if (playerY > 720f) {
+                die("Flew too close to the sun.")
+                return
+            }
+
+            // Move the safe sharks
+            for (plat in platforms) {
+                if (plat.type == PlatformType.SAFE_SHARK) {
+                    if (plat.rect.x < 640f) {
+                        // Left shark oscillates between 350 and 500
+                        plat.rect.x = 425f + com.badlogic.gdx.math.MathUtils.sin(chunkTime * 2.0f) * 75f
+                    } else {
+                        // Right shark oscillates between 930 and 780
+                        plat.rect.x = 855f - com.badlogic.gdx.math.MathUtils.sin(chunkTime * 2.0f) * 75f
+                    }
+                }
+            }
+
+            if (mirrorActive) {
+                mirrorY = playerY
+                mirrorX = 1280f - playerWidth - playerX
+                mirrorRect.set(mirrorX, mirrorY, playerWidth, playerHeight)
+
+                for (laser in lasers) {
+                    if (com.badlogic.gdx.math.Intersector.overlaps(mirrorRect, laser.rect)) {
+                        die("You couldn't even trust yourself.")
+                        return
+                    }
+                }
+                for (wall in movingWalls) {
+                    if (wall.isActive && com.badlogic.gdx.math.Intersector.overlaps(mirrorRect, wall.rect)) {
+                        die("Your reflection was crushed.")
+                        return
+                    }
+                }
+
+                if (com.badlogic.gdx.math.Intersector.overlaps(playerRect, maskRect) &&
+                    com.badlogic.gdx.math.Intersector.overlaps(mirrorRect, maskRect)) {
+                    win()
+                    return
+                } else if (com.badlogic.gdx.math.Intersector.overlaps(playerRect, mirrorRect)) {
+                    die("You ain't no Newton.")
+                    return
                 }
             }
         }
@@ -1517,7 +1522,7 @@ class GameScreen(
 
         // Draw Mirror Player (Solid Red) for Level 5 Chunk 2
         if (currentLevel == 5 && currentChunk == 2 && mirrorActive) {
-            shapeRenderer.color = Color.RED
+            shapeRenderer.color = com.badlogic.gdx.graphics.Color.RED
             val mCenterX = mirrorX + 12.5f
             val mCrouch = playerHeight < normalHeight
             val mHead = if (mCrouch) 22f else 44f
@@ -1530,7 +1535,7 @@ class GameScreen(
             shapeRenderer.rectLine(mCenterX, mirrorY + mWaist, mCenterX + 6f + mLegOffset, mirrorY, 3f)
         }
 
-        // Draw Echo (Transparent Red) for Level 5
+        // Draw Echo (Transparent Red) for Level 5 Chunk 1
         if (currentLevel == 5 && currentChunk == 1 && echoActive) {
             shapeRenderer.color = Color(1f, 0f, 0f, 0.5f) // Transparent Red
             val eCenterX = echoX + 12.5f
