@@ -1190,7 +1190,8 @@ class GameScreen(
             // Stand on the center shark to win (only if all buttons are pressed)
             if (!isDead && gameButtons.all { it.isPressed }) {
                 for (shark in sharks) {
-                    if (shark.speed > 0f && shark.y == 360f) { // The center patrolling shark
+                    // The center patrolling shark, OR the spawned top shark (y=480f)
+                    if (shark.y == 360f || shark.y == 480f) {
                         sharkRect.set(shark.x, shark.y, 120f, 60f)
                         if (Intersector.overlaps(playerRect, sharkRect)) {
                             win()
@@ -1558,10 +1559,9 @@ class GameScreen(
                 if ((currentLevel != 4 || currentChunk != 2 || shark.x != 600f) && !isSafeSharkLevel5) {
                     sharkRect.set(shark.x, shark.y, 120f, 60f) // approx
                     if (Intersector.overlaps(playerRect, sharkRect)) {
-                        // In Level 5 Chunk 3, the center shark is deadly if buttons aren't pressed,
-                        // but if all buttons are pressed, touching it wins the game (handled earlier).
-                        // If we are here and overlapping, and it's the center shark, and buttons ARE pressed, we don't die.
-                        if (currentLevel == 5 && currentChunk == 3 && shark.y == 360f && gameButtons.all { it.isPressed }) {
+                        // In Level 5 Chunk 3, the sharks are deadly if buttons aren't pressed,
+                        // but if all buttons are pressed, touching either the center or spawned shark wins the game.
+                        if (currentLevel == 5 && currentChunk == 3 && (shark.y == 360f || shark.y == 480f) && gameButtons.all { it.isPressed }) {
                             // Do not die
                         } else {
                             die()
