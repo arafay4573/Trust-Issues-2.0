@@ -280,7 +280,7 @@ class GameScreen(
     private fun setupLevel6(chunk: Int) {
         when (chunk) {
             1 -> {
-                // Level 6-1: The Bubbling Abyss (The Refraction Engine)
+                // Level 6-1: Rebuilt from scratch
                 platforms.clear()
                 lasers.clear()
                 movingWalls.clear()
@@ -288,56 +288,18 @@ class GameScreen(
                 gravitySwitches.clear()
                 sharks.clear()
 
-                playerX = 640f
-                playerY = 100f
+                playerX = 100f
+                playerY = 280f
                 velocityY = 0f
                 reverseGravity = false
 
-                // Refraction active
-                renderOffset = 50f
-                renderOffsetY = 0f
-                tideTimer = 0f
-                tideTargetOffset = -50f
-
-                echoActive = true
-
                 // Safe platform at start
-                platforms.add(Platform(Rectangle(600f, 80f, 80f, 20f), PlatformType.NORMAL))
+                platforms.add(Platform(Rectangle(50f, 200f, 150f, 20f), PlatformType.NORMAL))
 
-                // The Walls: Symmetrical Red Laser Walls
-                movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 25f, isActive = true))
-                movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -25f, isActive = true))
+                // Add your new level layout here...
 
-                // 6 zig-zag CRUMBLING platforms
-                platforms.add(Platform(Rectangle(300f, 180f, 80f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(600f, 260f, 80f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(900f, 340f, 80f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(600f, 420f, 80f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(300f, 500f, 80f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(600f, 580f, 80f, 20f), PlatformType.CRUMBLING))
-
-                // Randomly patrolling sharks as requested by the user: "random sharks petrol the screen"
-                sharks.add(Shark(400f, 400f, 120f, 100f, 500f))
-                sharks.add(Shark(800f, 500f, 150f, 700f, 1100f))
-
-                // The Shark Swap
-                // Spawn two sharks at y=600.
-                // 1. "The one that looks like a SafeShark must have a DeadlyShark hitbox."
-                // A SafeShark looks like a shark but is solid (a platform). We make it DEADLY_RED but width 120.4f to identify it.
-                val trapShark = Platform(Rectangle(800f, 600f, 120f, 60f), PlatformType.DEADLY_RED)
-                trapShark.rect.width = 120.4f // Unique width mapping to draw it as a shark in SpriteBatch
-                platforms.add(trapShark)
-
-                // 2. "The one that looks like a DeadlyShark must have a SafeShark (Solid) hitbox."
-                // Looks like a regular patrolling shark, so we add a Shark.
-                sharks.add(Shark(400f, 600f, 100f, 300f, 900f))
-                val safePlat = Platform(Rectangle(400f, 600f, 120f, 60f), PlatformType.SAFE_SHARK)
-                safePlat.rect.width = 120.3f // Unique width mapping to sync its position with the patrolling shark
-                platforms.add(safePlat)
-
-                maskX = 640f - 16f
-                maskY = 660f
-                renderOffsetY = 100f // "The Mask sprite is refracted 100px up."
+                maskX = 1100f
+                maskY = 280f + 50f
             }
         }
     }
@@ -1137,52 +1099,6 @@ class GameScreen(
 
 
 
-        // --- LEVEL 6 CHUNK 1 LOGIC (The Refraction Engine & Tide) ---
-        if (currentLevel == 6 && currentChunk == 1 && !isDead && !isLevelComplete) {
-            chunkTime += delta
-            tideTimer += delta
-
-            // The Tide: Every 4 seconds, lerp renderOffset between 50f and -50f
-            if (tideTimer >= 4.0f) {
-                tideTimer = 0f
-                tideTargetOffset = if (tideTargetOffset == 50f) -50f else 50f
-            }
-
-            // Lerp renderOffset towards tideTargetOffset
-            renderOffset = com.badlogic.gdx.math.MathUtils.lerp(renderOffset, tideTargetOffset, delta * 2f)
-
-            // The echo continues to follow the player
-            playerPath.add(PlayerRecord(chunkTime, playerX, playerY, playerHeight < normalHeight))
-            while (playerPath.isNotEmpty() && chunkTime - playerPath.first().time > 2.5f) {
-                playerPath.removeAt(0)
-            }
-
-            val echoTargetTime = chunkTime - 2.0f
-            if (echoTargetTime >= 0f && echoActive) {
-                var closestRecord = playerPath.first()
-                for (record in playerPath) {
-                    if (record.time <= echoTargetTime) {
-                        closestRecord = record
-                    } else {
-                        break
-                    }
-                }
-                echoX = closestRecord.x
-                echoY = closestRecord.y
-                echoHeight = if (closestRecord.isCrouching) crouchHeight else normalHeight
-
-                echoRect.set(echoX, echoY, playerWidth, echoHeight)
-                if (com.badlogic.gdx.math.Intersector.overlaps(playerRect, echoRect)) {
-                    die("Your past caught up to you.")
-                    return
-                }
-            } else {
-                echoX = 640f
-                echoY = 100f
-                echoHeight = normalHeight
-            }
-        }
-
         // --- LEVEL 5 CHUNK 1 LOGIC (Flappy Bird) ---
         if (currentLevel == 5 && currentChunk == 1 && !isDead && !isLevelComplete) {
             chunkTime += delta
@@ -1542,12 +1458,6 @@ class GameScreen(
                     die("You ain't no Newton")
                 }
             }
-        } else if (currentLevel == 6 && currentChunk == 1) {
-            for (plat in platforms) {
-                if (plat.type == PlatformType.DEADLY_RED && Intersector.overlaps(playerRect, plat.rect)) {
-                    die() // Triggers specific roast in die()
-                }
-            }
         }
 
         // Mirror Logic Level 5 Chunk 2
@@ -1674,13 +1584,6 @@ class GameScreen(
                         plat.rect.x = shark.x
                     }
                 }
-            } else if (currentLevel == 6 && currentChunk == 1) {
-                // Sync the safe shark platform logic for the "Deadly Shark" (patrolling one)
-                for (plat in platforms) {
-                    if (plat.type == PlatformType.SAFE_SHARK && plat.rect.width == 120.3f && shark.y == 600f) {
-                        plat.rect.x = shark.x
-                    }
-                }
             }
 
             // Shark Collision
@@ -1694,8 +1597,7 @@ class GameScreen(
                 // Safe Shark Logic: Skip collision if shark is at x=600 (Chunk 2 Friendly Shark)
                 // Also skip deadly collision for Level 5 Chunk 2 Safe Sharks
                 val isSafeSharkLevel5 = (currentLevel == 5 && currentChunk == 2)
-                val isSafeSharkLevel6 = (currentLevel == 6 && currentChunk == 1 && shark.y == 600f)
-                if ((currentLevel != 4 || currentChunk != 2 || shark.x != 600f) && !isSafeSharkLevel5 && !isSafeSharkLevel6) {
+            if ((currentLevel != 4 || currentChunk != 2 || shark.x != 600f) && !isSafeSharkLevel5) {
                     sharkRect.set(shark.x, shark.y, 120f, 60f) // approx
                     if (Intersector.overlaps(playerRect, sharkRect)) {
                         // In Level 5 Chunk 3, the sharks are deadly if buttons aren't pressed,
@@ -1744,7 +1646,7 @@ class GameScreen(
 
         if (currentLevel == 6 && currentChunk == 1) {
             val refracRoasts = listOf(
-                "Your eyes are lying, Rafay. Just like she did.",
+                "Your eyes are lying. Just like she did.",
                 "Physics don't care about what you 'see'.",
                 "You're chasing ghosts in a haunted ocean."
             )
