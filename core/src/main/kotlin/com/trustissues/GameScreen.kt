@@ -1644,15 +1644,6 @@ class GameScreen(
         isDead = true
         var roast = customMessage ?: deathRoasts.random()
 
-        if (currentLevel == 6 && currentChunk == 1) {
-            val refracRoasts = listOf(
-                "Your eyes are lying. Just like she did.",
-                "Physics don't care about what you 'see'.",
-                "You're chasing ghosts in a haunted ocean."
-            )
-            roast = refracRoasts.random()
-        }
-
         messageLabel?.setText(roast)
         messageLabel?.color = Color.RED
         messageLabel?.isVisible = true
@@ -1778,7 +1769,7 @@ class GameScreen(
         shapeRenderer.rectLine(centerX, playerY + waistOffset, centerX + 6f + legOffset, playerY, 3f)
 
         // Draw Echo (Transparent Red) for Level 5 (and Level 6)
-        if (((currentLevel == 5 && (currentChunk == 1 || currentChunk == 3)) || (currentLevel == 6 && currentChunk == 1)) && echoActive) {
+        if (((currentLevel == 5 && (currentChunk == 1 || currentChunk == 3))) && echoActive) {
             shapeRenderer.color = Color(1f, 0f, 0f, 0.5f) // Transparent Red
             val eCenterX = echoX + 12.5f + renderOffset
             val eCrouch = echoHeight < normalHeight
