@@ -269,39 +269,10 @@ class GameScreen(
             setupLevel4(chunk)
         } else if (currentLevel == 5) {
             setupLevel5(chunk)
-        } else if (currentLevel == 6) {
-            setupLevel6(chunk)
         }
 
         maskRect.set(maskX, maskY, maskWidth, maskHeight)
         playerRect.set(playerX, playerY, playerWidth, playerHeight)
-    }
-
-    private fun setupLevel6(chunk: Int) {
-        when (chunk) {
-            1 -> {
-                // Level 6-1: Rebuilt from scratch
-                platforms.clear()
-                lasers.clear()
-                movingWalls.clear()
-                gameButtons.clear()
-                gravitySwitches.clear()
-                sharks.clear()
-
-                playerX = 100f
-                playerY = 280f
-                velocityY = 0f
-                reverseGravity = false
-
-                // Safe platform at start
-                platforms.add(Platform(Rectangle(50f, 200f, 150f, 20f), PlatformType.NORMAL))
-
-                // Add your new level layout here...
-
-                maskX = 1100f
-                maskY = 280f + 50f
-            }
-        }
     }
 
     private fun setupLevel1(chunk: Int) {
@@ -1644,15 +1615,6 @@ class GameScreen(
         isDead = true
         var roast = customMessage ?: deathRoasts.random()
 
-        if (currentLevel == 6 && currentChunk == 1) {
-            val refracRoasts = listOf(
-                "Your eyes are lying. Just like she did.",
-                "Physics don't care about what you 'see'.",
-                "You're chasing ghosts in a haunted ocean."
-            )
-            roast = refracRoasts.random()
-        }
-
         messageLabel?.setText(roast)
         messageLabel?.color = Color.RED
         messageLabel?.isVisible = true
@@ -1777,8 +1739,8 @@ class GameScreen(
         shapeRenderer.rectLine(centerX, playerY + waistOffset, centerX - 6f - legOffset, playerY, 3f)
         shapeRenderer.rectLine(centerX, playerY + waistOffset, centerX + 6f + legOffset, playerY, 3f)
 
-        // Draw Echo (Transparent Red) for Level 5 (and Level 6)
-        if (((currentLevel == 5 && (currentChunk == 1 || currentChunk == 3)) || (currentLevel == 6 && currentChunk == 1)) && echoActive) {
+        // Draw Echo (Transparent Red) for Level 5
+        if ((currentLevel == 5 && (currentChunk == 1 || currentChunk == 3)) && echoActive) {
             shapeRenderer.color = Color(1f, 0f, 0f, 0.5f) // Transparent Red
             val eCenterX = echoX + 12.5f + renderOffset
             val eCrouch = echoHeight < normalHeight
