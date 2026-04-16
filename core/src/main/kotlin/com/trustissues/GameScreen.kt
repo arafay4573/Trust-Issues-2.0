@@ -97,6 +97,12 @@ class GameScreen(
     data class PlayerRecord(val time: Float, val x: Float, val y: Float, val isCrouching: Boolean)
     private val playerPath = mutableListOf<PlayerRecord>()
     private var chunkTime = 0f
+
+    // Level 6 Chunk 1 variables
+    private var isPortalLoopActive = false
+    private var hiddenPlatformSpawned = false
+    private var hiddenPlatformTime = 0f
+    private var realMaskSpawned = false
     private var hasIdentitySwapped = false
     private var lastGravityFlipTime = 0f
     private var screenFlashColor: Color? = null
@@ -523,7 +529,39 @@ class GameScreen(
     private fun setupLevel6(chunk: Int) {
         when (chunk) {
             1 -> {
-                // Chunk 1 removed per user request.
+                // Chunk 1: The Infinite Loop Portal
+                platforms.clear()
+                lasers.clear()
+                movingWalls.clear()
+                gameButtons.clear()
+                gravitySwitches.clear()
+                sharks.clear()
+
+                playerX = 640f
+                playerY = 100f
+                velocityY = 0f
+                reverseGravity = false
+                isPortalLoopActive = false
+                hiddenPlatformSpawned = false
+                hiddenPlatformTime = 0f
+                realMaskSpawned = false
+
+                // Spawn Point (Removed immediately? No, it's just the start. Let's make a tiny floor to jump off)
+                platforms.add(Platform(Rectangle(600f, 80f, 80f, 20f), PlatformType.NORMAL))
+
+                // The Squeeze: Two Symmetrical Red Laser Walls moving at 35f
+                movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 35f, isActive = true))
+                movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -35f, isActive = true))
+
+                // The Path: 4 Crumbling Platforms in a vertical zig-zag
+                platforms.add(Platform(Rectangle(450f, 250f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(730f, 360f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(450f, 480f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(730f, 600f, 100f, 20f), PlatformType.CRUMBLING))
+
+                // Fake Mask at the very top
+                maskX = 640f
+                maskY = 800f
             }
         }
     }
@@ -998,7 +1036,7 @@ class GameScreen(
                 if (!isPaused && !isDead && !isLevelComplete) {
                     val currentJumpStrength = if (currentLevel == 5 && (currentChunk == 2 || currentChunk == 3)) 500f else jumpStrength
                     // "tap the jump button again and again to fly ofk like flappy bird"
-                    if ((currentLevel == 5 && (currentChunk == 1 || currentChunk == 2 || currentChunk == 3)) || (currentLevel == 6 && currentChunk == 1)) {
+                    if (currentLevel == 5 && (currentChunk == 1 || currentChunk == 2 || currentChunk == 3)) {
                         if (reverseGravity) {
                             velocityY = -currentJumpStrength
                         } else {
@@ -1016,10 +1054,7 @@ class GameScreen(
             }
             override fun touchUp(event: InputEvent?, x: Float, y: Float, pointer: Int, button: Int) {
                 isJumpPressed = false
-                if (currentLevel == 6 && currentChunk == 1 && !isDead && !isLevelComplete) {
-                    flapsRemaining = 2
-                    flapTimer = 0.5f // Start timer for the first auto-flap
-                }
+
             }
         })
 
@@ -1392,11 +1427,12 @@ class GameScreen(
         // Physics
         val isExemptLevel = (currentLevel == 4 && (currentChunk == 2 || currentChunk == 3)) || currentLevel == 3 || currentLevel == 5 || currentLevel == 6
 
-        val currentGravity = if (currentLevel == 5 && (currentChunk == 2 || currentChunk == 3)) -1800f else -3200f
+        val currentGravity = if (currentLevel == 5 && (currentChunk == 2 || currentChunk == 3)) -1800f else if (currentLevel == 6 && currentChunk == 1 && isPortalLoopActive) -3200f * 3f else -3200f
         if (reverseGravity) {
             gravity = -currentGravity // Flip gravity positive
             velocityY += gravity * delta
             playerY += velocityY * delta
+
 
             // Ceiling check
             if (playerY > 720f && currentLevel != 5) die("Gravity hurts.")
@@ -1404,6 +1440,61 @@ class GameScreen(
             gravity = currentGravity
             velocityY += gravity * delta
             playerY += velocityY * delta
+        if (currentLevel == 6 && currentChunk == 1 && !isDead && !isLevelComplete) {
+            if (isPortalLoopActive) {
+                // Wrap around
+                if (playerY < 0f) {
+                    playerY = 1000f
+                }
+
+                // Spawn hidden platform
+                if (!hiddenPlatformSpawned) {
+                    hiddenPlatformSpawned = true
+                    val randX = 300f + (Math.random() * 600f).toFloat() // between 300 and 900
+                    val hiddenPlat = Platform(Rectangle(randX, 500f, 40f, 20f), PlatformType.CRUMBLING)
+                    platforms.add(hiddenPlat)
+                }
+
+                // Check if standing on hidden platform (must be the only platform left)
+                var standingOnHidden = false
+                for (plat in platforms) {
+                    if (plat.type == PlatformType.CRUMBLING && plat.state != PlatformState.DESTROYED && plat.rect.width == 40f) {
+                        if (Intersector.overlaps(playerRect, plat.rect)) {
+                            standingOnHidden = true
+                            break
+                        }
+                    }
+                }
+
+                if (standingOnHidden) {
+                    hiddenPlatformTime += delta
+                    if (hiddenPlatformTime >= 0.5f && !realMaskSpawned) {
+                        realMaskSpawned = true
+                        maskX = 640f
+                        maskY = 100f
+                        maskRect.set(maskX, maskY, maskWidth, maskHeight)
+
+                        // The prompt says: "The player must 'break the loop' by landing on this platform and then falling one last time to hit the Real Mask at the bottom."
+                        // So the loop breaks? If realMaskSpawned is true, we should stop the infinite wrapping?
+                        // "If the player falls past the bottom... teleport back... If they touch the mask, win."
+                        // If they fall past the bottom WITH the mask spawned, they might miss the mask. We should just let them loop, or maybe they die if they miss?
+                        // "If the player falls past the bottom of the screen (y < 0f), they must instantly teleport back to the top (y=1000f)" -> implies infinite looping even when mask is spawned, so let it continue.
+                    }
+                } else {
+                    hiddenPlatformTime = 0f // Reset time if they fall off
+                }
+            } else {
+                // If loop not active and they fall into void, they die
+                if (playerY < -50f) {
+                    if (Math.random() < 0.5) {
+                        die("Enjoy the fall. It's the only thing you're good at.")
+                    } else {
+                        die("Infinite falling for an infinite failure.")
+                    }
+                    stateTimer = -9999f
+                }
+            }
+        }
 
             if (playerY < floorY && !isExemptLevel) {
                 playerY = floorY
@@ -1441,13 +1532,14 @@ class GameScreen(
                 // Determine if Player or Echo overlaps (Level 5)
                 val isTouchedByPlayer = playerRect.overlaps(plat.rect)
                 val isTouchedByEcho = (currentLevel == 5 && currentChunk == 1 && echoActive && echoRect.overlaps(plat.rect))
-                val isTouchedByMirror = ((currentLevel == 5 && currentChunk == 2) || (currentLevel == 6 && currentChunk == 1)) && mirrorActive && mirrorRect.overlaps(plat.rect)
+                val isTouchedByMirror = (currentLevel == 5 && currentChunk == 2) && mirrorActive && mirrorRect.overlaps(plat.rect)
 
                 if (isTouchedByPlayer || isTouchedByEcho || isTouchedByMirror) {
                     // DYNAMIC LIMITS
                     val actualLimit = when {
                          currentLevel == 5 && currentChunk == 1 -> 1.2f // Level 5-1: 1.2s
-                         currentLevel == 6 && currentChunk == 1 -> 1.2f // Level 6-1: 1.2s
+                         currentLevel == 6 && currentChunk == 1 -> 1.0f // Level 6-1: 1.0s
+
                          currentLevel == 5 && currentChunk == 2 -> 1.0f // Level 5-2: 1.0s
                          currentLevel == 3 && currentChunk == 3 -> 0.7f
                          currentLevel == 3 || currentLevel == 4 -> 1.0f
@@ -1548,8 +1640,10 @@ class GameScreen(
                 // Check if wall crushes player
                 if (Intersector.overlaps(playerRect, wall.rect)) {
                     if (currentLevel == 5 && currentChunk == 2) die("You ain't no Newton")
-                    else if (currentLevel == 6 && currentChunk == 1) die("Stop fighting the drift. Trust the void.")
-                    else die("Squished like a bug. And just as insignificant.")
+                    else if (currentLevel == 6 && currentChunk == 1) {
+                        die("Did you think the Mask was your friend? Cute.")
+                        stateTimer = -9999f
+                    } else die("Squished like a bug. And just as insignificant.")
                 }
             }
         }
@@ -1745,13 +1839,28 @@ class GameScreen(
         // Ceiling drop is handled by normal sweeping logic.
 
         // Default Win Condition (Ignore in Level 4 Chunk 3)
-        if ((currentLevel == 5 && currentChunk == 2) || (currentLevel == 6 && currentChunk == 1)) {
+        if (currentLevel == 6 && currentChunk == 1) {
+            if (!isDead && !isLevelComplete) {
+                if (!isPortalLoopActive && Intersector.overlaps(playerRect, maskRect)) {
+                    // Trap triggered!
+                    isPortalLoopActive = true
+                    playerY = 1000f
+                    velocityY = -500f // Fall rapidly
+
+                    // Hide fake mask by moving it out of bounds
+                    maskY = -9999f
+                    maskRect.set(maskX, maskY, maskWidth, maskHeight)
+                } else if (isPortalLoopActive && realMaskSpawned && Intersector.overlaps(playerRect, maskRect)) {
+                    win()
+                }
+            }
+        } else if (currentLevel == 5 && currentChunk == 2) {
             if (!isDead && Intersector.overlaps(playerRect, maskRect) && Intersector.overlaps(mirrorRect, maskRect)) {
                 win()
             }
         } else if (currentLevel == 5 && currentChunk == 3) {
             // Ignore default win, handled in logic block
-        } else if ((currentLevel != 4 || currentChunk != 3) && !(currentLevel == 6 && currentChunk == 1)) {
+        } else if (currentLevel != 4 || currentChunk != 3) {
             if (!isDead && Intersector.overlaps(playerRect, maskRect)) win()
         }
     }
