@@ -103,6 +103,9 @@ class GameScreen(
     private var hiddenPlatformSpawned = false
     private var hiddenPlatformTime = 0f
     private var realMaskSpawned = false
+    private var leftMaskX = 0f
+    private var leftMaskY = 0f
+    private val leftMaskRect = Rectangle()
     private var hasIdentitySwapped = false
     private var lastGravityFlipTime = 0f
     private var screenFlashColor: Color? = null
@@ -343,7 +346,7 @@ class GameScreen(
                 mirrorActive = false
 
                 // Safe platform at start to land on when gravity reverts
-                platforms.add(Platform(Rectangle(600f, 80f, 80f, 20f), PlatformType.NORMAL))
+                platforms.add(Platform(Rectangle(600f, 80f, 80f, 20f), PlatformType.CRUMBLING))
 
                 // The Walls: Symmetrical Red Laser Walls moving inward at 25f
                 movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 25f, isActive = true))
@@ -470,7 +473,7 @@ class GameScreen(
                 ceilingLaserDrop = false
 
                 // Safe platform at start to land on
-                platforms.add(Platform(Rectangle(600f, 80f, 80f, 20f), PlatformType.NORMAL))
+                platforms.add(Platform(Rectangle(600f, 80f, 80f, 20f), PlatformType.CRUMBLING))
 
                 // The Shark
                 val centerShark = Shark(580f, 360f, 150f, 300f, 860f)
@@ -546,18 +549,19 @@ class GameScreen(
                 hiddenPlatformTime = 0f
                 realMaskSpawned = false
 
-                // Spawn Point (Removed immediately? No, it's just the start. Let's make a tiny floor to jump off)
-                platforms.add(Platform(Rectangle(600f, 80f, 80f, 20f), PlatformType.NORMAL))
+                // Spawn Point: Base platform
+                platforms.add(Platform(Rectangle(600f, 80f, 80f, 20f), PlatformType.CRUMBLING))
 
-                // The Squeeze: Two Symmetrical Red Laser Walls moving at 35f
-                movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 35f, isActive = true))
-                movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -35f, isActive = true))
+                // The Squeeze: Two Symmetrical Red Laser Walls moving at 15f
+                movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 15f, isActive = true))
+                movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -15f, isActive = true))
 
-                // The Path: 4 Crumbling Platforms in a vertical zig-zag
-                platforms.add(Platform(Rectangle(450f, 250f, 100f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(730f, 360f, 100f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(450f, 480f, 100f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(730f, 600f, 100f, 20f), PlatformType.CRUMBLING))
+                // The Path: Crumbling platforms to the top
+                platforms.add(Platform(Rectangle(600f, 200f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(450f, 320f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(750f, 440f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(450f, 560f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(600f, 680f, 80f, 20f), PlatformType.CRUMBLING))
 
                 // Fake Mask at the very top
                 maskX = 640f
@@ -1447,18 +1451,18 @@ class GameScreen(
                     playerY = 1000f
                 }
 
-                // Spawn hidden platform
+                // Spawn hidden platform slightly to the left
                 if (!hiddenPlatformSpawned) {
                     hiddenPlatformSpawned = true
-                    val randX = 300f + (Math.random() * 600f).toFloat() // between 300 and 900
-                    val hiddenPlat = Platform(Rectangle(randX, 500f, 40f, 20f), PlatformType.CRUMBLING)
+                    val hiddenX = Math.max(50f, playerX - 100f) // a lil to the left
+                    val hiddenPlat = Platform(Rectangle(hiddenX, 500f, 60f, 20f), PlatformType.CRUMBLING)
                     platforms.add(hiddenPlat)
                 }
 
                 // Check if standing on hidden platform (must be the only platform left)
                 var standingOnHidden = false
                 for (plat in platforms) {
-                    if (plat.type == PlatformType.CRUMBLING && plat.state != PlatformState.DESTROYED && plat.rect.width == 40f) {
+                    if (plat.type == PlatformType.CRUMBLING && plat.state != PlatformState.DESTROYED && plat.rect.width == 60f) {
                         if (Intersector.overlaps(playerRect, plat.rect)) {
                             standingOnHidden = true
                             break
@@ -1468,17 +1472,17 @@ class GameScreen(
 
                 if (standingOnHidden) {
                     hiddenPlatformTime += delta
-                    if (hiddenPlatformTime >= 0.5f && !realMaskSpawned) {
+                    if (hiddenPlatformTime >= 0.1f && !realMaskSpawned) {
                         realMaskSpawned = true
-                        maskX = 640f
-                        maskY = 100f
+                        // Right mask is the real one
+                        maskX = playerX + 150f
+                        maskY = playerY
                         maskRect.set(maskX, maskY, maskWidth, maskHeight)
 
-                        // The prompt says: "The player must 'break the loop' by landing on this platform and then falling one last time to hit the Real Mask at the bottom."
-                        // So the loop breaks? If realMaskSpawned is true, we should stop the infinite wrapping?
-                        // "If the player falls past the bottom... teleport back... If they touch the mask, win."
-                        // If they fall past the bottom WITH the mask spawned, they might miss the mask. We should just let them loop, or maybe they die if they miss?
-                        // "If the player falls past the bottom of the screen (y < 0f), they must instantly teleport back to the top (y=1000f)" -> implies infinite looping even when mask is spawned, so let it continue.
+                        // Left mask is the death one
+                        leftMaskX = playerX - 150f
+                        leftMaskY = playerY
+                        leftMaskRect.set(leftMaskX, leftMaskY, maskWidth, maskHeight)
                     }
                 } else {
                     hiddenPlatformTime = 0f // Reset time if they fall off
@@ -1491,6 +1495,15 @@ class GameScreen(
                     } else {
                         die("Infinite falling for an infinite failure.")
                     }
+                    stateTimer = -9999f
+                }
+            }
+
+            // Check Death Mask Collision
+            if (isPortalLoopActive && realMaskSpawned) {
+                leftMaskRect.set(leftMaskX, leftMaskY, maskWidth, maskHeight)
+                if (Intersector.overlaps(playerRect, leftMaskRect)) {
+                    die("You chose poorly.")
                     stateTimer = -9999f
                 }
             }
@@ -2076,6 +2089,11 @@ class GameScreen(
             val hideMask = (currentLevel == 3 && currentChunk == 3 && !isLightsOn)
             if (!hideMask && isVisible(maskX, maskY)) {
                 game.batch.draw(tex, maskX + renderOffset, maskY + renderOffsetY, 32f, 32f)
+            }
+
+            // Draw Left Mask for Level 6 Chunk 1
+            if (currentLevel == 6 && currentChunk == 1 && realMaskSpawned && isVisible(leftMaskX, leftMaskY)) {
+                game.batch.draw(tex, leftMaskX + renderOffset, leftMaskY + renderOffsetY, 32f, 32f)
             }
         }
 
