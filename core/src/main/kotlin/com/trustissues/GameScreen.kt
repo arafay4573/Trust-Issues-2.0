@@ -62,6 +62,14 @@ class GameScreen(
     private var isWalking = false
     private var canJump = false
 
+
+    // Level 6 Mechanics
+    private var driftTimer = 0f
+    private var driftDirection = 0 // -1 for left, 1 for right
+    private var isDrifting = false
+    private var flapsRemaining = 0
+    private var flapTimer = 0f
+
     // Game State
     private var isDead = false
     private var isLevelComplete = false
@@ -196,6 +204,7 @@ class GameScreen(
     // Controls
     private var isLeftPressed = false
     private var isRightPressed = false
+    private var isJumpPressed = false
     private var isDownPressed = false
 
     override fun show() {
@@ -269,10 +278,19 @@ class GameScreen(
             setupLevel4(chunk)
         } else if (currentLevel == 5) {
             setupLevel5(chunk)
+        } else if (currentLevel == 6) {
+            setupLevel6(chunk)
         }
 
         maskRect.set(maskX, maskY, maskWidth, maskHeight)
         playerRect.set(playerX, playerY, playerWidth, playerHeight)
+
+        // Mirror activation for Level 6
+        if (currentLevel == 6 && currentChunk == 1 && playerY >= 550f && !mirrorActive) {
+            mirrorActive = true
+            mirrorRect.set(1280f - playerWidth - playerX, playerY, playerWidth, playerHeight)
+        }
+
     }
 
     private fun setupLevel1(chunk: Int) {
@@ -500,6 +518,69 @@ class GameScreen(
             }
         }
     }
+
+
+    private fun setupLevel6(chunk: Int) {
+        when (chunk) {
+            1 -> {
+                // Chunk 1: The Sticky Drift & Hardware Betrayal
+                platforms.clear()
+                lasers.clear()
+                movingWalls.clear()
+                gameButtons.clear()
+                gravitySwitches.clear()
+                sharks.clear()
+
+                playerX = 640f
+                playerY = 100f
+                velocityY = 0f
+                reverseGravity = false
+                mirrorActive = false
+
+                // Spawn Point: bottom-center
+                platforms.add(Platform(Rectangle(600f, 80f, 80f, 20f), PlatformType.NORMAL))
+
+                // Phase 1: The Crumbling Staircase (y=200f to y=500f, zig-zag)
+                platforms.add(Platform(Rectangle(540f, 200f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(660f, 275f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(540f, 350f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(660f, 425f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(540f, 500f, 80f, 20f), PlatformType.CRUMBLING))
+
+                // Set crumbling duration to 1.2s for these platforms in update loop or via state management
+
+                // Phase 2: The Mirror & Squeeze
+                // "At y=550f, split the screen visually and spawn the MirrorPlayer" -> we trigger mirror when y>=550, or spawn mirror offscreen?
+                // Actually the prompt says "At y=550f, split the screen visually and spawn the MirrorPlayer"
+                // It's probably easier to just enable mirrorActive and let update handle the y threshold, or set the initial mirror pos.
+                // Or maybe just enable it at the start but let the player know?
+                // The requirements say "At y=550f, split the screen visually and spawn the MirrorPlayer" - this means it happens during the ascent.
+
+                // Moving walls (Symmetrical Red Walls closing in at 25f)
+                movingWalls.add(MovingWall(Rectangle(-200f, 550f, 200f, 1500f), speed = 25f, isActive = true))
+                movingWalls.add(MovingWall(Rectangle(1280f, 550f, 200f, 1500f), speed = -25f, isActive = true))
+
+                // Phase 3: The Shark Ferries (y=700f)
+                // Two Safe Sharks patrolling horizontally.
+                sharks.add(Shark(400f, 700f, 100f, 200f, 600f))
+                sharks.add(Shark(880f, 700f, -100f, 680f, 1080f))
+                // Add unique SAFE_SHARK platforms for these ferries
+                platforms.add(Platform(Rectangle(400f, 700f, 119.9f, 20f), PlatformType.SAFE_SHARK))
+                platforms.add(Platform(Rectangle(880f, 700f, 120.1f, 20f), PlatformType.SAFE_SHARK))
+
+                // 3. THE FINISH: THE CAGE OF TRUST
+                maskX = 640f
+                maskY = 850f
+
+                // Laser Cage: Surround Mask with 4 thin lasers
+                lasers.add(Laser(Rectangle(620f, 840f, 2f, 50f), isSweeping = false)) // Left
+                lasers.add(Laser(Rectangle(678f, 840f, 2f, 50f), isSweeping = false)) // Right
+                lasers.add(Laser(Rectangle(620f, 840f, 60f, 2f), isSweeping = false)) // Bottom
+                lasers.add(Laser(Rectangle(620f, 890f, 60f, 2f), isSweeping = false)) // Top
+            }
+        }
+    }
+
 
     private fun setupLevel4(chunk: Int) {
         when (chunk) {
@@ -960,14 +1041,17 @@ class GameScreen(
         pauseGroup!!.add(pauseCenter).center()
         uiStage.addActor(pauseGroup!!)
 
+
+
         val jumpZone = Actor()
         jumpZone.setBounds(640f, 0f, 640f, 720f)
         jumpZone.addListener(object : InputListener() {
             override fun touchDown(event: InputEvent?, x: Float, y: Float, pointer: Int, button: Int): Boolean {
+                isJumpPressed = true
                 if (!isPaused && !isDead && !isLevelComplete) {
                     val currentJumpStrength = if (currentLevel == 5 && (currentChunk == 2 || currentChunk == 3)) 500f else jumpStrength
                     // "tap the jump button again and again to fly ofk like flappy bird"
-                    if (currentLevel == 5 && (currentChunk == 1 || currentChunk == 2 || currentChunk == 3)) {
+                    if ((currentLevel == 5 && (currentChunk == 1 || currentChunk == 2 || currentChunk == 3)) || (currentLevel == 6 && currentChunk == 1)) {
                         if (reverseGravity) {
                             velocityY = -currentJumpStrength
                         } else {
@@ -983,19 +1067,50 @@ class GameScreen(
                 }
                 return true
             }
+            override fun touchUp(event: InputEvent?, x: Float, y: Float, pointer: Int, button: Int) {
+                isJumpPressed = false
+                if (currentLevel == 6 && currentChunk == 1 && !isDead && !isLevelComplete) {
+                    flapsRemaining = 2
+                    flapTimer = 0.5f // Start timer for the first auto-flap
+                }
+            }
         })
+
         uiStage.addActor(jumpZone)
 
         val rootTable = Table(); rootTable.setFillParent(true); rootTable.bottom()
+
         val leftBtn = ImageButton(skin!!.get("left", ImageButton.ImageButtonStyle::class.java))
         leftBtn.addListener(object : InputListener() {
             override fun touchDown(event: InputEvent?, x: Float, y: Float, p: Int, b: Int): Boolean { isLeftPressed = true; return true }
-            override fun touchUp(event: InputEvent?, x: Float, y: Float, p: Int, b: Int) { isLeftPressed = false }
+            override fun touchUp(event: InputEvent?, x: Float, y: Float, p: Int, b: Int) {
+                isLeftPressed = false
+                if (currentLevel == 6 && currentChunk == 1 && !isDead && !isLevelComplete) {
+                    if (isControlsInverted) {
+                        driftDirection = 1
+                    } else {
+                        driftDirection = -1
+                    }
+                    driftTimer = 2.0f
+                    isDrifting = true
+                }
+            }
         })
         val rightBtn = ImageButton(skin!!.get("right", ImageButton.ImageButtonStyle::class.java))
         rightBtn.addListener(object : InputListener() {
             override fun touchDown(event: InputEvent?, x: Float, y: Float, p: Int, b: Int): Boolean { isRightPressed = true; return true }
-            override fun touchUp(event: InputEvent?, x: Float, y: Float, p: Int, b: Int) { isRightPressed = false }
+            override fun touchUp(event: InputEvent?, x: Float, y: Float, p: Int, b: Int) {
+                isRightPressed = false
+                if (currentLevel == 6 && currentChunk == 1 && !isDead && !isLevelComplete) {
+                    if (isControlsInverted) {
+                        driftDirection = -1
+                    } else {
+                        driftDirection = 1
+                    }
+                    driftTimer = 2.0f
+                    isDrifting = true
+                }
+            }
         })
         val leftControls = Table()
         leftControls.add(leftBtn).size(120f, 120f).padRight(60f)
@@ -1069,6 +1184,33 @@ class GameScreen(
         maskRect.set(maskX, maskY, maskWidth, maskHeight)
 
 
+
+
+        // --- LEVEL 6 CHUNK 1 LOGIC (Sticky Drift & Hardware Betrayal) ---
+        if (currentLevel == 6 && currentChunk == 1 && !isDead && !isLevelComplete) {
+            // Mirror collision death
+            if (mirrorActive && Intersector.overlaps(playerRect, mirrorRect)) {
+                die("Stop fighting the drift. Trust the void.")
+                stateTimer = -9999f
+                return
+            }
+
+            // Laser Cage Trap logic
+            if (Intersector.overlaps(playerRect, maskRect)) {
+                // Determine if drifting or actively holding
+                // Drift is true if driftTimer > 0
+                val activelyHolding = isLeftPressed || isRightPressed || isJumpPressed
+                // if they are actively holding OR jump is held down OR we are NOT drifting, they die
+                if (activelyHolding || !isDrifting) {
+                    die("You can't even control your own thumbs, let alone this game.")
+                    stateTimer = -9999f
+                    return
+                } else {
+                    win()
+                }
+            }
+        }
+        // ----------------------------------------------------------------
 
         // --- LEVEL 5 CHUNK 1 LOGIC (Flappy Bird) ---
         if (currentLevel == 5 && currentChunk == 1 && !isDead && !isLevelComplete) {
@@ -1250,6 +1392,47 @@ class GameScreen(
         if (leftInput) { playerX -= moveSpeed * delta; isWalking = true }
         if (rightInput) { playerX += moveSpeed * delta; isWalking = true }
 
+        // Level 6 Chunk 1: Sticky Drift Mechanic
+        if (currentLevel == 6 && currentChunk == 1 && !isDead && !isLevelComplete) {
+            // Auto-Flap
+            if (flapsRemaining > 0) {
+                flapTimer -= delta
+                if (flapTimer <= 0f) {
+                    val currentJumpStrength = if (currentLevel == 5 && (currentChunk == 2 || currentChunk == 3)) 500f else jumpStrength // Flappy strength logic remains standard
+                    if (reverseGravity) {
+                        velocityY = -currentJumpStrength
+                    } else {
+                        velocityY = currentJumpStrength
+                    }
+                    flapsRemaining--
+                    if (flapsRemaining > 0) flapTimer = 0.5f
+                }
+            }
+
+            // Movement Drift
+            if (isDrifting && driftTimer > 0f) {
+                driftTimer -= delta
+                val driftSpeed = moveSpeed * 0.7f
+                var appliedSpeed = driftSpeed
+
+                // Input Conflict
+                if ((driftDirection == -1 && rightInput) || (driftDirection == 1 && leftInput)) {
+                    // Holding opposite direction while drifting -> fight the drift but don't stop immediately
+                    // Since leftInput/rightInput also apply their full force below, this just means they
+                    // will counteract each other somewhat. To explicitly slow them down without stopping:
+                    appliedSpeed = driftSpeed * 0.5f // Reduce drift force during conflict
+                }
+
+                playerX += driftDirection * appliedSpeed * delta
+                isWalking = true
+
+                if (driftTimer <= 0f) {
+                    isDrifting = false
+                }
+            }
+        }
+
+
         if (allowScreenWrap) {
              if (playerX < -40f) playerX = 1280f
              else if (playerX > 1320f) playerX = 0f
@@ -1260,7 +1443,7 @@ class GameScreen(
         if (isWalking) walkTime += delta * 15f else walkTime = 0f
 
         // Physics
-        val isExemptLevel = (currentLevel == 4 && (currentChunk == 2 || currentChunk == 3)) || currentLevel == 3 || currentLevel == 5
+        val isExemptLevel = (currentLevel == 4 && (currentChunk == 2 || currentChunk == 3)) || currentLevel == 3 || currentLevel == 5 || currentLevel == 6
 
         val currentGravity = if (currentLevel == 5 && (currentChunk == 2 || currentChunk == 3)) -1800f else -3200f
         if (reverseGravity) {
@@ -1284,6 +1467,13 @@ class GameScreen(
 
         playerRect.set(playerX, playerY, playerWidth, playerHeight)
 
+        // Mirror activation for Level 6
+        if (currentLevel == 6 && currentChunk == 1 && playerY >= 550f && !mirrorActive) {
+            mirrorActive = true
+            mirrorRect.set(1280f - playerWidth - playerX, playerY, playerWidth, playerHeight)
+        }
+
+
         // Platform Collision
         canJump = false // Reset per frame
         if (!reverseGravity && playerY <= floorY + 1f && !isExemptLevel) canJump = true
@@ -1300,16 +1490,17 @@ class GameScreen(
             if (plat.state == PlatformState.DESTROYED) continue
 
             // 1. Trigger Crumble on Touch (Level 2, 3, 4, 5)
-            if ((currentLevel == 2 || currentLevel == 3 || currentLevel == 4 || currentLevel == 5) && plat.type == PlatformType.CRUMBLING) {
+            if ((currentLevel == 2 || currentLevel == 3 || currentLevel == 4 || currentLevel == 5 || currentLevel == 6) && plat.type == PlatformType.CRUMBLING) {
                 // Determine if Player or Echo overlaps (Level 5)
                 val isTouchedByPlayer = playerRect.overlaps(plat.rect)
                 val isTouchedByEcho = (currentLevel == 5 && currentChunk == 1 && echoActive && echoRect.overlaps(plat.rect))
-                val isTouchedByMirror = (currentLevel == 5 && currentChunk == 2 && mirrorActive && mirrorRect.overlaps(plat.rect))
+                val isTouchedByMirror = ((currentLevel == 5 && currentChunk == 2) || (currentLevel == 6 && currentChunk == 1)) && mirrorActive && mirrorRect.overlaps(plat.rect)
 
                 if (isTouchedByPlayer || isTouchedByEcho || isTouchedByMirror) {
                     // DYNAMIC LIMITS
                     val actualLimit = when {
                          currentLevel == 5 && currentChunk == 1 -> 1.2f // Level 5-1: 1.2s
+                         currentLevel == 6 && currentChunk == 1 -> 1.2f // Level 6-1: 1.2s
                          currentLevel == 5 && currentChunk == 2 -> 1.0f // Level 5-2: 1.0s
                          currentLevel == 3 && currentChunk == 3 -> 0.7f
                          currentLevel == 3 || currentLevel == 4 -> 1.0f
@@ -1402,6 +1593,7 @@ class GameScreen(
             }
         }
 
+
         // Moving Walls
         for (wall in movingWalls) {
             if (wall.isActive) {
@@ -1409,10 +1601,12 @@ class GameScreen(
                 // Check if wall crushes player
                 if (Intersector.overlaps(playerRect, wall.rect)) {
                     if (currentLevel == 5 && currentChunk == 2) die("You ain't no Newton")
+                    else if (currentLevel == 6 && currentChunk == 1) die("Stop fighting the drift. Trust the void.")
                     else die("Squished like a bug. And just as insignificant.")
                 }
             }
         }
+
 
         // Buttons
         for (btn in gameButtons) {
@@ -1422,14 +1616,17 @@ class GameScreen(
             }
         }
 
+
         // Check Deadly Red Collision specifically for player
-        if (currentLevel == 5 && currentChunk == 2) {
+        if ((currentLevel == 5 && currentChunk == 2) || (currentLevel == 6 && currentChunk == 1)) {
             for (plat in platforms) {
                 if (plat.type == PlatformType.DEADLY_RED && Intersector.overlaps(playerRect, plat.rect)) {
-                    die("You ain't no Newton")
+                    if (currentLevel == 6 && currentChunk == 1) die("Is your screen dirty, or is it just your lack of skill?")
+                    else die("You ain't no Newton")
                 }
             }
         }
+
 
         // Mirror Logic Level 5 Chunk 2
         if (currentLevel == 5 && currentChunk == 2 && mirrorActive) {
@@ -1457,6 +1654,8 @@ class GameScreen(
                 if (plat.state == PlatformState.DESTROYED) continue
 
                 if (plat.type == PlatformType.DEADLY_RED && Intersector.overlaps(mirrorRect, plat.rect)) {
+                    if (currentLevel == 6 && currentChunk == 1) die("Stop fighting the drift. Trust the void.")
+                    else
                     die("You ain't no Newton")
                 }
             }
@@ -1538,7 +1737,7 @@ class GameScreen(
             }
 
             // Sync SAFE_SHARK platforms
-            if (currentLevel == 5 && currentChunk == 2) {
+            if ((currentLevel == 5 && currentChunk == 2) || (currentLevel == 6 && currentChunk == 1)) {
                 for (plat in platforms) {
                     if (plat.type == PlatformType.SAFE_SHARK) {
                         // Use exact unique widths to sync
@@ -1599,13 +1798,13 @@ class GameScreen(
         // Ceiling drop is handled by normal sweeping logic.
 
         // Default Win Condition (Ignore in Level 4 Chunk 3)
-        if (currentLevel == 5 && currentChunk == 2) {
+        if ((currentLevel == 5 && currentChunk == 2) || (currentLevel == 6 && currentChunk == 1)) {
             if (!isDead && Intersector.overlaps(playerRect, maskRect) && Intersector.overlaps(mirrorRect, maskRect)) {
                 win()
             }
         } else if (currentLevel == 5 && currentChunk == 3) {
             // Ignore default win, handled in logic block
-        } else if (currentLevel != 4 || currentChunk != 3) {
+        } else if ((currentLevel != 4 || currentChunk != 3) && !(currentLevel == 6 && currentChunk == 1)) {
             if (!isDead && Intersector.overlaps(playerRect, maskRect)) win()
         }
     }
