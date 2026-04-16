@@ -346,7 +346,7 @@ class GameScreen(
                 mirrorActive = false
 
                 // Safe platform at start to land on when gravity reverts
-                platforms.add(Platform(Rectangle(600f, 80f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(600f, 80f, 80f, 20f), PlatformType.NORMAL))
 
                 // The Walls: Symmetrical Red Laser Walls moving inward at 25f
                 movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 25f, isActive = true))
@@ -473,7 +473,7 @@ class GameScreen(
                 ceilingLaserDrop = false
 
                 // Safe platform at start to land on
-                platforms.add(Platform(Rectangle(600f, 80f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(600f, 80f, 80f, 20f), PlatformType.NORMAL))
 
                 // The Shark
                 val centerShark = Shark(580f, 360f, 150f, 300f, 860f)
@@ -541,7 +541,7 @@ class GameScreen(
                 sharks.clear()
 
                 playerX = 640f
-                playerY = 100f
+                playerY = 220f
                 velocityY = 0f
                 reverseGravity = false
                 isPortalLoopActive = false
@@ -549,23 +549,22 @@ class GameScreen(
                 hiddenPlatformTime = 0f
                 realMaskSpawned = false
 
-                // Spawn Point: Base platform
-                platforms.add(Platform(Rectangle(600f, 80f, 80f, 20f), PlatformType.CRUMBLING))
+                // Base platform at y=200f
+                platforms.add(Platform(Rectangle(600f, 200f, 80f, 20f), PlatformType.CRUMBLING))
 
                 // The Squeeze: Two Symmetrical Red Laser Walls moving at 15f
                 movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 15f, isActive = true))
                 movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -15f, isActive = true))
 
-                // The Path: Crumbling platforms to the top
-                platforms.add(Platform(Rectangle(600f, 200f, 80f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(450f, 320f, 80f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(750f, 440f, 80f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(450f, 560f, 80f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(600f, 680f, 80f, 20f), PlatformType.CRUMBLING))
+                // The Path: Crumbling platforms to the top (lowered to be more accessible)
+                platforms.add(Platform(Rectangle(450f, 300f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(750f, 400f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(450f, 500f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(600f, 600f, 80f, 20f), PlatformType.CRUMBLING))
 
-                // Fake Mask at the very top
-                maskX = 640f
-                maskY = 800f
+                // Fake Mask on the left of the highest platform
+                maskX = 550f
+                maskY = 600f
             }
         }
     }
