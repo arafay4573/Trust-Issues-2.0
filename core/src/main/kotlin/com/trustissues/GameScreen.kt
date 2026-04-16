@@ -540,8 +540,8 @@ class GameScreen(
                 gravitySwitches.clear()
                 sharks.clear()
 
-                playerX = 640f
-                playerY = 220f
+                playerX = 620f
+                playerY = 250f
                 velocityY = 0f
                 reverseGravity = false
                 isPortalLoopActive = false
@@ -549,22 +549,22 @@ class GameScreen(
                 hiddenPlatformTime = 0f
                 realMaskSpawned = false
 
-                // Base platform at y=200f
-                platforms.add(Platform(Rectangle(600f, 200f, 80f, 20f), PlatformType.CRUMBLING))
+                // Base platform at y=150f (wide enough to easily catch player)
+                platforms.add(Platform(Rectangle(540f, 150f, 200f, 20f), PlatformType.CRUMBLING))
 
                 // The Squeeze: Two Symmetrical Red Laser Walls moving at 15f
                 movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 15f, isActive = true))
                 movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -15f, isActive = true))
 
-                // The Path: Crumbling platforms to the top (lowered to be more accessible)
-                platforms.add(Platform(Rectangle(450f, 300f, 80f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(750f, 400f, 80f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(450f, 500f, 80f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(600f, 600f, 80f, 20f), PlatformType.CRUMBLING))
+                // The Path: 4 Crumbling platforms zig-zagging up
+                platforms.add(Platform(Rectangle(380f, 230f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(760f, 310f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(420f, 390f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(600f, 470f, 100f, 20f), PlatformType.CRUMBLING))
 
                 // Fake Mask on the left of the highest platform
                 maskX = 550f
-                maskY = 600f
+                maskY = 480f
             }
         }
     }
