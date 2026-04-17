@@ -64,9 +64,6 @@ class GameScreen(
 
 
     // Level 6 Mechanics
-    private var driftTimer = 0f
-    private var driftDirection = 0 // -1 for left, 1 for right
-    private var isDrifting = false
     private var flapsRemaining = 0
     private var flapTimer = 0f
 
@@ -1070,15 +1067,6 @@ class GameScreen(
             override fun touchDown(event: InputEvent?, x: Float, y: Float, p: Int, b: Int): Boolean { isLeftPressed = true; return true }
             override fun touchUp(event: InputEvent?, x: Float, y: Float, p: Int, b: Int) {
                 isLeftPressed = false
-                if (currentLevel == 6 && currentChunk == 1 && !isDead && !isLevelComplete) {
-                    if (isControlsInverted) {
-                        driftDirection = 1
-                    } else {
-                        driftDirection = -1
-                    }
-                    driftTimer = 2.0f
-                    isDrifting = true
-                }
             }
         })
         val rightBtn = ImageButton(skin!!.get("right", ImageButton.ImageButtonStyle::class.java))
@@ -1086,15 +1074,6 @@ class GameScreen(
             override fun touchDown(event: InputEvent?, x: Float, y: Float, p: Int, b: Int): Boolean { isRightPressed = true; return true }
             override fun touchUp(event: InputEvent?, x: Float, y: Float, p: Int, b: Int) {
                 isRightPressed = false
-                if (currentLevel == 6 && currentChunk == 1 && !isDead && !isLevelComplete) {
-                    if (isControlsInverted) {
-                        driftDirection = -1
-                    } else {
-                        driftDirection = 1
-                    }
-                    driftTimer = 2.0f
-                    isDrifting = true
-                }
             }
         })
         val leftControls = Table()
@@ -1176,19 +1155,17 @@ class GameScreen(
             // Mirror collision death
             if (mirrorActive && Intersector.overlaps(playerRect, mirrorRect)) {
                 die("Stop fighting the drift. Trust the void.")
-                stateTimer = -9999f
+
                 return
             }
 
             // Laser Cage Trap logic
             if (Intersector.overlaps(playerRect, maskRect)) {
-                // Determine if drifting or actively holding
-                // Drift is true if driftTimer > 0
                 val activelyHolding = isLeftPressed || isRightPressed || isJumpPressed
-                // if they are actively holding OR jump is held down OR we are NOT drifting, they die
-                if (activelyHolding || !isDrifting) {
+                // if they are actively holding OR jump is held down, they die
+                if (activelyHolding) {
                     die("You can't even control your own thumbs, let alone this game.")
-                    stateTimer = -9999f
+
                     return
                 } else {
                     win()
@@ -1394,27 +1371,7 @@ class GameScreen(
                 }
             }
 
-            // Movement Drift
-            if (isDrifting && driftTimer > 0f) {
-                driftTimer -= delta
-                val driftSpeed = moveSpeed * 0.7f
-                var appliedSpeed = driftSpeed
 
-                // Input Conflict
-                if ((driftDirection == -1 && rightInput) || (driftDirection == 1 && leftInput)) {
-                    // Holding opposite direction while drifting -> fight the drift but don't stop immediately
-                    // Since leftInput/rightInput also apply their full force below, this just means they
-                    // will counteract each other somewhat. To explicitly slow them down without stopping:
-                    appliedSpeed = driftSpeed * 0.5f // Reduce drift force during conflict
-                }
-
-                playerX += driftDirection * appliedSpeed * delta
-                isWalking = true
-
-                if (driftTimer <= 0f) {
-                    isDrifting = false
-                }
-            }
         }
 
 
@@ -1494,7 +1451,7 @@ class GameScreen(
                     } else {
                         die("Infinite falling for an infinite failure.")
                     }
-                    stateTimer = -9999f
+
                 }
             }
 
@@ -1503,7 +1460,7 @@ class GameScreen(
                 leftMaskRect.set(leftMaskX, leftMaskY, maskWidth, maskHeight)
                 if (Intersector.overlaps(playerRect, leftMaskRect)) {
                     die("You chose poorly.")
-                    stateTimer = -9999f
+
                 }
             }
         }
@@ -1654,7 +1611,7 @@ class GameScreen(
                     if (currentLevel == 5 && currentChunk == 2) die("You ain't no Newton")
                     else if (currentLevel == 6 && currentChunk == 1) {
                         die("Did you think the Mask was your friend? Cute.")
-                        stateTimer = -9999f
+
                     } else die("Squished like a bug. And just as insignificant.")
                 }
             }
