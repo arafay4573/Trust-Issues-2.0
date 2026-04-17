@@ -346,8 +346,8 @@ class GameScreen(
                 platforms.add(Platform(Rectangle(600f, 80f, 80f, 20f), PlatformType.NORMAL))
 
                 // The Walls: Symmetrical Red Laser Walls moving inward at 25f
-                movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 25f, isActive = true))
-                movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -25f, isActive = true))
+                movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 45f, isActive = true))
+                movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -45f, isActive = true))
 
                 // Platforms to "stick" on (climbing up)
                 platforms.add(Platform(Rectangle(540f, 200f, 80f, 20f), PlatformType.CRUMBLING))
@@ -401,8 +401,8 @@ class GameScreen(
                 platforms.add(Platform(Rectangle(690f, 80f, 100f, 20f), PlatformType.NORMAL))
 
                 // Crushing Walls from x=0 and x=1280
-                movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 25f, isActive = true))
-                movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -25f, isActive = true))
+                movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 45f, isActive = true))
+                movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -45f, isActive = true))
 
                 // Horizontal DEADLY_RED laser at the top (Ceiling)
                 platforms.add(Platform(Rectangle(0f, 700f, 1280f, 20f), PlatformType.DEADLY_RED))
@@ -480,8 +480,8 @@ class GameScreen(
                 platforms.add(centerSharkPlatform)
 
                 // The Walls
-                val leftWall = MovingWall(Rectangle(-400f, 0f, 400f, 1500f), speed = 50f, isActive = true)
-                val rightWall = MovingWall(Rectangle(1280f, 0f, 400f, 1500f), speed = -50f, isActive = true)
+                val leftWall = MovingWall(Rectangle(-400f, 0f, 400f, 1500f), speed = 85f, isActive = true)
+                val rightWall = MovingWall(Rectangle(1280f, 0f, 400f, 1500f), speed = -85f, isActive = true)
                 movingWalls.add(leftWall)
                 movingWalls.add(rightWall)
 
@@ -550,8 +550,8 @@ class GameScreen(
                 platforms.add(Platform(Rectangle(540f, 150f, 200f, 20f), PlatformType.CRUMBLING))
 
                 // The Squeeze: Two Symmetrical Red Laser Walls moving at 15f
-                movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 15f, isActive = true))
-                movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -15f, isActive = true))
+                movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 35f, isActive = true))
+                movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -35f, isActive = true))
 
                 // The Path: 4 Crumbling platforms zig-zagging up
                 platforms.add(Platform(Rectangle(380f, 230f, 100f, 20f), PlatformType.CRUMBLING))
@@ -1497,7 +1497,7 @@ class GameScreen(
             if (plat.state == PlatformState.DESTROYED) continue
 
             // 1. Trigger Crumble on Touch (Level 2, 3, 4, 5)
-            if ((currentLevel == 2 || currentLevel == 3 || currentLevel == 4 || currentLevel == 5 || currentLevel == 6) && plat.type == PlatformType.CRUMBLING) {
+            if ((currentLevel == 2 || currentLevel == 3 || currentLevel == 4 || currentLevel == 5 || currentLevel == 6) && (plat.type == PlatformType.CRUMBLING || plat.type == PlatformType.NORMAL)) {
                 // Determine if Player or Echo overlaps (Level 5)
                 val isTouchedByPlayer = playerRect.overlaps(plat.rect)
                 val isTouchedByEcho = (currentLevel == 5 && currentChunk == 1 && echoActive && echoRect.overlaps(plat.rect))
@@ -1506,13 +1506,13 @@ class GameScreen(
                 if (isTouchedByPlayer || isTouchedByEcho || isTouchedByMirror) {
                     // DYNAMIC LIMITS
                     val actualLimit = when {
-                         currentLevel == 5 && currentChunk == 1 -> 1.2f // Level 5-1: 1.2s
-                         currentLevel == 6 && currentChunk == 1 -> 1.0f // Level 6-1: 1.0s
+                         currentLevel == 5 && currentChunk == 1 -> 0.7f
+                         currentLevel == 6 && currentChunk == 1 -> 0.6f
 
-                         currentLevel == 5 && currentChunk == 2 -> 1.0f // Level 5-2: 1.0s
-                         currentLevel == 3 && currentChunk == 3 -> 0.7f
-                         currentLevel == 3 || currentLevel == 4 -> 1.0f
-                         else -> 1.5f
+                         currentLevel == 5 && currentChunk == 2 -> 0.6f
+                         currentLevel == 3 && currentChunk == 3 -> 0.4f
+                         currentLevel == 3 || currentLevel == 4 -> 0.6f
+                         else -> 0.8f
                     }
                     plat.startCrumbling(actualLimit)
                 }
