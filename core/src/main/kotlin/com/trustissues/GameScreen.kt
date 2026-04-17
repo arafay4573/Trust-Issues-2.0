@@ -1816,6 +1816,12 @@ class GameScreen(
                     playerY = 1000f
                     velocityY = -500f // Fall rapidly
 
+                    // Rush walls at the player leaving just some seconds
+                    movingWalls.forEach { wall ->
+                        if (wall.speed > 0) wall.speed = 220f
+                        else if (wall.speed < 0) wall.speed = -220f
+                    }
+
                     // Hide fake mask by moving it out of bounds
                     maskY = -9999f
                     maskRect.set(maskX, maskY, maskWidth, maskHeight)
