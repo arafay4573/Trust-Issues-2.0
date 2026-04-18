@@ -547,7 +547,7 @@ class GameScreen(
                 sharks.clear()
 
                 playerX = 100f
-                playerY = 280f
+                playerY = 320f
                 velocityY = 0f
                 reverseGravity = false
                 hasSwappedIdentity = false
@@ -1620,11 +1620,11 @@ class GameScreen(
             if (plat.state == PlatformState.DESTROYED) continue
 
             // 1. Trigger Crumble on Touch (Level 2, 3, 4, 5)
-            if ((currentLevel == 2 || currentLevel == 3 || currentLevel == 4 || currentLevel == 5 || currentLevel == 6) && plat.type == PlatformType.CRUMBLING) {
+            if ((currentLevel == 2 || currentLevel == 3 || currentLevel == 4 || currentLevel == 5 || currentLevel == 6) && (plat.type == PlatformType.CRUMBLING || (currentLevel == 6 && currentChunk == 2 && plat.type == PlatformType.NORMAL))) {
                 // Determine if Player or Echo overlaps (Level 5)
                 val isTouchedByPlayer = playerRect.overlaps(plat.rect)
                 val isTouchedByEcho = (currentLevel == 5 && currentChunk == 1 && echoActive && echoRect.overlaps(plat.rect))
-                val isTouchedByMirror = (currentLevel == 5 && currentChunk == 2) && mirrorActive && mirrorRect.overlaps(plat.rect)
+                val isTouchedByMirror = ((currentLevel == 5 && currentChunk == 2) || (currentLevel == 6 && currentChunk == 2)) && mirrorActive && mirrorRect.overlaps(plat.rect)
 
                 if (isTouchedByPlayer || isTouchedByEcho || isTouchedByMirror) {
                     // DYNAMIC LIMITS
@@ -1966,7 +1966,6 @@ class GameScreen(
 
         if (currentLevel == 6 && currentChunk == 2) {
             roast = customMessage ?: listOf("Look at you... you've become the very thing you feared.", "Identity crisis much?", "You're just a ghost in your own game now.").random()
-            stateTimer = -9999f
         }
 
         messageLabel?.setText(roast)
