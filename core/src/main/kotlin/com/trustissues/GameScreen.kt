@@ -1211,6 +1211,11 @@ class GameScreen(
 
                     platforms.add(Platform(Rectangle(700f, 100f, 400f, 20f), PlatformType.CRUMBLING)) // Base catch for mirror falling
 
+                    // Slightly increase wall speed
+                    for (wall in movingWalls) {
+                        if (wall.speed > 0) wall.speed += 10f else wall.speed -= 10f
+                    }
+
                     // Goal Mask appears at top left
                     maskX = 200f
                     maskY = 660f
