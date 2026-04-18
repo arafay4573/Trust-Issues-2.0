@@ -1205,19 +1205,22 @@ class GameScreen(
 
                     isControlsInverted = true
 
-                    platforms.add(Platform(Rectangle(1080f, 280f, 150f, 20f), PlatformType.CRUMBLING)) // Base for mirror
-                    // We will spawn the platforms here but add a blink state variable
-                    // This is complex to do purely via existing state, so we will use a timer variable in the class.
+                    // We need to set ghost coordinates for the fake player model (who is now the dead body trap)
+                    // The mirror player (which the player now controls) falls to the catch platform.
+                    // The original player model freezes.
 
-                    // Goal Mask appears
-                    maskX = 980f
-                    maskY = 800f
+                    platforms.add(Platform(Rectangle(700f, 100f, 400f, 20f), PlatformType.CRUMBLING)) // Base catch for mirror falling
+
+                    // Goal Mask appears at top left
+                    maskX = 100f
+                    maskY = 680f
                     maskRect.set(maskX, maskY, maskWidth, maskHeight)
 
                     // Init first platforms
-                    platforms.add(Platform(Rectangle(1050f, 600f, 100f, 20f), PlatformType.CRUMBLING))
-                    platforms.add(Platform(Rectangle(900f, 700f, 100f, 20f), PlatformType.CRUMBLING))
-                    platforms.add(Platform(Rectangle(950f, 780f, 100f, 20f), PlatformType.CRUMBLING))
+                    platforms.add(Platform(Rectangle(650f, 320f, 100f, 20f), PlatformType.CRUMBLING))
+                    platforms.add(Platform(Rectangle(450f, 440f, 100f, 20f), PlatformType.CRUMBLING))
+                    platforms.add(Platform(Rectangle(250f, 560f, 100f, 20f), PlatformType.CRUMBLING))
+                    platforms.add(Platform(Rectangle(100f, 640f, 100f, 20f), PlatformType.CRUMBLING)) // Platform near Goal Mask
                 }
             } else {
 
@@ -1228,12 +1231,12 @@ class GameScreen(
                     blinkStep = (blinkStep + 1) % 4
 
                     // Clear previous blinking platforms
-                    platforms.removeAll { it.rect.y >= 500f && it.rect.y <= 780f && it.type == PlatformType.CRUMBLING }
+                    platforms.removeAll { it.rect.y > 200f && it.type == PlatformType.CRUMBLING && it.rect.width == 100f }
 
-                    if (blinkStep != 0) platforms.add(Platform(Rectangle(900f, 500f, 100f, 20f), PlatformType.CRUMBLING))
-                    if (blinkStep != 1) platforms.add(Platform(Rectangle(1050f, 600f, 100f, 20f), PlatformType.CRUMBLING))
-                    if (blinkStep != 2) platforms.add(Platform(Rectangle(900f, 700f, 100f, 20f), PlatformType.CRUMBLING))
-                    if (blinkStep != 3) platforms.add(Platform(Rectangle(950f, 780f, 100f, 20f), PlatformType.CRUMBLING))
+                    if (blinkStep != 0) platforms.add(Platform(Rectangle(650f, 320f, 100f, 20f), PlatformType.CRUMBLING))
+                    if (blinkStep != 1) platforms.add(Platform(Rectangle(450f, 440f, 100f, 20f), PlatformType.CRUMBLING))
+                    if (blinkStep != 2) platforms.add(Platform(Rectangle(250f, 560f, 100f, 20f), PlatformType.CRUMBLING))
+                    if (blinkStep != 3) platforms.add(Platform(Rectangle(100f, 640f, 100f, 20f), PlatformType.CRUMBLING))
                 }
 
                 // Ghost stays stationary as a DEADLY_RED trap
