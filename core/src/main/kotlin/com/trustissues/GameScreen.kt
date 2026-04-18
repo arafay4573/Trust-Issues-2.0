@@ -1212,15 +1212,15 @@ class GameScreen(
                     platforms.add(Platform(Rectangle(700f, 100f, 400f, 20f), PlatformType.CRUMBLING)) // Base catch for mirror falling
 
                     // Goal Mask appears at top left
-                    maskX = 100f
-                    maskY = 680f
+                    maskX = 200f
+                    maskY = 660f
                     maskRect.set(maskX, maskY, maskWidth, maskHeight)
 
                     // Init first platforms
-                    platforms.add(Platform(Rectangle(650f, 320f, 100f, 20f), PlatformType.CRUMBLING))
-                    platforms.add(Platform(Rectangle(450f, 440f, 100f, 20f), PlatformType.CRUMBLING))
-                    platforms.add(Platform(Rectangle(250f, 560f, 100f, 20f), PlatformType.CRUMBLING))
-                    platforms.add(Platform(Rectangle(100f, 640f, 100f, 20f), PlatformType.CRUMBLING)) // Platform near Goal Mask
+                    platforms.add(Platform(Rectangle(800f, 240f, 100f, 20f), PlatformType.CRUMBLING))
+                    platforms.add(Platform(Rectangle(600f, 360f, 100f, 20f), PlatformType.CRUMBLING))
+                    platforms.add(Platform(Rectangle(400f, 480f, 100f, 20f), PlatformType.CRUMBLING))
+                    platforms.add(Platform(Rectangle(200f, 600f, 100f, 20f), PlatformType.CRUMBLING)) // Platform near Goal Mask
                 }
             } else {
 
@@ -1233,10 +1233,10 @@ class GameScreen(
                     // Clear previous blinking platforms
                     platforms.removeAll { it.rect.y > 200f && it.type == PlatformType.CRUMBLING && it.rect.width == 100f }
 
-                    if (blinkStep != 0) platforms.add(Platform(Rectangle(650f, 320f, 100f, 20f), PlatformType.CRUMBLING))
-                    if (blinkStep != 1) platforms.add(Platform(Rectangle(450f, 440f, 100f, 20f), PlatformType.CRUMBLING))
-                    if (blinkStep != 2) platforms.add(Platform(Rectangle(250f, 560f, 100f, 20f), PlatformType.CRUMBLING))
-                    if (blinkStep != 3) platforms.add(Platform(Rectangle(100f, 640f, 100f, 20f), PlatformType.CRUMBLING))
+                    if (blinkStep != 0) platforms.add(Platform(Rectangle(800f, 240f, 100f, 20f), PlatformType.CRUMBLING))
+                    if (blinkStep != 1) platforms.add(Platform(Rectangle(600f, 360f, 100f, 20f), PlatformType.CRUMBLING))
+                    if (blinkStep != 2) platforms.add(Platform(Rectangle(400f, 480f, 100f, 20f), PlatformType.CRUMBLING))
+                    if (blinkStep != 3) platforms.add(Platform(Rectangle(200f, 600f, 100f, 20f), PlatformType.CRUMBLING))
                 }
 
                 // Ghost stays stationary as a DEADLY_RED trap
