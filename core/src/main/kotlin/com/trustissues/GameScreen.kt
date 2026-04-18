@@ -65,6 +65,8 @@ class GameScreen(
 
     // Level 6 Mechanics
     private var hasSwappedIdentity = false
+    private var blinkTimer = 0f
+    private var blinkStep = 0
     private var ghostX = -999f
     private var ghostY = -999f
     private var driftTimer = 0f
@@ -267,6 +269,8 @@ class GameScreen(
         isControlsInverted = false
         mirrorActive = false
         hasSwappedIdentity = false
+                blinkTimer = 0f
+                blinkStep = 0
         ghostX = -999f
         ghostY = -999f
 
@@ -551,6 +555,8 @@ class GameScreen(
                 velocityY = 0f
                 reverseGravity = false
                 hasSwappedIdentity = false
+                blinkTimer = 0f
+                blinkStep = 0
                 mirrorActive = true // Start with mirror logic active
 
                 // First Mask (Trigger)
@@ -567,11 +573,7 @@ class GameScreen(
 
                 // The Platforms: Crumbling Platforms (y=500f, 600f, 700f)
                 platforms.add(Platform(Rectangle(300f, 380f, 100f, 20f), PlatformType.NORMAL)) // Extra for mask
-                platforms.add(Platform(Rectangle(900f, 500f, 100f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(1050f, 600f, 100f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(900f, 700f, 100f, 20f), PlatformType.CRUMBLING))
-                // Platform near Goal Mask
-                platforms.add(Platform(Rectangle(950f, 780f, 100f, 20f), PlatformType.CRUMBLING))
+
             }
             1 -> {
                 // Chunk 1: The Infinite Loop Portal
@@ -1201,12 +1203,39 @@ class GameScreen(
                     screenFlashColor = com.badlogic.gdx.graphics.Color.WHITE
                     screenFlashTimer = 0.1f
 
+                    isControlsInverted = true
+
+                    platforms.add(Platform(Rectangle(1080f, 280f, 150f, 20f), PlatformType.CRUMBLING)) // Base for mirror
+                    // We will spawn the platforms here but add a blink state variable
+                    // This is complex to do purely via existing state, so we will use a timer variable in the class.
+
                     // Goal Mask appears
                     maskX = 980f
                     maskY = 800f
                     maskRect.set(maskX, maskY, maskWidth, maskHeight)
+
+                    // Init first platforms
+                    platforms.add(Platform(Rectangle(1050f, 600f, 100f, 20f), PlatformType.CRUMBLING))
+                    platforms.add(Platform(Rectangle(900f, 700f, 100f, 20f), PlatformType.CRUMBLING))
+                    platforms.add(Platform(Rectangle(950f, 780f, 100f, 20f), PlatformType.CRUMBLING))
                 }
             } else {
+
+                // Handle blinking platforms
+                blinkTimer += delta
+                if (blinkTimer > 1f) {
+                    blinkTimer = 0f
+                    blinkStep = (blinkStep + 1) % 4
+
+                    // Clear previous blinking platforms
+                    platforms.removeAll { it.rect.y >= 500f && it.rect.y <= 780f && it.type == PlatformType.CRUMBLING }
+
+                    if (blinkStep != 0) platforms.add(Platform(Rectangle(900f, 500f, 100f, 20f), PlatformType.CRUMBLING))
+                    if (blinkStep != 1) platforms.add(Platform(Rectangle(1050f, 600f, 100f, 20f), PlatformType.CRUMBLING))
+                    if (blinkStep != 2) platforms.add(Platform(Rectangle(900f, 700f, 100f, 20f), PlatformType.CRUMBLING))
+                    if (blinkStep != 3) platforms.add(Platform(Rectangle(950f, 780f, 100f, 20f), PlatformType.CRUMBLING))
+                }
+
                 // Ghost stays stationary as a DEADLY_RED trap
                 mirrorRect.set(ghostX, ghostY, playerWidth, playerHeight)
 
@@ -1942,6 +1971,7 @@ class GameScreen(
                     // Hide fake mask by moving it out of bounds
                     maskY = -9999f
                     maskRect.set(maskX, maskY, maskWidth, maskHeight)
+
                 } else if (isPortalLoopActive && realMaskSpawned && Intersector.overlaps(playerRect, maskRect)) {
                     win()
                 }
