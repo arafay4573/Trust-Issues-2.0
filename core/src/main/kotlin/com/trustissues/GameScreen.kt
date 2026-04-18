@@ -64,6 +64,12 @@ class GameScreen(
 
 
     // Level 6 Mechanics
+    private var hasSwappedIdentity = false
+    private var ghostX = -999f
+    private var ghostY = -999f
+    private var driftTimer = 0f
+    private var driftDirection = 0 // -1 for left, 1 for right
+    private var isDrifting = false
     private var flapsRemaining = 0
     private var flapTimer = 0f
 
@@ -260,6 +266,9 @@ class GameScreen(
         messageLabel?.isVisible = false
         isControlsInverted = false
         mirrorActive = false
+        hasSwappedIdentity = false
+        ghostX = -999f
+        ghostY = -999f
 
         renderOffset = 0f
         renderOffsetY = 0f
@@ -346,8 +355,8 @@ class GameScreen(
                 platforms.add(Platform(Rectangle(600f, 80f, 80f, 20f), PlatformType.NORMAL))
 
                 // The Walls: Symmetrical Red Laser Walls moving inward at 25f
-                movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 65f, isActive = true))
-                movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -65f, isActive = true))
+                movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 25f, isActive = true))
+                movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -25f, isActive = true))
 
                 // Platforms to "stick" on (climbing up)
                 platforms.add(Platform(Rectangle(540f, 200f, 80f, 20f), PlatformType.CRUMBLING))
@@ -401,8 +410,8 @@ class GameScreen(
                 platforms.add(Platform(Rectangle(690f, 80f, 100f, 20f), PlatformType.NORMAL))
 
                 // Crushing Walls from x=0 and x=1280
-                movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 65f, isActive = true))
-                movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -65f, isActive = true))
+                movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 25f, isActive = true))
+                movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -25f, isActive = true))
 
                 // Horizontal DEADLY_RED laser at the top (Ceiling)
                 platforms.add(Platform(Rectangle(0f, 700f, 1280f, 20f), PlatformType.DEADLY_RED))
@@ -480,8 +489,8 @@ class GameScreen(
                 platforms.add(centerSharkPlatform)
 
                 // The Walls
-                val leftWall = MovingWall(Rectangle(-400f, 0f, 400f, 1500f), speed = 120f, isActive = true)
-                val rightWall = MovingWall(Rectangle(1280f, 0f, 400f, 1500f), speed = -120f, isActive = true)
+                val leftWall = MovingWall(Rectangle(-400f, 0f, 400f, 1500f), speed = 50f, isActive = true)
+                val rightWall = MovingWall(Rectangle(1280f, 0f, 400f, 1500f), speed = -50f, isActive = true)
                 movingWalls.add(leftWall)
                 movingWalls.add(rightWall)
 
@@ -528,6 +537,42 @@ class GameScreen(
 
     private fun setupLevel6(chunk: Int) {
         when (chunk) {
+            2 -> {
+                // Chunk 2: The Mirror Swap Portal
+                platforms.clear()
+                lasers.clear()
+                movingWalls.clear()
+                gameButtons.clear()
+                gravitySwitches.clear()
+                sharks.clear()
+
+                playerX = 100f
+                playerY = 280f
+                velocityY = 0f
+                reverseGravity = false
+                hasSwappedIdentity = false
+                mirrorActive = true // Start with mirror logic active
+
+                // First Mask (Trigger)
+                maskX = 300f
+                maskY = 400f
+
+                // Safe platforms to start/jump
+                platforms.add(Platform(Rectangle(50f, 280f, 150f, 20f), PlatformType.NORMAL))
+                platforms.add(Platform(Rectangle(1080f, 280f, 150f, 20f), PlatformType.NORMAL))
+
+                // The Squeeze: Symmetrical Red Walls close in from the edges at 30f speed.
+                movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 30f, isActive = true))
+                movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -30f, isActive = true))
+
+                // The Platforms: Crumbling Platforms (y=500f, 600f, 700f)
+                platforms.add(Platform(Rectangle(300f, 380f, 100f, 20f), PlatformType.NORMAL)) // Extra for mask
+                platforms.add(Platform(Rectangle(900f, 500f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(1050f, 600f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(900f, 700f, 100f, 20f), PlatformType.CRUMBLING))
+                // Platform near Goal Mask
+                platforms.add(Platform(Rectangle(950f, 780f, 100f, 20f), PlatformType.CRUMBLING))
+            }
             1 -> {
                 // Chunk 1: The Infinite Loop Portal
                 platforms.clear()
@@ -550,8 +595,8 @@ class GameScreen(
                 platforms.add(Platform(Rectangle(540f, 150f, 200f, 20f), PlatformType.CRUMBLING))
 
                 // The Squeeze: Two Symmetrical Red Laser Walls moving at 15f
-                movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 55f, isActive = true))
-                movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -55f, isActive = true))
+                movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 15f, isActive = true))
+                movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -15f, isActive = true))
 
                 // The Path: 4 Crumbling platforms zig-zagging up
                 platforms.add(Platform(Rectangle(380f, 230f, 100f, 20f), PlatformType.CRUMBLING))
@@ -1067,6 +1112,15 @@ class GameScreen(
             override fun touchDown(event: InputEvent?, x: Float, y: Float, p: Int, b: Int): Boolean { isLeftPressed = true; return true }
             override fun touchUp(event: InputEvent?, x: Float, y: Float, p: Int, b: Int) {
                 isLeftPressed = false
+                if (currentLevel == 6 && currentChunk == 1 && !isDead && !isLevelComplete) {
+                    if (isControlsInverted) {
+                        driftDirection = 1
+                    } else {
+                        driftDirection = -1
+                    }
+                    driftTimer = 2.0f
+                    isDrifting = true
+                }
             }
         })
         val rightBtn = ImageButton(skin!!.get("right", ImageButton.ImageButtonStyle::class.java))
@@ -1074,6 +1128,15 @@ class GameScreen(
             override fun touchDown(event: InputEvent?, x: Float, y: Float, p: Int, b: Int): Boolean { isRightPressed = true; return true }
             override fun touchUp(event: InputEvent?, x: Float, y: Float, p: Int, b: Int) {
                 isRightPressed = false
+                if (currentLevel == 6 && currentChunk == 1 && !isDead && !isLevelComplete) {
+                    if (isControlsInverted) {
+                        driftDirection = -1
+                    } else {
+                        driftDirection = 1
+                    }
+                    driftTimer = 2.0f
+                    isDrifting = true
+                }
             }
         })
         val leftControls = Table()
@@ -1122,6 +1185,44 @@ class GameScreen(
             return
         }
 
+        // --- LEVEL 6 CHUNK 2 LOGIC (The Mirror Swap Portal) ---
+        if (currentLevel == 6 && currentChunk == 2 && !isDead && !isLevelComplete) {
+            if (!hasSwappedIdentity) {
+                // Standard mirror tracking logic
+                mirrorRect.set(1280f - playerWidth - playerX, playerY, playerWidth, playerHeight)
+
+                // Swap Portal Event
+                if (Intersector.overlaps(playerRect, maskRect)) {
+                    hasSwappedIdentity = true
+                    ghostX = playerX
+                    ghostY = playerY
+                    playerX = 1280f - playerWidth - playerX // Takeover Red body pos
+
+                    screenFlashColor = com.badlogic.gdx.graphics.Color.WHITE
+                    screenFlashTimer = 0.1f
+
+                    // Goal Mask appears
+                    maskX = 980f
+                    maskY = 800f
+                    maskRect.set(maskX, maskY, maskWidth, maskHeight)
+                }
+            } else {
+                // Ghost stays stationary as a DEADLY_RED trap
+                mirrorRect.set(ghostX, ghostY, playerWidth, playerHeight)
+
+                if (Intersector.overlaps(playerRect, mirrorRect)) {
+                    die("You're just a ghost in your own game now.")
+                    stateTimer = -9999f
+                    return
+                }
+
+                // Win Condition
+                if (Intersector.overlaps(playerRect, maskRect)) {
+                    win()
+                }
+            }
+        }
+
         // --- FORCED CHUNK 2 LOGIC (BRUTE FORCE) ---
         if (currentLevel == 4 && currentChunk == 2) {
              // 1. Move Walls (Speed 45f)
@@ -1155,17 +1256,19 @@ class GameScreen(
             // Mirror collision death
             if (mirrorActive && Intersector.overlaps(playerRect, mirrorRect)) {
                 die("Stop fighting the drift. Trust the void.")
-
+                stateTimer = -9999f
                 return
             }
 
             // Laser Cage Trap logic
             if (Intersector.overlaps(playerRect, maskRect)) {
+                // Determine if drifting or actively holding
+                // Drift is true if driftTimer > 0
                 val activelyHolding = isLeftPressed || isRightPressed || isJumpPressed
-                // if they are actively holding OR jump is held down, they die
-                if (activelyHolding) {
+                // if they are actively holding OR jump is held down OR we are NOT drifting, they die
+                if (activelyHolding || !isDrifting) {
                     die("You can't even control your own thumbs, let alone this game.")
-
+                    stateTimer = -9999f
                     return
                 } else {
                     win()
@@ -1371,7 +1474,27 @@ class GameScreen(
                 }
             }
 
+            // Movement Drift
+            if (isDrifting && driftTimer > 0f) {
+                driftTimer -= delta
+                val driftSpeed = moveSpeed * 0.7f
+                var appliedSpeed = driftSpeed
 
+                // Input Conflict
+                if ((driftDirection == -1 && rightInput) || (driftDirection == 1 && leftInput)) {
+                    // Holding opposite direction while drifting -> fight the drift but don't stop immediately
+                    // Since leftInput/rightInput also apply their full force below, this just means they
+                    // will counteract each other somewhat. To explicitly slow them down without stopping:
+                    appliedSpeed = driftSpeed * 0.5f // Reduce drift force during conflict
+                }
+
+                playerX += driftDirection * appliedSpeed * delta
+                isWalking = true
+
+                if (driftTimer <= 0f) {
+                    isDrifting = false
+                }
+            }
         }
 
 
@@ -1451,7 +1574,7 @@ class GameScreen(
                     } else {
                         die("Infinite falling for an infinite failure.")
                     }
-
+                    stateTimer = -9999f
                 }
             }
 
@@ -1460,7 +1583,7 @@ class GameScreen(
                 leftMaskRect.set(leftMaskX, leftMaskY, maskWidth, maskHeight)
                 if (Intersector.overlaps(playerRect, leftMaskRect)) {
                     die("You chose poorly.")
-
+                    stateTimer = -9999f
                 }
             }
         }
@@ -1497,7 +1620,7 @@ class GameScreen(
             if (plat.state == PlatformState.DESTROYED) continue
 
             // 1. Trigger Crumble on Touch (Level 2, 3, 4, 5)
-            if ((currentLevel == 2 || currentLevel == 3 || currentLevel == 4 || currentLevel == 5 || currentLevel == 6) && (plat.type == PlatformType.CRUMBLING || plat.type == PlatformType.NORMAL)) {
+            if ((currentLevel == 2 || currentLevel == 3 || currentLevel == 4 || currentLevel == 5 || currentLevel == 6) && plat.type == PlatformType.CRUMBLING) {
                 // Determine if Player or Echo overlaps (Level 5)
                 val isTouchedByPlayer = playerRect.overlaps(plat.rect)
                 val isTouchedByEcho = (currentLevel == 5 && currentChunk == 1 && echoActive && echoRect.overlaps(plat.rect))
@@ -1506,13 +1629,13 @@ class GameScreen(
                 if (isTouchedByPlayer || isTouchedByEcho || isTouchedByMirror) {
                     // DYNAMIC LIMITS
                     val actualLimit = when {
-                         currentLevel == 5 && currentChunk == 1 -> 0.7f
-                         currentLevel == 6 && currentChunk == 1 -> 0.6f
+                         currentLevel == 5 && currentChunk == 1 -> 1.2f // Level 5-1: 1.2s
+                         currentLevel == 6 && currentChunk == 1 -> 1.0f // Level 6-1: 1.0s
 
-                         currentLevel == 5 && currentChunk == 2 -> 0.6f
-                         currentLevel == 3 && currentChunk == 3 -> 0.4f
-                         currentLevel == 3 || currentLevel == 4 -> 0.6f
-                         else -> 0.8f
+                         currentLevel == 5 && currentChunk == 2 -> 1.0f // Level 5-2: 1.0s
+                         currentLevel == 3 && currentChunk == 3 -> 0.7f
+                         currentLevel == 3 || currentLevel == 4 -> 1.0f
+                         else -> 1.5f
                     }
                     plat.startCrumbling(actualLimit)
                 }
@@ -1611,7 +1734,7 @@ class GameScreen(
                     if (currentLevel == 5 && currentChunk == 2) die("You ain't no Newton")
                     else if (currentLevel == 6 && currentChunk == 1) {
                         die("Did you think the Mask was your friend? Cute.")
-
+                        stateTimer = -9999f
                     } else die("Squished like a bug. And just as insignificant.")
                 }
             }
@@ -1816,12 +1939,6 @@ class GameScreen(
                     playerY = 1000f
                     velocityY = -500f // Fall rapidly
 
-                    // Rush walls at the player leaving just some seconds
-                    movingWalls.forEach { wall ->
-                        if (wall.speed > 0) wall.speed = 220f
-                        else if (wall.speed < 0) wall.speed = -220f
-                    }
-
                     // Hide fake mask by moving it out of bounds
                     maskY = -9999f
                     maskRect.set(maskX, maskY, maskWidth, maskHeight)
@@ -1835,6 +1952,8 @@ class GameScreen(
             }
         } else if (currentLevel == 5 && currentChunk == 3) {
             // Ignore default win, handled in logic block
+        } else if (currentLevel == 6 && currentChunk == 2) {
+            // Handled explicitly in update loop (only trigger if swapped)
         } else if (currentLevel != 4 || currentChunk != 3) {
             if (!isDead && Intersector.overlaps(playerRect, maskRect)) win()
         }
@@ -1844,6 +1963,11 @@ class GameScreen(
         if (isDead) return
         isDead = true
         var roast = customMessage ?: deathRoasts.random()
+
+        if (currentLevel == 6 && currentChunk == 2) {
+            roast = customMessage ?: listOf("Look at you... you've become the very thing you feared.", "Identity crisis much?", "You're just a ghost in your own game now.").random()
+            stateTimer = -9999f
+        }
 
         messageLabel?.setText(roast)
         messageLabel?.color = Color.RED
@@ -1956,7 +2080,12 @@ class GameScreen(
         }
 
         // Draw Player (Procedural Shapes)
-        shapeRenderer.color = if (horrorMode) Color.GRAY else Color.BLACK
+        if (currentLevel == 6 && currentChunk == 2 && hasSwappedIdentity) {
+            shapeRenderer.color = Color.RED
+        } else {
+            shapeRenderer.color = if (horrorMode) Color.GRAY else Color.GREEN
+        }
+        if (isDead) shapeRenderer.color = Color.GRAY
         val centerX = playerX + 12.5f + renderOffset
         val isCrouching = playerHeight < normalHeight
         val headOffset = if (isCrouching) 22f else 44f
@@ -1984,8 +2113,8 @@ class GameScreen(
             shapeRenderer.rectLine(eCenterX, echoY + eWaist, eCenterX + 6f, echoY, 3f)
         }
 
-        // Draw Mirror Player (Deadly Red) for Level 5 Chunk 2
-        if (currentLevel == 5 && currentChunk == 2 && mirrorActive) {
+        // Draw Mirror Player / Ghost for Level 5/6
+        if ((currentLevel == 5 && currentChunk == 2 && mirrorActive) || (currentLevel == 6 && currentChunk == 2)) {
             shapeRenderer.color = Color.RED // Deadly Red
             val mCenterX = mirrorRect.x + 12.5f + renderOffset
             val mCrouch = mirrorRect.height < normalHeight
