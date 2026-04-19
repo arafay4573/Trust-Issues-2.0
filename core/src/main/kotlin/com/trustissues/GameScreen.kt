@@ -65,8 +65,8 @@ class GameScreen(
 
     // Level 6 Mechanics
     private var hasSwappedIdentity = false
-    private var blinkTimer = 0f
-    private var blinkStep = 0
+    private var switchState = false
+    private var platformTimer = 0f
     private var ghostX = -999f
     private var ghostY = -999f
     private var driftTimer = 0f
@@ -269,8 +269,8 @@ class GameScreen(
         isControlsInverted = false
         mirrorActive = false
         hasSwappedIdentity = false
-                blinkTimer = 0f
-                blinkStep = 0
+        switchState = false
+        platformTimer = 0f
         ghostX = -999f
         ghostY = -999f
 
@@ -541,6 +541,41 @@ class GameScreen(
 
     private fun setupLevel6(chunk: Int) {
         when (chunk) {
+            3 -> {
+                // Chunk 3: The Frozen Mirror Transition
+                platforms.clear()
+                lasers.clear()
+                movingWalls.clear()
+                gameButtons.clear()
+                gravitySwitches.clear()
+                sharks.clear()
+
+                playerX = 100f
+                playerY = 280f
+                velocityY = 0f
+                reverseGravity = false
+                switchState = false
+                mirrorActive = true
+                isControlsInverted = false
+                platformTimer = 0f
+
+                // First Mask (Trigger) - Center
+                maskX = 640f
+                maskY = 300f
+
+                // Safe platforms to start/jump
+                platforms.add(Platform(Rectangle(50f, 280f, 150f, 20f), PlatformType.NORMAL))
+                platforms.add(Platform(Rectangle(1080f, 280f, 150f, 20f), PlatformType.NORMAL))
+
+                // Symmetrical Red Walls move inward at 35f.
+                movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 35f, isActive = true))
+                movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -35f, isActive = true))
+
+                // Platforms leading to center mask
+                platforms.add(Platform(Rectangle(300f, 280f, 100f, 20f), PlatformType.NORMAL))
+                platforms.add(Platform(Rectangle(600f, 280f, 100f, 20f), PlatformType.NORMAL))
+                platforms.add(Platform(Rectangle(880f, 280f, 100f, 20f), PlatformType.NORMAL))
+            }
             2 -> {
                 // Chunk 2: The Mirror Swap Portal
                 platforms.clear()
@@ -551,12 +586,10 @@ class GameScreen(
                 sharks.clear()
 
                 playerX = 100f
-                playerY = 320f
+                playerY = 280f
                 velocityY = 0f
                 reverseGravity = false
                 hasSwappedIdentity = false
-                blinkTimer = 0f
-                blinkStep = 0
                 mirrorActive = true // Start with mirror logic active
 
                 // First Mask (Trigger)
@@ -573,7 +606,11 @@ class GameScreen(
 
                 // The Platforms: Crumbling Platforms (y=500f, 600f, 700f)
                 platforms.add(Platform(Rectangle(300f, 380f, 100f, 20f), PlatformType.NORMAL)) // Extra for mask
-
+                platforms.add(Platform(Rectangle(900f, 500f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(1050f, 600f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(900f, 700f, 100f, 20f), PlatformType.CRUMBLING))
+                // Platform near Goal Mask
+                platforms.add(Platform(Rectangle(950f, 780f, 100f, 20f), PlatformType.CRUMBLING))
             }
             1 -> {
                 // Chunk 1: The Infinite Loop Portal
@@ -1187,6 +1224,110 @@ class GameScreen(
             return
         }
 
+        // --- LEVEL 6 CHUNK 3 LOGIC (The Frozen Mirror Transition) ---
+        if (currentLevel == 6 && currentChunk == 3 && !isDead && !isLevelComplete) {
+            if (!switchState) {
+                // Standard mirror tracking logic before swap
+                mirrorRect.set(1280f - playerWidth - playerX, playerY, playerWidth, playerHeight)
+
+                // Trigger Event (First Mask)
+                if (Intersector.overlaps(playerRect, maskRect)) {
+                    switchState = true
+
+                    // Main guy freezes where he touched the mask
+                    ghostX = playerX
+                    ghostY = playerY
+
+                    // Control takeover: Take mirror pos
+                    playerX = mirrorRect.x
+                    playerY = mirrorRect.y
+                    velocityY = 0f
+
+                    // The Inversion
+                    isControlsInverted = true
+
+                    // The Safety Catch
+                    platforms.add(Platform(Rectangle(playerX - 20f, playerY - 20f, playerWidth + 40f, 20f), PlatformType.CRUMBLING))
+
+                    // Slightly increase wall speed
+                    for (wall in movingWalls) {
+                        if (wall.speed > 0) wall.speed += 10f else wall.speed -= 10f
+                    }
+
+                    // The Goal
+                    maskX = 200f
+                    maskY = 850f
+                    maskRect.set(maskX, maskY, maskWidth, maskHeight)
+
+                    screenFlashColor = com.badlogic.gdx.graphics.Color.WHITE
+                    screenFlashTimer = 0.1f
+                    platformTimer = 0f
+                }
+            } else {
+                // The Main Guy (Green) acts as a solid statue or trap.
+                mirrorRect.set(ghostX, ghostY, playerWidth, playerHeight)
+                if (Intersector.overlaps(playerRect, mirrorRect)) {
+                    die("Your own body is just a statue of your failure now.")
+                    stateTimer = -9999f
+                    return
+                }
+
+                // The "Blinking" Mechanic
+                platformTimer += delta
+                if (platformTimer > 1.5f) {
+                    platformTimer = 0f
+                }
+
+                // Cycle visibility
+                // We only want to recreate the platforms if we are crossing the boundary to avoid recreating every frame.
+                // We can just keep the simple frame-by-frame clear and add, BUT we should preserve their crumble state.
+                // Actually, the user doesn't strictly need them to crumble if they are disappearing anyway, but to be clean,
+                // let's do this: instead of clearing them, we can just NOT add them. Wait, they are added to the main list.
+                // If we clear and add every frame, they never crumble.
+                // Let's add them ONCE, and just toggle their state to PlatformState.DESTROYED or ACTIVE based on the timer!
+
+                // First, find the 6 stairway platforms.
+                var stairsPlats = platforms.filter { it.rect.width == 90f && it.type == PlatformType.CRUMBLING }
+                if (stairsPlats.isEmpty()) {
+                    // Create them once
+                    val stairsX = listOf(640f, 550f, 460f, 370f, 280f, 190f)
+                    val stairsY = listOf(380f, 470f, 560f, 650f, 740f, 830f)
+                    for (i in 0..5) {
+                        platforms.add(Platform(Rectangle(stairsX[i], stairsY[i], 90f, 20f), PlatformType.CRUMBLING))
+                    }
+                    stairsPlats = platforms.filter { it.rect.width == 90f && it.type == PlatformType.CRUMBLING }
+                }
+
+                // Now toggle them
+                for (i in 0..5) {
+                    val plat = stairsPlats.getOrNull(i)
+                    if (plat != null) {
+                        var isVisible = true
+                        if (i % 2 == 0) {
+                            if (platformTimer < 0.5f) isVisible = false
+                        } else {
+                            if (platformTimer >= 0.5f && platformTimer < 1.0f) isVisible = false
+                        }
+
+                        // We only toggle visual/physical presence. If it's not visible, we can temporarily move it out of bounds
+                        // so we don't lose its crumble timer if we were tracking it, or we can just change its state.
+                        if (isVisible) {
+                            // If it was moved away, bring it back
+                            if (plat.rect.x < 0f) plat.rect.x += 2000f
+                        } else {
+                            // Hide it
+                            if (plat.rect.x > 0f) plat.rect.x -= 2000f
+                        }
+                    }
+                }
+
+                // Win Condition
+                if (Intersector.overlaps(playerRect, maskRect)) {
+                    win()
+                }
+            }
+        }
+
         // --- LEVEL 6 CHUNK 2 LOGIC (The Mirror Swap Portal) ---
         if (currentLevel == 6 && currentChunk == 2 && !isDead && !isLevelComplete) {
             if (!hasSwappedIdentity) {
@@ -1203,47 +1344,12 @@ class GameScreen(
                     screenFlashColor = com.badlogic.gdx.graphics.Color.WHITE
                     screenFlashTimer = 0.1f
 
-                    isControlsInverted = true
-
-                    // We need to set ghost coordinates for the fake player model (who is now the dead body trap)
-                    // The mirror player (which the player now controls) falls to the catch platform.
-                    // The original player model freezes.
-
-                    platforms.add(Platform(Rectangle(700f, 100f, 400f, 20f), PlatformType.CRUMBLING)) // Base catch for mirror falling
-
-                    // Slightly increase wall speed
-                    for (wall in movingWalls) {
-                        if (wall.speed > 0) wall.speed += 10f else wall.speed -= 10f
-                    }
-
-                    // Goal Mask appears at top left
-                    maskX = 200f
-                    maskY = 660f
+                    // Goal Mask appears
+                    maskX = 980f
+                    maskY = 800f
                     maskRect.set(maskX, maskY, maskWidth, maskHeight)
-
-                    // Init first platforms
-                    platforms.add(Platform(Rectangle(800f, 240f, 100f, 20f), PlatformType.CRUMBLING))
-                    platforms.add(Platform(Rectangle(600f, 360f, 100f, 20f), PlatformType.CRUMBLING))
-                    platforms.add(Platform(Rectangle(400f, 480f, 100f, 20f), PlatformType.CRUMBLING))
-                    platforms.add(Platform(Rectangle(200f, 600f, 100f, 20f), PlatformType.CRUMBLING)) // Platform near Goal Mask
                 }
             } else {
-
-                // Handle blinking platforms
-                blinkTimer += delta
-                if (blinkTimer > 1f) {
-                    blinkTimer = 0f
-                    blinkStep = (blinkStep + 1) % 4
-
-                    // Clear previous blinking platforms
-                    platforms.removeAll { it.rect.y > 200f && it.type == PlatformType.CRUMBLING && it.rect.width == 100f }
-
-                    if (blinkStep != 0) platforms.add(Platform(Rectangle(800f, 240f, 100f, 20f), PlatformType.CRUMBLING))
-                    if (blinkStep != 1) platforms.add(Platform(Rectangle(600f, 360f, 100f, 20f), PlatformType.CRUMBLING))
-                    if (blinkStep != 2) platforms.add(Platform(Rectangle(400f, 480f, 100f, 20f), PlatformType.CRUMBLING))
-                    if (blinkStep != 3) platforms.add(Platform(Rectangle(200f, 600f, 100f, 20f), PlatformType.CRUMBLING))
-                }
-
                 // Ghost stays stationary as a DEADLY_RED trap
                 mirrorRect.set(ghostX, ghostY, playerWidth, playerHeight)
 
@@ -1545,7 +1651,7 @@ class GameScreen(
         if (isWalking) walkTime += delta * 15f else walkTime = 0f
 
         // Physics
-        val isExemptLevel = (currentLevel == 4 && (currentChunk == 2 || currentChunk == 3)) || currentLevel == 3 || currentLevel == 5 || currentLevel == 6
+        val isExemptLevel = (currentLevel == 4 && (currentChunk == 2 || currentChunk == 3)) || currentLevel == 3 || currentLevel == 5 || (currentLevel == 6 && currentChunk != 3)
 
         val currentGravity = if (currentLevel == 5 && (currentChunk == 2 || currentChunk == 3)) -1800f else if (currentLevel == 6 && currentChunk == 1 && isPortalLoopActive) -3200f * 3f else -3200f
         if (reverseGravity) {
@@ -1657,17 +1763,18 @@ class GameScreen(
             if (plat.state == PlatformState.DESTROYED) continue
 
             // 1. Trigger Crumble on Touch (Level 2, 3, 4, 5)
-            if ((currentLevel == 2 || currentLevel == 3 || currentLevel == 4 || currentLevel == 5 || currentLevel == 6) && (plat.type == PlatformType.CRUMBLING || (currentLevel == 6 && currentChunk == 2 && plat.type == PlatformType.NORMAL))) {
+            if ((currentLevel == 2 || currentLevel == 3 || currentLevel == 4 || currentLevel == 5 || currentLevel == 6) && (plat.type == PlatformType.CRUMBLING || (currentLevel == 6 && currentChunk == 3 && plat.type == PlatformType.NORMAL))) {
                 // Determine if Player or Echo overlaps (Level 5)
                 val isTouchedByPlayer = playerRect.overlaps(plat.rect)
                 val isTouchedByEcho = (currentLevel == 5 && currentChunk == 1 && echoActive && echoRect.overlaps(plat.rect))
-                val isTouchedByMirror = ((currentLevel == 5 && currentChunk == 2) || (currentLevel == 6 && currentChunk == 2)) && mirrorActive && mirrorRect.overlaps(plat.rect)
+                val isTouchedByMirror = (currentLevel == 5 && currentChunk == 2) && mirrorActive && mirrorRect.overlaps(plat.rect)
 
                 if (isTouchedByPlayer || isTouchedByEcho || isTouchedByMirror) {
                     // DYNAMIC LIMITS
                     val actualLimit = when {
                          currentLevel == 5 && currentChunk == 1 -> 1.2f // Level 5-1: 1.2s
                          currentLevel == 6 && currentChunk == 1 -> 1.0f // Level 6-1: 1.0s
+                         currentLevel == 6 && currentChunk == 3 -> 0.8f // Level 6-3
 
                          currentLevel == 5 && currentChunk == 2 -> 1.0f // Level 5-2: 1.0s
                          currentLevel == 3 && currentChunk == 3 -> 0.7f
@@ -1979,7 +2086,6 @@ class GameScreen(
                     // Hide fake mask by moving it out of bounds
                     maskY = -9999f
                     maskRect.set(maskX, maskY, maskWidth, maskHeight)
-
                 } else if (isPortalLoopActive && realMaskSpawned && Intersector.overlaps(playerRect, maskRect)) {
                     win()
                 }
@@ -1990,6 +2096,8 @@ class GameScreen(
             }
         } else if (currentLevel == 5 && currentChunk == 3) {
             // Ignore default win, handled in logic block
+        } else if (currentLevel == 6 && currentChunk == 3) {
+            // Handled explicitly in update loop
         } else if (currentLevel == 6 && currentChunk == 2) {
             // Handled explicitly in update loop (only trigger if swapped)
         } else if (currentLevel != 4 || currentChunk != 3) {
@@ -2004,6 +2112,12 @@ class GameScreen(
 
         if (currentLevel == 6 && currentChunk == 2) {
             roast = customMessage ?: listOf("Look at you... you've become the very thing you feared.", "Identity crisis much?", "You're just a ghost in your own game now.").random()
+            stateTimer = -9999f
+        }
+
+        if (currentLevel == 6 && currentChunk == 3) {
+            roast = customMessage ?: listOf("Left is Right, Right is Left, and you are still Wrong.", "Your own body is just a statue of your failure now.", "Timing is everything. Too bad you have none.").random()
+            stateTimer = -9999f
         }
 
         messageLabel?.setText(roast)
@@ -2117,7 +2231,7 @@ class GameScreen(
         }
 
         // Draw Player (Procedural Shapes)
-        if (currentLevel == 6 && currentChunk == 2 && hasSwappedIdentity) {
+        if (currentLevel == 6 && ((currentChunk == 2 && hasSwappedIdentity) || (currentChunk == 3 && switchState))) {
             shapeRenderer.color = Color.RED
         } else {
             shapeRenderer.color = if (horrorMode) Color.GRAY else Color.GREEN
@@ -2151,8 +2265,8 @@ class GameScreen(
         }
 
         // Draw Mirror Player / Ghost for Level 5/6
-        if ((currentLevel == 5 && currentChunk == 2 && mirrorActive) || (currentLevel == 6 && currentChunk == 2)) {
-            shapeRenderer.color = Color.RED // Deadly Red
+        if ((currentLevel == 5 && currentChunk == 2 && mirrorActive) || (currentLevel == 6 && (currentChunk == 2 || currentChunk == 3))) {
+            if (currentLevel == 6 && currentChunk == 3 && switchState) shapeRenderer.color = Color.GREEN else shapeRenderer.color = Color.RED // Deadly Red
             val mCenterX = mirrorRect.x + 12.5f + renderOffset
             val mCrouch = mirrorRect.height < normalHeight
             val mHead = if (mCrouch) 22f else 44f
