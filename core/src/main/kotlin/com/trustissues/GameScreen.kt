@@ -1118,8 +1118,8 @@ class GameScreen(
                     } else {
                         driftDirection = -1
                     }
-                    driftTimer = 2.0f
-                    isDrifting = true
+                    // driftTimer = 2.0f
+                    // isDrifting = true
                 }
             }
         })
@@ -1134,8 +1134,8 @@ class GameScreen(
                     } else {
                         driftDirection = 1
                     }
-                    driftTimer = 2.0f
-                    isDrifting = true
+                    // driftTimer = 2.0f
+                    // isDrifting = true
                 }
             }
         })
@@ -1212,7 +1212,7 @@ class GameScreen(
 
                 if (Intersector.overlaps(playerRect, mirrorRect)) {
                     die("You're just a ghost in your own game now.")
-                    stateTimer = -9999f
+                    // stateTimer = -9999f
                     return
                 }
 
@@ -1256,7 +1256,7 @@ class GameScreen(
             // Mirror collision death
             if (mirrorActive && Intersector.overlaps(playerRect, mirrorRect)) {
                 die("Stop fighting the drift. Trust the void.")
-                stateTimer = -9999f
+                // stateTimer = -9999f
                 return
             }
 
@@ -1266,9 +1266,9 @@ class GameScreen(
                 // Drift is true if driftTimer > 0
                 val activelyHolding = isLeftPressed || isRightPressed || isJumpPressed
                 // if they are actively holding OR jump is held down OR we are NOT drifting, they die
-                if (activelyHolding || !isDrifting) {
+                if (activelyHolding ) {
                     die("You can't even control your own thumbs, let alone this game.")
-                    stateTimer = -9999f
+                    // stateTimer = -9999f
                     return
                 } else {
                     win()
@@ -1474,27 +1474,7 @@ class GameScreen(
                 }
             }
 
-            // Movement Drift
-            if (isDrifting && driftTimer > 0f) {
-                driftTimer -= delta
-                val driftSpeed = moveSpeed * 0.7f
-                var appliedSpeed = driftSpeed
-
-                // Input Conflict
-                if ((driftDirection == -1 && rightInput) || (driftDirection == 1 && leftInput)) {
-                    // Holding opposite direction while drifting -> fight the drift but don't stop immediately
-                    // Since leftInput/rightInput also apply their full force below, this just means they
-                    // will counteract each other somewhat. To explicitly slow them down without stopping:
-                    appliedSpeed = driftSpeed * 0.5f // Reduce drift force during conflict
-                }
-
-                playerX += driftDirection * appliedSpeed * delta
-                isWalking = true
-
-                if (driftTimer <= 0f) {
-                    isDrifting = false
-                }
-            }
+            // Movement Drift logic removed
         }
 
 
@@ -1574,7 +1554,7 @@ class GameScreen(
                     } else {
                         die("Infinite falling for an infinite failure.")
                     }
-                    stateTimer = -9999f
+                    // stateTimer = -9999f
                 }
             }
 
@@ -1583,7 +1563,7 @@ class GameScreen(
                 leftMaskRect.set(leftMaskX, leftMaskY, maskWidth, maskHeight)
                 if (Intersector.overlaps(playerRect, leftMaskRect)) {
                     die("You chose poorly.")
-                    stateTimer = -9999f
+                    // stateTimer = -9999f
                 }
             }
         }
@@ -1734,7 +1714,7 @@ class GameScreen(
                     if (currentLevel == 5 && currentChunk == 2) die("You ain't no Newton")
                     else if (currentLevel == 6 && currentChunk == 1) {
                         die("Did you think the Mask was your friend? Cute.")
-                        stateTimer = -9999f
+                        // stateTimer = -9999f
                     } else die("Squished like a bug. And just as insignificant.")
                 }
             }
