@@ -1916,6 +1916,10 @@ class GameScreen(
                 if (!isPortalLoopActive && Intersector.overlaps(playerRect, maskRect)) {
                     // Trap triggered!
                     isPortalLoopActive = true
+                    // Speed up the moving walls to create high pressure
+                    for (wall in movingWalls) {
+                        if (wall.speed > 0) wall.speed = 350f else if (wall.speed < 0) wall.speed = -350f
+                    }
                     playerY = 1000f
                     velocityY = -500f // Fall rapidly
 
