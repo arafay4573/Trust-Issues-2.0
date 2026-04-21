@@ -1918,7 +1918,7 @@ class GameScreen(
                     isPortalLoopActive = true
                     // Speed up the moving walls to create high pressure
                     for (wall in movingWalls) {
-                        if (wall.speed > 0) wall.speed = 350f else if (wall.speed < 0) wall.speed = -350f
+                        if (wall.speed > 0) wall.speed = 150f else if (wall.speed < 0) wall.speed = -150f
                     }
                     playerY = 1000f
                     velocityY = -500f // Fall rapidly
