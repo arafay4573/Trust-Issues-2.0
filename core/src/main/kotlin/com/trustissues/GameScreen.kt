@@ -582,8 +582,7 @@ class GameScreen(
                 playerY = 100f
                 playerX = 640f - playerWidth / 2f
 
-                // Spinning Laser Cage around the Right Mask
-                isCageActive = true
+                isCageActive = false // No more cage around right mask
                 cageAngle = 0f
                 fakeMaskTouched = false
                 chunkTime = 0f
@@ -1243,9 +1242,9 @@ class GameScreen(
             // 1. Flappy Bird Mechanics
             canJump = true
 
-            // 2. The 9 Second Secret
+            // 2. The 7 Second Secret
             chunkTime += delta
-            if (chunkTime >= 9f && centerMaskY > playerY) {
+            if (chunkTime >= 7f && centerMaskY > playerY) {
                 // The middle mask falls on the player
                 centerMaskY -= 400f * delta
                 // Make it safe
@@ -1257,66 +1256,43 @@ class GameScreen(
                 if (centerMaskY <= 100f) {
                     centerMaskY = 100f
                 }
-            } else if (chunkTime < 9f && Intersector.overlaps(playerRect, centerMaskRect)) {
-                // Second mask (Center Mask): "does nothing and leaves u to confusion"
-                // Literally do nothing. Collision ignored.
+            } else if (chunkTime < 7f && Intersector.overlaps(playerRect, centerMaskRect)) {
+                // "burn u with lasers as soon as u touch it before the 7th second"
+                lasers.add(Laser(Rectangle(playerX - 10f, playerY, 40f, 800f), isSweeping = false))
+                die("Grilled to perfection. Serve with a side of impatience.")
+                return
             }
 
-            // Cage spin
-            if (isCageActive) {
-                cageAngle += 60f * delta // 60 degrees per second
-
-                // Collision with spinning cage
-                val cx = maskX + maskWidth / 2f
-                val cy = maskY + maskHeight / 2f
-                val radius = 50f
-                var hitCage = false
-                for (i in 0..3) {
-                    val angle = cageAngle + i * 90f
-                    val rad = Math.toRadians(angle.toDouble())
-                    val endX = cx + (Math.cos(rad) * radius).toFloat()
-                    val endY = cy + (Math.sin(rad) * radius).toFloat()
-
-                    if (Intersector.intersectSegmentRectangle(
-                            Vector2(cx, cy),
-                            Vector2(endX, endY),
-                            playerRect
-                        )) {
-                        hitCage = true
-                        break
-                    }
-                }
-                if (hitCage) {
-                    die("You chose... poorly.")
-                    return
-                }
-            }
-
-            // Left Mask (First Mask): "Shark falls on u from above u die"
-            if (Intersector.overlaps(playerRect, leftMaskRect) && !leftMaskTriggered) {
+            // Left Mask (First Mask): "raining sharks"
+            if (Intersector.overlaps(playerRect, leftMaskRect)) {
                 leftMaskTriggered = true
-                sharks.add(Shark(playerX, 720f, 0f, playerX, playerX))
             }
 
             if (leftMaskTriggered) {
+                // Spawn sharks constantly raining down randomly
+                if (MathUtils.randomBoolean(0.1f)) {
+                    val randomX = MathUtils.random(100f, 1180f)
+                    sharks.add(Shark(randomX, 720f, 0f, randomX, randomX))
+                }
                 for (shark in sharks) {
-                    if (shark.y > playerY) {
-                        shark.y -= 1500f * delta
-                    }
+                    shark.y -= 1000f * delta
                     if (Intersector.overlaps(playerRect, Rectangle(shark.x, shark.y, 120f, 60f))) {
-                        die("Shark-nado! A falling shark? Really?")
+                        die("Cloudy with a chance of meat-eating predators!")
                         return
                     }
                 }
             }
 
             // Lasered Mask (Right Mask): "speed up the wall so fast that u die by squishing"
+            // Wait, he said "lasered mask... speed up wall". So no reverse gravity anymore??
+            // The prompt originally said "Physics Betrayal". "if u obtain the lasered mask...it eventually speed up the wall so fast that u die by squishing".
+            // So touching right mask does NOT win anymore? It squishes you? Then how do you win? "if u wait for exactly 7 seconds on the platfrom the middle mask is just gonna fall on u and ur chunk is successfully completed". So that's the ONLY win condition.
             if (Intersector.overlaps(playerRect, maskRect)) {
+                hasTouchedRightMask = true
                 for (wall in movingWalls) {
-                    if (wall.speed > 0) wall.speed = 800f
-                    else wall.speed = -800f
+                    if (wall.speed > 0) wall.speed = 900f
+                    else wall.speed = -900f
                 }
-                // The walls will hit the player and trigger death in the normal update loop.
             }
 
             // Re-bind masks
@@ -2122,7 +2098,7 @@ class GameScreen(
         }
 
         if (currentLevel == 6 && currentChunk == 3) {
-            roast = customMessage ?: listOf("You chose... poorly.", "Trust your eyes? That was your first mistake.", "Even with three choices, you're still a failure.", "A literal stationary wall killed you.", "Squished like an ant.", "Shark-nado! A falling shark? Really?", "Imagine thinking you were smart there.", "Gravity is a harsh mistress.", "I guess you're not the protagonist after all.").random()
+            roast = customMessage ?: listOf("You chose... poorly.", "Squished like a pancake.", "Cloudy with a chance of meat-eating predators!", "Grilled to perfection. Serve with a side of impatience.", "You have the survival instincts of a lemming.", "A wall? Really?", "I've seen potatoes with better reaction times.").random()
         }
 
         messageLabel?.setText(roast)
@@ -2139,7 +2115,7 @@ class GameScreen(
         var roast = winRoasts.random()
 
         if (currentLevel == 6 && currentChunk == 3) {
-            roast = listOf("Wow, you stood still for 9 seconds. Truly a gaming legend.", "The hardest mechanic in gaming: doing absolutely nothing.", "Luigi wins by doing absolutely nothing.").random()
+            roast = listOf("Wow, you stood still for 7 seconds. Truly a gaming legend.", "The hardest mechanic in gaming: doing absolutely nothing.", "Luigi wins by doing absolutely nothing.", "You literally did nothing and won. I'm so proud.", "Pro-gamer move: AFK.").random()
         }
 
         if (currentLevel == 4) {
