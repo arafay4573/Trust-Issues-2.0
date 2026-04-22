@@ -136,7 +136,7 @@ class GameScreen(
     private var centerMaskY = 0f
     private val centerMaskRect = Rectangle()
     private var hasTouchedRightMask = false
-    private var leftMaskTriggered = false
+    private var isSharkRainActive = false
 
     // Assets
     private var sharkTexture: Texture? = null
@@ -586,6 +586,7 @@ class GameScreen(
                 cageAngle = 0f
                 fakeMaskTouched = false
                 chunkTime = 0f
+                isSharkRainActive = true
             }
             2 -> {
                 // Chunk 2: The Mirror Swap Portal
@@ -1263,22 +1264,41 @@ class GameScreen(
                 return
             }
 
-            // Left Mask (First Mask): "raining sharks"
+            // Left Mask (First Mask): "the raining stops and u can get back whereever u want"
             if (Intersector.overlaps(playerRect, leftMaskRect)) {
-                leftMaskTriggered = true
+                isSharkRainActive = false
             }
 
-            if (leftMaskTriggered) {
-                // Spawn sharks constantly raining down randomly
-                if (MathUtils.randomBoolean(0.1f)) {
-                    val randomX = MathUtils.random(100f, 1180f)
+            if (isSharkRainActive) {
+                // "raining sharks all over the screen but gives u windown"
+                if (MathUtils.randomBoolean(0.05f)) { // Adjusted for a fairer window
+                    val randomX = MathUtils.random(0f, 1280f)
                     sharks.add(Shark(randomX, 720f, 0f, randomX, randomX))
                 }
-                for (shark in sharks) {
-                    shark.y -= 1000f * delta
+                val iter = sharks.iterator()
+                while(iter.hasNext()) {
+                    val shark = iter.next()
+                    shark.y -= 800f * delta
                     if (Intersector.overlaps(playerRect, Rectangle(shark.x, shark.y, 120f, 60f))) {
                         die("Cloudy with a chance of meat-eating predators!")
                         return
+                    }
+                    if (shark.y < -100f) {
+                        iter.remove()
+                    }
+                }
+            } else {
+                // Raining stopped. Clear the ones that are still falling offscreen
+                val iter = sharks.iterator()
+                while(iter.hasNext()) {
+                    val shark = iter.next()
+                    shark.y -= 800f * delta
+                    if (Intersector.overlaps(playerRect, Rectangle(shark.x, shark.y, 120f, 60f))) {
+                        die("Cloudy with a chance of meat-eating predators!")
+                        return
+                    }
+                    if (shark.y < -100f) {
+                        iter.remove()
                     }
                 }
             }

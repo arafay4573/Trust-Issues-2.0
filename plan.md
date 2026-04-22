@@ -1,4 +1,5 @@
-1. **Right Mask (Walls crush)**: Remove the laser cage entirely. Touching it makes walls move at 20x speed (e.g., `900f`).
-2. **Center Mask**: Change 9s back to 7s. If touched before 7s, "throw lasers as soon as u touch ... burn u with lasers" -> create a laser sweeping from top to bottom (or a static laser grid that kills the player) and call `die()`.
-3. **Left Mask**: "raining sharks" -> Instead of spawning one shark that falls once, we keep spawning falling sharks whenever the left mask is touched (or turn on a "shark rain" state).
-4. **Roasts**: Update roasts to be "really hilarious" tailored to each death (squished, burned by lasers, shark rain, winning by doing nothing).
+1. **Update Setup logic**: Raining sharks should start from the very beginning. So `leftMaskTriggered` should start as `true`, or we create a specific variable `isSharkRainActive` that starts as `true`.
+2. **Update First Mask logic**: When the player touches the first mask (left mask), `isSharkRainActive` is set to `false`. "the raining stops and u can get back whereever u want".
+3. **Shark spawning logic**: Update it so the sharks fall down but maybe give the player "a window" to dodge them? "raining sharks all over the screen but gives u windown". We can decrease the frequency of the spawn slightly so it's dodgable, or maybe `MathUtils.randomBoolean(0.05f)` instead of `0.1f`.
+4. **Center Mask**: Still falls at 7 seconds or burns you if touched early.
+5. **Right Mask**: Speeds up walls to 20x.
