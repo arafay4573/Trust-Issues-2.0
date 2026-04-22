@@ -585,6 +585,7 @@ class GameScreen(
                 isCageActive = true
                 cageAngle = 0f
                 fakeMaskTouched = false
+                chunkTime = 0f
             }
             2 -> {
                 // Chunk 2: The Mirror Swap Portal
@@ -1237,6 +1238,28 @@ class GameScreen(
             leftMaskRect.set(leftMaskX, leftMaskY, maskWidth, maskHeight)
             centerMaskRect.set(centerMaskX, centerMaskY, maskWidth, maskHeight)
 
+            // 1. Flappy Bird Mechanics
+            canJump = true
+
+            // 2. The 7 Second Secret
+            chunkTime += delta
+            if (chunkTime >= 7f && centerMaskY > playerY) {
+                // The middle mask falls on the player
+                centerMaskY -= 400f * delta
+                // Make it safe
+                if (Intersector.overlaps(playerRect, centerMaskRect)) {
+                    win()
+                    return
+                }
+                // Also check if it hits the floor (y=100) or player
+                if (centerMaskY <= 100f) {
+                    centerMaskY = 100f
+                }
+            } else if (chunkTime < 7f && Intersector.overlaps(playerRect, centerMaskRect)) {
+                // Second mask (Center Mask): "does nothing and leaves u to confusion"
+                // Literally do nothing. Collision ignored.
+            }
+
             // Cage spin
             if (isCageActive) {
                 cageAngle += 60f * delta // 60 degrees per second
@@ -1267,44 +1290,32 @@ class GameScreen(
                 }
             }
 
-            if (Intersector.overlaps(playerRect, leftMaskRect) || Intersector.overlaps(playerRect, centerMaskRect)) {
-                // "Touching it teleports the player into a sealed DeadlyLaser cage at the top left/center."
-                if (Intersector.overlaps(playerRect, leftMaskRect)) {
-                    playerX = 100f
-                    playerY = 600f
-                } else {
-                    playerX = 640f
-                    playerY = 600f
+            // Left Mask (First Mask): "Shark falls on u from above u die"
+            if (Intersector.overlaps(playerRect, leftMaskRect)) {
+                sharks.add(Shark(playerX, 720f, 0f, playerX, playerX))
+                // Move sharks down super fast
+                for (shark in sharks) {
+                    if (shark.y > playerY) {
+                        shark.y -= 1000f * delta
+                    }
+                    if (Intersector.overlaps(playerRect, Rectangle(shark.x, shark.y, 120f, 60f))) {
+                        die("Shark-nado! A falling shark? Really?")
+                    }
                 }
-                velocityY = 0f
-
-                // Spawn a sealed DeadlyLaser cage around the player
-                platforms.add(Platform(Rectangle(playerX - 20f, playerY - 20f, playerWidth + 40f, 20f), PlatformType.DEADLY_RED)) // Floor
-                platforms.add(Platform(Rectangle(playerX - 20f, playerY + playerHeight, playerWidth + 40f, 20f), PlatformType.DEADLY_RED)) // Ceiling
-                platforms.add(Platform(Rectangle(playerX - 20f, playerY - 20f, 20f, playerHeight + 40f), PlatformType.DEADLY_RED)) // Left
-                platforms.add(Platform(Rectangle(playerX + playerWidth, playerY - 20f, 20f, playerHeight + 40f), PlatformType.DEADLY_RED)) // Right
-
-                die("Trust your eyes? That was your first mistake.")
-                return
             }
 
-            if (!hasTouchedRightMask && Intersector.overlaps(playerRect, maskRect)) {
-                hasTouchedRightMask = true
-                reverseGravity = true
-                renderOffset = 160f
-
-                // Hide fake masks and disable cage
-                leftMaskX = -2000f
-                centerMaskX = -2000f
-                isCageActive = false
-
-                // Final Goal Mask
-                maskX = 640f
-                maskY = 900f
-                maskRect.set(maskX, maskY, maskWidth, maskHeight)
-            } else if (hasTouchedRightMask && Intersector.overlaps(playerRect, maskRect)) {
-                win()
+            // Lasered Mask (Right Mask): "speed up the wall so fast that u die by squishing"
+            if (Intersector.overlaps(playerRect, maskRect)) {
+                for (wall in movingWalls) {
+                    if (wall.speed > 0) wall.speed = 800f
+                    else wall.speed = -800f
+                }
+                // The walls will hit the player and trigger death in the normal update loop.
             }
+
+            // Re-bind masks
+            leftMaskRect.set(leftMaskX, leftMaskY, maskWidth, maskHeight)
+            centerMaskRect.set(centerMaskX, centerMaskY, maskWidth, maskHeight)
         }
 
         // --- LEVEL 6 CHUNK 2 LOGIC (The Mirror Swap Portal) ---
@@ -2104,9 +2115,7 @@ class GameScreen(
         }
 
         if (currentLevel == 6 && currentChunk == 3) {
-            // "Death Logic: Use stateTimer = -9999f for all deaths."
-            // But if they hit the fake masks, we just want to restart them? No, user says "for ALL deaths"
-            roast = customMessage ?: listOf("You chose... poorly.", "Trust your eyes? That was your first mistake.", "Even with three choices, you're still a failure.").random()
+            roast = customMessage ?: listOf("You chose... poorly.", "Trust your eyes? That was your first mistake.", "Even with three choices, you're still a failure.", "Imagine dying to a stationary wall.", "Squish.", "Shark-nado! A falling shark? Really?").random()
         }
 
         messageLabel?.setText(roast)
@@ -2121,6 +2130,11 @@ class GameScreen(
         isLevelComplete = true
 
         var roast = winRoasts.random()
+
+        if (currentLevel == 6 && currentChunk == 3) {
+            roast = listOf("Wow, you stood still for 7 seconds. Truly a gaming legend.", "The hardest mechanic in gaming: doing absolutely nothing.").random()
+        }
+
         if (currentLevel == 4) {
             roast = when (currentChunk) {
                 1 -> "Wow, you dodged a laser. Want a medal for basic motor skills?"
