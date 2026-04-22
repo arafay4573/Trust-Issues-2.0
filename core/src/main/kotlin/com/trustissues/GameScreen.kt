@@ -136,6 +136,7 @@ class GameScreen(
     private var centerMaskY = 0f
     private val centerMaskRect = Rectangle()
     private var hasTouchedRightMask = false
+    private var leftMaskTriggered = false
 
     // Assets
     private var sharkTexture: Texture? = null
@@ -1126,7 +1127,8 @@ class GameScreen(
                 if (!isPaused && !isDead && !isLevelComplete) {
                     val currentJumpStrength = if (currentLevel == 5 && (currentChunk == 2 || currentChunk == 3)) 500f else jumpStrength
                     // "tap the jump button again and again to fly ofk like flappy bird"
-                    if (currentLevel == 5 && (currentChunk == 1 || currentChunk == 2 || currentChunk == 3)) {
+                    if ((currentLevel == 5 && (currentChunk == 1 || currentChunk == 2 || currentChunk == 3)) ||
+                        (currentLevel == 6 && currentChunk == 3)) {
                         if (reverseGravity) {
                             velocityY = -currentJumpStrength
                         } else {
@@ -1241,9 +1243,9 @@ class GameScreen(
             // 1. Flappy Bird Mechanics
             canJump = true
 
-            // 2. The 7 Second Secret
+            // 2. The 9 Second Secret
             chunkTime += delta
-            if (chunkTime >= 7f && centerMaskY > playerY) {
+            if (chunkTime >= 9f && centerMaskY > playerY) {
                 // The middle mask falls on the player
                 centerMaskY -= 400f * delta
                 // Make it safe
@@ -1255,7 +1257,7 @@ class GameScreen(
                 if (centerMaskY <= 100f) {
                     centerMaskY = 100f
                 }
-            } else if (chunkTime < 7f && Intersector.overlaps(playerRect, centerMaskRect)) {
+            } else if (chunkTime < 9f && Intersector.overlaps(playerRect, centerMaskRect)) {
                 // Second mask (Center Mask): "does nothing and leaves u to confusion"
                 // Literally do nothing. Collision ignored.
             }
@@ -1291,15 +1293,19 @@ class GameScreen(
             }
 
             // Left Mask (First Mask): "Shark falls on u from above u die"
-            if (Intersector.overlaps(playerRect, leftMaskRect)) {
+            if (Intersector.overlaps(playerRect, leftMaskRect) && !leftMaskTriggered) {
+                leftMaskTriggered = true
                 sharks.add(Shark(playerX, 720f, 0f, playerX, playerX))
-                // Move sharks down super fast
+            }
+
+            if (leftMaskTriggered) {
                 for (shark in sharks) {
                     if (shark.y > playerY) {
-                        shark.y -= 1000f * delta
+                        shark.y -= 1500f * delta
                     }
                     if (Intersector.overlaps(playerRect, Rectangle(shark.x, shark.y, 120f, 60f))) {
                         die("Shark-nado! A falling shark? Really?")
+                        return
                     }
                 }
             }
@@ -1746,6 +1752,7 @@ class GameScreen(
 
         // Platform Collision
         canJump = false // Reset per frame
+        if (currentLevel == 6 && currentChunk == 3) canJump = true
         if (!reverseGravity && playerY <= floorY + 1f && !isExemptLevel) canJump = true
 
         // --- CRITICAL FIX: Remove destroyed platforms so player falls! ---
@@ -2115,7 +2122,7 @@ class GameScreen(
         }
 
         if (currentLevel == 6 && currentChunk == 3) {
-            roast = customMessage ?: listOf("You chose... poorly.", "Trust your eyes? That was your first mistake.", "Even with three choices, you're still a failure.", "Imagine dying to a stationary wall.", "Squish.", "Shark-nado! A falling shark? Really?").random()
+            roast = customMessage ?: listOf("You chose... poorly.", "Trust your eyes? That was your first mistake.", "Even with three choices, you're still a failure.", "A literal stationary wall killed you.", "Squished like an ant.", "Shark-nado! A falling shark? Really?", "Imagine thinking you were smart there.", "Gravity is a harsh mistress.", "I guess you're not the protagonist after all.").random()
         }
 
         messageLabel?.setText(roast)
@@ -2132,7 +2139,7 @@ class GameScreen(
         var roast = winRoasts.random()
 
         if (currentLevel == 6 && currentChunk == 3) {
-            roast = listOf("Wow, you stood still for 7 seconds. Truly a gaming legend.", "The hardest mechanic in gaming: doing absolutely nothing.").random()
+            roast = listOf("Wow, you stood still for 9 seconds. Truly a gaming legend.", "The hardest mechanic in gaming: doing absolutely nothing.", "Luigi wins by doing absolutely nothing.").random()
         }
 
         if (currentLevel == 4) {
