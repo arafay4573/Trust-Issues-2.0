@@ -578,6 +578,8 @@ class GameScreen(
 
                 // Base platform to stand on
                 platforms.add(Platform(Rectangle(540f, 80f, 200f, 20f), PlatformType.NORMAL))
+                playerY = 100f
+                playerX = 640f - playerWidth / 2f
 
                 // Spinning Laser Cage around the Right Mask
                 isCageActive = true
@@ -1218,7 +1220,10 @@ class GameScreen(
             stateTimer += delta
             if (stateTimer >= 2.0f) {
                 // Prevent queue spam by resetting stateTimer below the threshold immediately
-                // stateTimer = -9999f
+                stateTimer = -9999f
+
+                // User requested: "the game doesnt restarts after death and thers is just roast on the screen...fix it"
+                // So we SHOULD restart.
                 val wasDead = isDead
                 Gdx.app.postRunnable {
                     if (wasDead) setupChunk(currentChunk) else completeChunk()
@@ -2099,7 +2104,8 @@ class GameScreen(
         }
 
         if (currentLevel == 6 && currentChunk == 3) {
-            stateTimer = -9999f
+            // "Death Logic: Use stateTimer = -9999f for all deaths."
+            // But if they hit the fake masks, we just want to restart them? No, user says "for ALL deaths"
             roast = customMessage ?: listOf("You chose... poorly.", "Trust your eyes? That was your first mistake.", "Even with three choices, you're still a failure.").random()
         }
 
