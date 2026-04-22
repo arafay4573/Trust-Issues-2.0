@@ -1212,7 +1212,7 @@ class GameScreen(
 
                 if (Intersector.overlaps(playerRect, mirrorRect)) {
                     die("You're just a ghost in your own game now.")
-                    // stateTimer = -9999f
+                    stateTimer = -9999f
                     return
                 }
 
@@ -1950,7 +1950,6 @@ class GameScreen(
 
         if (currentLevel == 6 && currentChunk == 2) {
             roast = customMessage ?: listOf("Look at you... you've become the very thing you feared.", "Identity crisis much?", "You're just a ghost in your own game now.").random()
-            stateTimer = -9999f
         }
 
         messageLabel?.setText(roast)
