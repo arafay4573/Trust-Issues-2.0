@@ -67,6 +67,8 @@ class GameScreen(
     private var hasSwappedIdentity = false
     private var ghostX = -999f
     private var ghostY = -999f
+    private var blinkTimer = 0f
+    private var blinkStep = false
     private var driftTimer = 0f
     private var driftDirection = 0 // -1 for left, 1 for right
     private var isDrifting = false
@@ -269,6 +271,8 @@ class GameScreen(
         hasSwappedIdentity = false
         ghostX = -999f
         ghostY = -999f
+        blinkTimer = 0f
+        blinkStep = false
 
         renderOffset = 0f
         renderOffsetY = 0f
@@ -557,21 +561,16 @@ class GameScreen(
                 maskX = 300f
                 maskY = 400f
 
-                // Safe platforms to start/jump
-                platforms.add(Platform(Rectangle(50f, 280f, 150f, 20f), PlatformType.NORMAL))
-                platforms.add(Platform(Rectangle(1080f, 280f, 150f, 20f), PlatformType.NORMAL))
+                // All platforms are crumbling
+                platforms.add(Platform(Rectangle(50f, 280f, 150f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(1080f, 280f, 150f, 20f), PlatformType.CRUMBLING))
 
                 // The Squeeze: Symmetrical Red Walls close in from the edges at 30f speed.
                 movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 30f, isActive = true))
                 movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -30f, isActive = true))
 
-                // The Platforms: Crumbling Platforms (y=500f, 600f, 700f)
-                platforms.add(Platform(Rectangle(300f, 380f, 100f, 20f), PlatformType.NORMAL)) // Extra for mask
-                platforms.add(Platform(Rectangle(900f, 500f, 100f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(1050f, 600f, 100f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(900f, 700f, 100f, 20f), PlatformType.CRUMBLING))
-                // Platform near Goal Mask
-                platforms.add(Platform(Rectangle(950f, 780f, 100f, 20f), PlatformType.CRUMBLING))
+                // Platform near Trigger Mask
+                platforms.add(Platform(Rectangle(280f, 380f, 100f, 20f), PlatformType.CRUMBLING))
             }
             1 -> {
                 // Chunk 1: The Infinite Loop Portal
@@ -1197,14 +1196,29 @@ class GameScreen(
                     ghostX = playerX
                     ghostY = playerY
                     playerX = 1280f - playerWidth - playerX // Takeover Red body pos
+                    isControlsInverted = true
+
+                    // Trigger the speed of the walls to make it a bit faster
+                    for (wall in movingWalls) {
+                        if (wall.speed > 0) wall.speed = 45f else if (wall.speed < 0) wall.speed = -45f
+                    }
 
                     screenFlashColor = com.badlogic.gdx.graphics.Color.WHITE
                     screenFlashTimer = 0.1f
 
-                    // Goal Mask appears
-                    maskX = 980f
-                    maskY = 800f
+                    // Goal Mask appears at top left
+                    maskX = 200f
+                    maskY = 660f
                     maskRect.set(maskX, maskY, maskWidth, maskHeight)
+
+                    // Spawn catch platform for the falling red mirror body
+                    platforms.add(Platform(Rectangle(800f, 100f, 400f, 20f), PlatformType.CRUMBLING))
+
+                    // Initial stairway state: Spawn first steps immediately
+                    blinkStep = true
+                    blinkTimer = 0f
+                    platforms.add(Platform(Rectangle(700f, 250f, 99f, 20f), PlatformType.CRUMBLING))
+                    platforms.add(Platform(Rectangle(300f, 550f, 99f, 20f), PlatformType.CRUMBLING))
                 }
             } else {
                 // Ghost stays stationary as a DEADLY_RED trap
@@ -1212,8 +1226,25 @@ class GameScreen(
 
                 if (Intersector.overlaps(playerRect, mirrorRect)) {
                     die("You're just a ghost in your own game now.")
-                    stateTimer = -9999f
                     return
+                }
+
+                // Blinking Stairway Logic
+                blinkTimer += delta
+                if (blinkTimer > 1.5f) {
+                    blinkTimer = 0f
+                    blinkStep = !blinkStep
+
+                    // Clear old stairway platforms using unique width 99f to avoid removing the catch platform
+                    platforms.removeAll { it.rect.width == 99f }
+
+                    if (blinkStep) {
+                        platforms.add(Platform(Rectangle(700f, 250f, 99f, 20f), PlatformType.CRUMBLING))
+                        platforms.add(Platform(Rectangle(300f, 550f, 99f, 20f), PlatformType.CRUMBLING))
+                    } else {
+                        platforms.add(Platform(Rectangle(500f, 400f, 99f, 20f), PlatformType.CRUMBLING))
+                        platforms.add(Platform(Rectangle(200f, 640f, 99f, 20f), PlatformType.CRUMBLING)) // Platform near goal
+                    }
                 }
 
                 // Win Condition
