@@ -547,7 +547,7 @@ class GameScreen(
                 sharks.clear()
 
                 playerX = 100f
-                playerY = 280f
+                playerY = 320f
                 velocityY = 0f
                 reverseGravity = false
                 hasSwappedIdentity = false
@@ -1176,7 +1176,7 @@ class GameScreen(
             stateTimer += delta
             if (stateTimer >= 2.0f) {
                 // Prevent queue spam by resetting stateTimer below the threshold immediately
-                stateTimer = -9999f
+                // stateTimer = -9999f
                 val wasDead = isDead
                 Gdx.app.postRunnable {
                     if (wasDead) setupChunk(currentChunk) else completeChunk()
@@ -1950,7 +1950,7 @@ class GameScreen(
 
         if (currentLevel == 6 && currentChunk == 2) {
             roast = customMessage ?: listOf("Look at you... you've become the very thing you feared.", "Identity crisis much?", "You're just a ghost in your own game now.").random()
-            // stateTimer = -9999f
+            stateTimer = -9999f
         }
 
         messageLabel?.setText(roast)
