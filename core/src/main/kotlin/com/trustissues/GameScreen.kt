@@ -131,6 +131,12 @@ class GameScreen(
     private var fakeMaskTouched = false
     private var ceilingLaserDrop = false
 
+    // Level 6 Chunk 3 variables
+    private var centerMaskX = 0f
+    private var centerMaskY = 0f
+    private val centerMaskRect = Rectangle()
+    private var hasTouchedRightMask = false
+
     // Assets
     private var sharkTexture: Texture? = null
     private var maskTexture: Texture? = null
@@ -541,6 +547,43 @@ class GameScreen(
 
     private fun setupLevel6(chunk: Int) {
         when (chunk) {
+            3 -> {
+                // Chunk 3: The Paradox
+                platforms.clear()
+                lasers.clear()
+                movingWalls.clear()
+                gameButtons.clear()
+                gravitySwitches.clear()
+                sharks.clear()
+
+                playerX = 640f
+                playerY = 100f
+                velocityY = 0f
+                reverseGravity = false
+                isControlsInverted = true
+                mirrorActive = false // We handle coloring directly via chunk checks
+                hasTouchedRightMask = false
+
+                // The Squeeze: Symmetrical Red Walls close in from edges at 45f speed.
+                movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 45f, isActive = true))
+                movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -45f, isActive = true))
+
+                // The Three Masks
+                leftMaskX = 300f
+                leftMaskY = 450f
+                centerMaskX = 640f
+                centerMaskY = 450f
+                maskX = 980f // Right mask is the real one initially
+                maskY = 450f
+
+                // Base platform to stand on
+                platforms.add(Platform(Rectangle(540f, 80f, 200f, 20f), PlatformType.NORMAL))
+
+                // Spinning Laser Cage around the Right Mask
+                isCageActive = true
+                cageAngle = 0f
+                fakeMaskTouched = false
+            }
             2 -> {
                 // Chunk 2: The Mirror Swap Portal
                 platforms.clear()
@@ -1182,6 +1225,81 @@ class GameScreen(
                 }
             }
             return
+        }
+
+        // --- LEVEL 6 CHUNK 3 LOGIC (The Paradox) ---
+        if (currentLevel == 6 && currentChunk == 3 && !isDead && !isLevelComplete) {
+            leftMaskRect.set(leftMaskX, leftMaskY, maskWidth, maskHeight)
+            centerMaskRect.set(centerMaskX, centerMaskY, maskWidth, maskHeight)
+
+            // Cage spin
+            if (isCageActive) {
+                cageAngle += 60f * delta // 60 degrees per second
+
+                // Collision with spinning cage
+                val cx = maskX + maskWidth / 2f
+                val cy = maskY + maskHeight / 2f
+                val radius = 50f
+                var hitCage = false
+                for (i in 0..3) {
+                    val angle = cageAngle + i * 90f
+                    val rad = Math.toRadians(angle.toDouble())
+                    val endX = cx + (Math.cos(rad) * radius).toFloat()
+                    val endY = cy + (Math.sin(rad) * radius).toFloat()
+
+                    if (Intersector.intersectSegmentRectangle(
+                            Vector2(cx, cy),
+                            Vector2(endX, endY),
+                            playerRect
+                        )) {
+                        hitCage = true
+                        break
+                    }
+                }
+                if (hitCage) {
+                    die("You chose... poorly.")
+                    return
+                }
+            }
+
+            if (Intersector.overlaps(playerRect, leftMaskRect) || Intersector.overlaps(playerRect, centerMaskRect)) {
+                // "Touching it teleports the player into a sealed DeadlyLaser cage at the top left/center."
+                if (Intersector.overlaps(playerRect, leftMaskRect)) {
+                    playerX = 100f
+                    playerY = 600f
+                } else {
+                    playerX = 640f
+                    playerY = 600f
+                }
+                velocityY = 0f
+
+                // Spawn a sealed DeadlyLaser cage around the player
+                platforms.add(Platform(Rectangle(playerX - 20f, playerY - 20f, playerWidth + 40f, 20f), PlatformType.DEADLY_RED)) // Floor
+                platforms.add(Platform(Rectangle(playerX - 20f, playerY + playerHeight, playerWidth + 40f, 20f), PlatformType.DEADLY_RED)) // Ceiling
+                platforms.add(Platform(Rectangle(playerX - 20f, playerY - 20f, 20f, playerHeight + 40f), PlatformType.DEADLY_RED)) // Left
+                platforms.add(Platform(Rectangle(playerX + playerWidth, playerY - 20f, 20f, playerHeight + 40f), PlatformType.DEADLY_RED)) // Right
+
+                die("Trust your eyes? That was your first mistake.")
+                return
+            }
+
+            if (!hasTouchedRightMask && Intersector.overlaps(playerRect, maskRect)) {
+                hasTouchedRightMask = true
+                reverseGravity = true
+                renderOffset = 160f
+
+                // Hide fake masks and disable cage
+                leftMaskX = -2000f
+                centerMaskX = -2000f
+                isCageActive = false
+
+                // Final Goal Mask
+                maskX = 640f
+                maskY = 900f
+                maskRect.set(maskX, maskY, maskWidth, maskHeight)
+            } else if (hasTouchedRightMask && Intersector.overlaps(playerRect, maskRect)) {
+                win()
+            }
         }
 
         // --- LEVEL 6 CHUNK 2 LOGIC (The Mirror Swap Portal) ---
@@ -1964,6 +2082,8 @@ class GameScreen(
             // Ignore default win, handled in logic block
         } else if (currentLevel == 6 && currentChunk == 2) {
             // Handled explicitly in update loop (only trigger if swapped)
+        } else if (currentLevel == 6 && currentChunk == 3) {
+            // Handled explicitly in update loop
         } else if (currentLevel != 4 || currentChunk != 3) {
             if (!isDead && Intersector.overlaps(playerRect, maskRect)) win()
         }
@@ -1976,6 +2096,11 @@ class GameScreen(
 
         if (currentLevel == 6 && currentChunk == 2) {
             roast = customMessage ?: listOf("Look at you... you've become the very thing you feared.", "Identity crisis much?", "You're just a ghost in your own game now.").random()
+        }
+
+        if (currentLevel == 6 && currentChunk == 3) {
+            stateTimer = -9999f
+            roast = customMessage ?: listOf("You chose... poorly.", "Trust your eyes? That was your first mistake.", "Even with three choices, you're still a failure.").random()
         }
 
         messageLabel?.setText(roast)
@@ -2140,7 +2265,8 @@ class GameScreen(
         }
 
         // Draw spinning laser cage for Level 5 Chunk 3
-        if (currentLevel == 5 && currentChunk == 3 && isCageActive && !fakeMaskTouched) {
+        if ((currentLevel == 5 && currentChunk == 3 && isCageActive && !fakeMaskTouched) ||
+            (currentLevel == 6 && currentChunk == 3 && isCageActive && !fakeMaskTouched)) {
             shapeRenderer.color = Color(1f, 0.1f, 0.1f, 0.8f) // Same transparent red as lasers
             val centerX = maskX + maskWidth / 2f + renderOffset
             val centerY = maskY + maskHeight / 2f
@@ -2194,6 +2320,14 @@ class GameScreen(
             // Draw Left Mask for Level 6 Chunk 1
             if (currentLevel == 6 && currentChunk == 1 && realMaskSpawned && isVisible(leftMaskX, leftMaskY)) {
                 game.batch.draw(tex, leftMaskX + renderOffset, leftMaskY + renderOffsetY, 32f, 32f)
+            }
+
+            // Draw Level 6 Chunk 3 Extra Masks
+            if (currentLevel == 6 && currentChunk == 3 && isVisible(leftMaskX, leftMaskY)) {
+                game.batch.draw(tex, leftMaskX + renderOffset, leftMaskY + renderOffsetY, 32f, 32f)
+            }
+            if (currentLevel == 6 && currentChunk == 3 && isVisible(centerMaskX, centerMaskY)) {
+                game.batch.draw(tex, centerMaskX + renderOffset, centerMaskY + renderOffsetY, 32f, 32f)
             }
         }
 
