@@ -1198,11 +1198,6 @@ class GameScreen(
                     playerX = 1280f - playerWidth - playerX // Takeover Red body pos
                     isControlsInverted = true
 
-                    // Trigger the speed of the walls to make it a bit faster
-                    for (wall in movingWalls) {
-                        if (wall.speed > 0) wall.speed = 45f else if (wall.speed < 0) wall.speed = -45f
-                    }
-
                     screenFlashColor = com.badlogic.gdx.graphics.Color.WHITE
                     screenFlashTimer = 0.1f
 
