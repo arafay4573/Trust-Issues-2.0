@@ -587,14 +587,15 @@ class GameScreen(
 
                 // Deadly laser wall trapping the shark
                 lasers.add(Laser(Rectangle(620f, 480f, 15f, 100f), isSweeping = false))
+                lasers.add(Laser(Rectangle(765f, 480f, 15f, 100f), isSweeping = false))
 
                 // Symmetrical Red Walls closing in at 25f
                 movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 25f, isActive = true))
                 movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -25f, isActive = true))
 
                 // The Final Goal Mask (The Weight of Trust)
-                maskX = 640f
-                maskY = 850f
+                maskX = 640f + (120f - 30f) / 2f
+                maskY = 500f + (60f - 30f) / 2f
             }
         }
     }

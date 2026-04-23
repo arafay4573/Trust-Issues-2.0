@@ -1,0 +1,13 @@
+--- core/src/main/kotlin/com/trustissues/GameScreen.kt
++++ core/src/main/kotlin/com/trustissues/GameScreen.kt
+@@ -594,8 +594,8 @@
+                 movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -25f, isActive = true))
+
+                 // The Final Goal Mask (The Weight of Trust)
+-                maskX = 680f
+-                maskY = 510f
++                maskX = 640f + (120f - 30f) / 2f
++                maskY = 500f + (60f - 30f) / 2f
+             }
+         }
+     }
