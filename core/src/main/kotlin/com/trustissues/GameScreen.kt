@@ -2423,6 +2423,27 @@ class GameScreen(
         game.batch.projectionMatrix = gameViewport.camera.combined
         game.batch.begin()
 
+        // Draw Mask using Texture
+        maskTexture?.let { tex ->
+            val hideMask = (currentLevel == 3 && currentChunk == 3 && !isLightsOn)
+            if (!hideMask && isVisible(maskX, maskY)) {
+                game.batch.draw(tex, maskX + renderOffset, maskY + renderOffsetY, 32f, 32f)
+            }
+
+            // Draw Left Mask for Level 6 Chunk 1
+            if (currentLevel == 6 && currentChunk == 1 && realMaskSpawned && isVisible(leftMaskX, leftMaskY)) {
+                game.batch.draw(tex, leftMaskX + renderOffset, leftMaskY + renderOffsetY, 32f, 32f)
+            }
+
+            // Draw Level 6 Chunk 3 Extra Masks
+            if (currentLevel == 6 && currentChunk == 3 && isVisible(leftMaskX, leftMaskY)) {
+                game.batch.draw(tex, leftMaskX + renderOffset, leftMaskY + renderOffsetY, 32f, 32f)
+            }
+            if (currentLevel == 6 && currentChunk == 3 && isVisible(centerMaskX, centerMaskY)) {
+                game.batch.draw(tex, centerMaskX + renderOffset, centerMaskY + renderOffsetY, 32f, 32f)
+            }
+        }
+
         // Draw Sharks (and Safe Sharks from platforms)
         sharkTexture?.let { tex ->
             val ratio = tex.height.toFloat() / tex.width.toFloat()
@@ -2442,27 +2463,6 @@ class GameScreen(
                     // Draw shark at platform position
                     game.batch.draw(tex, plat.rect.x + renderOffset, plat.rect.y, width, height, 0, 0, tex.width, tex.height, false, false)
                 }
-            }
-        }
-
-        // Draw Mask using Texture
-        maskTexture?.let { tex ->
-            val hideMask = (currentLevel == 3 && currentChunk == 3 && !isLightsOn)
-            if (!hideMask && isVisible(maskX, maskY)) {
-                game.batch.draw(tex, maskX + renderOffset, maskY + renderOffsetY, 32f, 32f)
-            }
-
-            // Draw Left Mask for Level 6 Chunk 1
-            if (currentLevel == 6 && currentChunk == 1 && realMaskSpawned && isVisible(leftMaskX, leftMaskY)) {
-                game.batch.draw(tex, leftMaskX + renderOffset, leftMaskY + renderOffsetY, 32f, 32f)
-            }
-
-            // Draw Level 6 Chunk 3 Extra Masks
-            if (currentLevel == 6 && currentChunk == 3 && isVisible(leftMaskX, leftMaskY)) {
-                game.batch.draw(tex, leftMaskX + renderOffset, leftMaskY + renderOffsetY, 32f, 32f)
-            }
-            if (currentLevel == 6 && currentChunk == 3 && isVisible(centerMaskX, centerMaskY)) {
-                game.batch.draw(tex, centerMaskX + renderOffset, centerMaskY + renderOffsetY, 32f, 32f)
             }
         }
 
