@@ -571,7 +571,7 @@ class GameScreen(
                 worldTilt = 0f
 
                 // Base platform
-                platforms.add(Platform(Rectangle(540f, 130f, 200f, 20f), PlatformType.NORMAL))
+                platforms.add(Platform(Rectangle(540f, 130f, 200f, 20f), PlatformType.CRUMBLING))
 
                 // The Sliding Staircase (Crumbling)
                 platforms.add(Platform(Rectangle(400f, 250f, 80f, 20f), PlatformType.CRUMBLING))
@@ -590,8 +590,8 @@ class GameScreen(
                 lasers.add(Laser(Rectangle(765f, 480f, 15f, 100f), isSweeping = false))
 
                 // Symmetrical Red Walls closing in at 25f
-                movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 25f, isActive = true))
-                movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -25f, isActive = true))
+                movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 35f, isActive = true))
+                movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -35f, isActive = true))
 
                 // The Final Goal Mask (The Weight of Trust)
                 maskX = 640f + (120f - 30f) / 2f
@@ -1024,13 +1024,15 @@ class GameScreen(
 
     private fun completeChunk() {
         val nextChunk = currentChunk + 1
+        val isEndOfLevel = nextChunk > 3 || (currentLevel == 7 && nextChunk > 1)
+
         val prefs = Gdx.app.getPreferences("TrustIssues")
         val savedMaxChunk = prefs.getInteger("level_${currentLevel}_maxChunk", 1)
-        if (nextChunk > savedMaxChunk && nextChunk <= 3) {
+        if (nextChunk > savedMaxChunk && !isEndOfLevel) {
             prefs.putInteger("level_${currentLevel}_maxChunk", nextChunk).flush()
         }
 
-        if (nextChunk > 3) {
+        if (isEndOfLevel) {
             val nextLevel = currentLevel + 1
             val unlocked = prefs.getInteger("unlockedLevel", 1)
             if (nextLevel > unlocked) {

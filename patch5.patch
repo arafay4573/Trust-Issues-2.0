@@ -1,0 +1,22 @@
+--- core/src/main/kotlin/com/trustissues/GameScreen.kt
++++ core/src/main/kotlin/com/trustissues/GameScreen.kt
+@@ -571,7 +571,7 @@
+                 worldTilt = 0f
+
+                 // Base platform
+-                platforms.add(Platform(Rectangle(540f, 130f, 200f, 20f), PlatformType.NORMAL))
++                platforms.add(Platform(Rectangle(540f, 130f, 200f, 20f), PlatformType.CRUMBLING))
+
+                 // The Sliding Staircase (Crumbling)
+                 platforms.add(Platform(Rectangle(400f, 250f, 80f, 20f), PlatformType.CRUMBLING))
+@@ -589,8 +589,8 @@
+                 lasers.add(Laser(Rectangle(765f, 480f, 15f, 100f), isSweeping = false))
+
+                 // Symmetrical Red Walls closing in at 25f
+-                movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 25f, isActive = true))
+-                movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -25f, isActive = true))
++                movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 35f, isActive = true))
++                movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -35f, isActive = true))
+
+                 // The Final Goal Mask (The Weight of Trust)
+                 maskX = 640f + (120f - 30f) / 2f
