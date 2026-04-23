@@ -138,6 +138,9 @@ class GameScreen(
     private var hasTouchedRightMask = false
     private var isSharkRainActive = false
 
+    // Level 7 Chunk 1 Variables
+    private var worldTilt = 0f
+
     // Assets
     private var sharkTexture: Texture? = null
     private var maskTexture: Texture? = null
@@ -281,6 +284,7 @@ class GameScreen(
         blinkTimer = 0f
         blinkStep = false
 
+        worldTilt = 0f
         renderOffset = 0f
         renderOffsetY = 0f
         tideTimer = 0f
@@ -306,6 +310,8 @@ class GameScreen(
             setupLevel5(chunk)
         } else if (currentLevel == 6) {
             setupLevel6(chunk)
+        } else if (currentLevel == 7) {
+            setupLevel7(chunk)
         }
 
         maskRect.set(maskX, maskY, maskWidth, maskHeight)
@@ -545,6 +551,53 @@ class GameScreen(
         }
     }
 
+
+    private fun setupLevel7(chunk: Int) {
+        when (chunk) {
+            1 -> {
+                // Chunk 1: The Tilt Engine
+                platforms.clear()
+                lasers.clear()
+                movingWalls.clear()
+                gameButtons.clear()
+                gravitySwitches.clear()
+                sharks.clear()
+
+                playerX = 640f
+                playerY = 150f
+                velocityY = 0f
+                reverseGravity = false
+                isControlsInverted = false
+                worldTilt = 0f
+
+                // Base platform
+                platforms.add(Platform(Rectangle(540f, 130f, 200f, 20f), PlatformType.NORMAL))
+
+                // The Sliding Staircase (Crumbling)
+                platforms.add(Platform(Rectangle(400f, 250f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(800f, 350f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(400f, 450f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(800f, 550f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(400f, 650f, 80f, 20f), PlatformType.CRUMBLING))
+
+                // The Symmetrical Shark Slide
+                // Safe shark trapped behind a deadly laser
+                sharks.add(Shark(640f, 500f, 0f, -2000f, 2000f))
+                platforms.add(Platform(Rectangle(640f, 500f, 120f, 60f), PlatformType.SAFE_SHARK))
+
+                // Deadly laser wall trapping the shark
+                lasers.add(Laser(Rectangle(620f, 480f, 15f, 100f), isSweeping = false))
+
+                // Symmetrical Red Walls closing in at 25f
+                movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 25f, isActive = true))
+                movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -25f, isActive = true))
+
+                // The Final Goal Mask (The Weight of Trust)
+                maskX = 640f
+                maskY = 850f
+            }
+        }
+    }
 
     private fun setupLevel6(chunk: Int) {
         when (chunk) {
@@ -1128,7 +1181,8 @@ class GameScreen(
                     val currentJumpStrength = if (currentLevel == 5 && (currentChunk == 2 || currentChunk == 3)) 500f else jumpStrength
                     // "tap the jump button again and again to fly ofk like flappy bird"
                     if ((currentLevel == 5 && (currentChunk == 1 || currentChunk == 2 || currentChunk == 3)) ||
-                        (currentLevel == 6 && currentChunk == 3)) {
+                        (currentLevel == 6 && currentChunk == 3) ||
+                        (currentLevel == 7 && currentChunk == 1)) {
                         if (reverseGravity) {
                             velocityY = -currentJumpStrength
                         } else {
@@ -1243,9 +1297,9 @@ class GameScreen(
             // 1. Flappy Bird Mechanics
             canJump = true
 
-            // 2. The 7 Second Secret
+            // 2. The 6 Second Secret
             chunkTime += delta
-            if (chunkTime >= 7f && centerMaskY > playerY) {
+            if (chunkTime >= 6f && centerMaskY > playerY) {
                 // The middle mask falls on the player
                 centerMaskY -= 400f * delta
                 // Make it safe
@@ -1257,7 +1311,7 @@ class GameScreen(
                 if (centerMaskY <= 100f) {
                     centerMaskY = 100f
                 }
-            } else if (chunkTime < 7f && Intersector.overlaps(playerRect, centerMaskRect)) {
+            } else if (chunkTime < 6f && Intersector.overlaps(playerRect, centerMaskRect)) {
                 // "burn u with lasers as soon as u touch it before the 7th second"
                 lasers.add(Laser(Rectangle(playerX - 10f, playerY, 40f, 800f), isSweeping = false))
                 die("Grilled to perfection. Serve with a side of impatience.")
@@ -1650,9 +1704,52 @@ class GameScreen(
         if (isWalking) walkTime += delta * 15f else walkTime = 0f
 
         // Physics
-        val isExemptLevel = (currentLevel == 4 && (currentChunk == 2 || currentChunk == 3)) || currentLevel == 3 || currentLevel == 5 || currentLevel == 6
+        val isExemptLevel = (currentLevel == 4 && (currentChunk == 2 || currentChunk == 3)) || currentLevel == 3 || currentLevel == 5 || currentLevel == 6 || currentLevel == 7
 
         val currentGravity = if (currentLevel == 5 && (currentChunk == 2 || currentChunk == 3)) -1800f else if (currentLevel == 6 && currentChunk == 1 && isPortalLoopActive) -3200f * 3f else -3200f
+
+        // --- LEVEL 7 CHUNK 1 LOGIC (The Tilt Engine) ---
+        if (currentLevel == 7 && currentChunk == 1 && !isDead && !isLevelComplete) {
+            canJump = true
+
+            // Tilt Controls
+            if (isRightPressed) {
+                worldTilt += 48f * delta // approx 0.8 deg per frame at 60fps
+            } else if (isLeftPressed) {
+                worldTilt -= 48f * delta
+            }
+
+            // Cap the tilt
+            if (worldTilt > 20f) worldTilt = 20f
+            if (worldTilt < -20f) worldTilt = -20f
+
+            // Apply "Sliding Force" proportional to sin(theta)
+            // e.g. at 20 deg, sin(20) ~ 0.34. Let's make sliding noticeable: ~300f * sin
+            val slideForce = 350f * MathUtils.sinDeg(worldTilt)
+
+            // Slide player
+            playerX += slideForce * delta
+
+            // Slide safe sharks and crumbling platforms
+            for (shark in sharks) {
+                if (shark.speed == 0f) shark.x += slideForce * delta
+            }
+            // Move safe shark platforms too
+            for (plat in platforms) {
+                if (plat.type == PlatformType.SAFE_SHARK || plat.type == PlatformType.CRUMBLING) {
+                    plat.rect.x += slideForce * delta
+                }
+            }
+
+            // Goal Mask (Weight of Trust)
+            if (Intersector.overlaps(playerRect, maskRect)) {
+                if (Math.abs(worldTilt) <= 1f) {
+                    win()
+                } else {
+                    // "Hollow" and cannot be collected, so ignore
+                }
+            }
+        }
         if (reverseGravity) {
             gravity = -currentGravity // Flip gravity positive
             velocityY += gravity * delta
@@ -2103,6 +2200,8 @@ class GameScreen(
             // Handled explicitly in update loop (only trigger if swapped)
         } else if (currentLevel == 6 && currentChunk == 3) {
             // Handled explicitly in update loop
+        } else if (currentLevel == 7 && currentChunk == 1) {
+            // Handled explicitly in update loop
         } else if (currentLevel != 4 || currentChunk != 3) {
             if (!isDead && Intersector.overlaps(playerRect, maskRect)) win()
         }
@@ -2121,6 +2220,11 @@ class GameScreen(
             roast = customMessage ?: listOf("You chose... poorly.", "Squished like a pancake.", "Cloudy with a chance of meat-eating predators!", "Grilled to perfection. Serve with a side of impatience.", "You have the survival instincts of a lemming.", "A wall? Really?", "I've seen potatoes with better reaction times.").random()
         }
 
+        if (currentLevel == 7 && currentChunk == 1) {
+            stateTimer = -9999f
+            roast = customMessage ?: listOf("Can't even keep your balance? Pathetic.", "The world is literally leaning in your favor and you still failed.", "Newton is rolling in his grave watching you slide.").random()
+        }
+
         messageLabel?.setText(roast)
         messageLabel?.color = Color.RED
         messageLabel?.isVisible = true
@@ -2135,7 +2239,7 @@ class GameScreen(
         var roast = winRoasts.random()
 
         if (currentLevel == 6 && currentChunk == 3) {
-            roast = listOf("Wow, you stood still for 7 seconds. Truly a gaming legend.", "The hardest mechanic in gaming: doing absolutely nothing.", "Luigi wins by doing absolutely nothing.", "You literally did nothing and won. I'm so proud.", "Pro-gamer move: AFK.").random()
+            roast = listOf("Wow, you stood still for 6 seconds. Truly a gaming legend.", "The hardest mechanic in gaming: doing absolutely nothing.", "Luigi wins by doing absolutely nothing.", "You literally did nothing and won. I'm so proud.", "Pro-gamer move: AFK.").random()
         }
 
         if (currentLevel == 4) {
@@ -2177,6 +2281,14 @@ class GameScreen(
     }
 
     private fun draw() {
+        // Apply world tilt to camera
+        if (currentLevel == 7 && currentChunk == 1) {
+            gameViewport.camera.up.set(0f, 1f, 0f)
+            gameViewport.camera.direction.set(0f, 0f, -1f)
+            gameViewport.camera.rotate(worldTilt, 0f, 0f, 1f)
+            gameViewport.camera.update()
+        }
+
         // --- 1. SHAPES (Filled & Line) ---
         shapeRenderer.projectionMatrix = gameViewport.camera.combined
 
@@ -2355,6 +2467,13 @@ class GameScreen(
         }
 
         game.batch.end()
+
+        // Reset camera tilt
+        if (currentLevel == 7 && currentChunk == 1) {
+            gameViewport.camera.up.set(0f, 1f, 0f)
+            gameViewport.camera.direction.set(0f, 0f, -1f)
+            gameViewport.camera.update()
+        }
     }
 
     override fun resize(width: Int, height: Int) {
