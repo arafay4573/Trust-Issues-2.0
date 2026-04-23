@@ -590,8 +590,8 @@ class GameScreen(
                 lasers.add(Laser(Rectangle(765f, 480f, 15f, 100f), isSweeping = false))
 
                 // Symmetrical Red Walls closing in at 25f
-                movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 50f, isActive = true))
-                movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -50f, isActive = true))
+                movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 55f, isActive = true))
+                movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -55f, isActive = true))
 
                 // The Final Goal Mask (The Weight of Trust)
                 maskX = 640f + (120f - 30f) / 2f
@@ -1746,11 +1746,7 @@ class GameScreen(
 
             // Goal Mask (Weight of Trust)
             if (Intersector.overlaps(playerRect, maskRect)) {
-                if (Math.abs(worldTilt) <= 1f) {
-                    win()
-                } else {
-                    // "Hollow" and cannot be collected, so ignore
-                }
+                win()
             }
         }
         if (reverseGravity) {
