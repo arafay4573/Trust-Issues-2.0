@@ -564,7 +564,7 @@ class GameScreen(
                 sharks.clear()
 
                 playerX = 640f
-                playerY = 160f
+                playerY = 150f
                 velocityY = 0f
                 reverseGravity = false
                 isControlsInverted = false
@@ -2221,6 +2221,7 @@ class GameScreen(
         }
 
         if (currentLevel == 7 && currentChunk == 1) {
+            stateTimer = -9999f
             roast = customMessage ?: listOf("Can't even keep your balance? Pathetic.", "The world is literally leaning in your favor and you still failed.", "Newton is rolling in his grave watching you slide.").random()
         }
 
