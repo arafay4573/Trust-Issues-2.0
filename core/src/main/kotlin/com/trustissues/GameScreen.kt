@@ -590,8 +590,8 @@ class GameScreen(
                 lasers.add(Laser(Rectangle(765f, 480f, 15f, 100f), isSweeping = false))
 
                 // Symmetrical Red Walls closing in at 25f
-                movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 35f, isActive = true))
-                movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -35f, isActive = true))
+                movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 50f, isActive = true))
+                movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -50f, isActive = true))
 
                 // The Final Goal Mask (The Weight of Trust)
                 maskX = 640f + (120f - 30f) / 2f
@@ -1039,7 +1039,7 @@ class GameScreen(
                 prefs.putInteger("unlockedLevel", nextLevel).flush()
                 prefs.putInteger("level_${nextLevel}_maxChunk", 1).flush()
             }
-            game.screen = if (nextLevel > 10) LevelSelectScreen(game) else GameScreen(game, nextLevel, 1)
+            game.screen = if (nextLevel > 7) LevelSelectScreen(game) else GameScreen(game, nextLevel, 1)
         } else {
             game.screen = GameScreen(game, currentLevel, nextChunk)
         }
@@ -1863,7 +1863,7 @@ class GameScreen(
             if (plat.state == PlatformState.DESTROYED) continue
 
             // 1. Trigger Crumble on Touch (Level 2, 3, 4, 5)
-            if ((currentLevel == 2 || currentLevel == 3 || currentLevel == 4 || currentLevel == 5 || currentLevel == 6) && plat.type == PlatformType.CRUMBLING) {
+            if ((currentLevel == 2 || currentLevel == 3 || currentLevel == 4 || currentLevel == 5 || currentLevel == 6 || currentLevel == 7) && plat.type == PlatformType.CRUMBLING) {
                 // Determine if Player or Echo overlaps (Level 5)
                 val isTouchedByPlayer = playerRect.overlaps(plat.rect)
                 val isTouchedByEcho = (currentLevel == 5 && currentChunk == 1 && echoActive && echoRect.overlaps(plat.rect))
@@ -1878,6 +1878,7 @@ class GameScreen(
                          currentLevel == 5 && currentChunk == 2 -> 1.0f // Level 5-2: 1.0s
                          currentLevel == 3 && currentChunk == 3 -> 0.7f
                          currentLevel == 3 || currentLevel == 4 -> 1.0f
+                         currentLevel == 7 && currentChunk == 1 -> 1.5f // Level 7-1: 1.5s
                          else -> 1.5f
                     }
                     plat.startCrumbling(actualLimit)
