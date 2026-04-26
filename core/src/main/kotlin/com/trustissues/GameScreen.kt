@@ -2153,10 +2153,7 @@ class GameScreen(
                 }
             }
             if (Intersector.overlaps(playerRect, laser.rect)) {
-                // If Level 7 Chunk 2, the laser cage is safe when the tilt is exactly between 14-16 degrees
-                if (currentLevel == 7 && currentChunk == 2 && Math.abs(worldTilt) in 14f..16f) {
-                    // Safe!
-                } else if (currentLevel == 5 && currentChunk == 2) {
+                if (currentLevel == 5 && currentChunk == 2) {
                     die("You ain't no Newton")
                 } else {
                     die("Grilled to perfection. Serve with a side of failure.")
