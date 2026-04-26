@@ -649,10 +649,10 @@ class GameScreen(
                 maskX = 640f
                 maskY = 850f
 
-                // Yellow lines (GameButtons) above the sharks (height set to 100f to prevent tunneling)
-                gameButtons.add(GameButton(Rectangle(340f, 410f, 40f, 100f))) // Above Left Shark
-                gameButtons.add(GameButton(Rectangle(620f, 510f, 40f, 100f))) // Above Middle Shark
-                gameButtons.add(GameButton(Rectangle(900f, 660f, 40f, 100f))) // Above Right Shark
+                // Yellow lines (GameButtons) above the sharks (width 120f, height 250f to guarantee collision)
+                gameButtons.add(GameButton(Rectangle(340f, 410f, 120f, 250f))) // Above Left Shark
+                gameButtons.add(GameButton(Rectangle(620f, 510f, 120f, 250f))) // Above Middle Shark
+                gameButtons.add(GameButton(Rectangle(900f, 660f, 120f, 250f))) // Above Right Shark
             }
         }
     }
@@ -1830,10 +1830,11 @@ class GameScreen(
                 platforms[3].rect.y = shark3Y
             }
             if (gameButtons.size >= 3) {
-                // Ensure buttons have a large vertical hitbox (100f) to prevent tunneling when jumping up fast
-                gameButtons[0].rect.set(shark1X + 40f, shark1Y + 90f, 40f, 100f)
-                gameButtons[1].rect.set(shark2X + 40f, shark2Y + 90f, 40f, 100f)
-                gameButtons[2].rect.set(shark3X + 40f, shark3Y + 90f, 40f, 100f)
+                // Ensure buttons have a massive vertical and horizontal hitbox to guarantee they trigger
+                // Covers the full width of the shark (120f) and extends extremely high (250f)
+                gameButtons[0].rect.set(shark1X, shark1Y + 60f, 120f, 250f)
+                gameButtons[1].rect.set(shark2X, shark2Y + 60f, 120f, 250f)
+                gameButtons[2].rect.set(shark3X, shark3Y + 60f, 120f, 250f)
             }
 
             // Symmetrical Acceleration Walls
@@ -2334,7 +2335,7 @@ class GameScreen(
             } else {
                 // Safe Shark Logic: Skip collision if shark is at x=600 (Chunk 2 Friendly Shark)
                 // Also skip deadly collision for Level 5 Chunk 2 Safe Sharks
-                val isSafeSharkLevel5 = (currentLevel == 5 && currentChunk == 2)
+            val isSafeSharkLevel5 = (currentLevel == 5 && currentChunk == 2) || (currentLevel == 7)
             if ((currentLevel != 4 || currentChunk != 2 || shark.x != 600f) && !isSafeSharkLevel5) {
                     sharkRect.set(shark.x, shark.y, 120f, 60f) // approx
                     if (Intersector.overlaps(playerRect, sharkRect)) {
@@ -2541,8 +2542,12 @@ class GameScreen(
         // Draw Game Buttons
         for (btn in gameButtons) {
             shapeRenderer.color = if (btn.isPressed) Color.GRAY else Color.YELLOW
-            val drawHeight = if (currentLevel == 7 && currentChunk == 2) 10f else btn.rect.height
-            shapeRenderer.rect(btn.rect.x + renderOffset, btn.rect.y, btn.rect.width, drawHeight)
+            if (currentLevel == 7 && currentChunk == 2) {
+                // Keep the visual representation as a 40x10 line centered above the shark's Y+90
+                shapeRenderer.rect(btn.rect.x + 40f + renderOffset, btn.rect.y + 30f, 40f, 10f)
+            } else {
+                shapeRenderer.rect(btn.rect.x + renderOffset, btn.rect.y, btn.rect.width, btn.rect.height)
+            }
         }
 
         // Draw Lasers (Transparent Red)
