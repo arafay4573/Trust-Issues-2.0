@@ -597,6 +597,48 @@ class GameScreen(
                 maskX = 640f + (120f - 30f) / 2f
                 maskY = 500f + (60f - 30f) / 2f
             }
+            2 -> {
+                // Chunk 2: The Gravity Pendulum
+                platforms.clear()
+                lasers.clear()
+                movingWalls.clear()
+                gameButtons.clear()
+                gravitySwitches.clear()
+                sharks.clear()
+
+                playerX = 640f
+                playerY = 160f // Safe spawn
+                velocityY = 0f
+                reverseGravity = false
+                isControlsInverted = false
+                worldTilt = 0f
+
+                // Solid base platform at y=150f. Since height is 20, top is 170, wait, base platform at x=640, y=150. Let's say top is 150. So y=130, height=20.
+                platforms.add(Platform(Rectangle(540f, 130f, 200f, 20f), PlatformType.NORMAL))
+
+                // Swinging Safe Sharks (Platforms attached to them logic handled in update)
+                sharks.add(Shark(440f, 350f, 0f, 0f, 1280f)) // Left pendulum shark
+                platforms.add(Platform(Rectangle(440f, 350f, 120f, 60f), PlatformType.SAFE_SHARK))
+
+                sharks.add(Shark(840f, 600f, 0f, 0f, 1280f)) // Right pendulum shark
+                platforms.add(Platform(Rectangle(840f, 600f, 120f, 60f), PlatformType.SAFE_SHARK))
+
+                // Symmetrical Red Laser Walls closing in at 30f base speed
+                movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 30f, isActive = true))
+                movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -30f, isActive = true))
+
+                // Laser Cage for Mask
+                lasers.add(Laser(Rectangle(610f, 830f, 10f, 70f), isSweeping = false)) // Left cage wall
+                lasers.add(Laser(Rectangle(690f, 830f, 10f, 70f), isSweeping = false)) // Right cage wall
+                lasers.add(Laser(Rectangle(620f, 830f, 70f, 10f), isSweeping = false)) // Bottom cage wall
+                lasers.add(Laser(Rectangle(620f, 890f, 70f, 10f), isSweeping = false)) // Top cage wall
+
+                maskX = 640f
+                maskY = 850f
+
+                // Inversion Button
+                gameButtons.add(GameButton(Rectangle(480f, 410f, 40f, 10f))) // Placed above the first shark (y=350, top=410)
+            }
         }
     }
 
@@ -1024,7 +1066,7 @@ class GameScreen(
 
     private fun completeChunk() {
         val nextChunk = currentChunk + 1
-        val isEndOfLevel = nextChunk > 3 || (currentLevel == 7 && nextChunk > 1)
+        val isEndOfLevel = nextChunk > 3 || (currentLevel == 7 && nextChunk > 2)
 
         val prefs = Gdx.app.getPreferences("TrustIssues")
         val savedMaxChunk = prefs.getInteger("level_${currentLevel}_maxChunk", 1)
@@ -1185,7 +1227,7 @@ class GameScreen(
                     // "tap the jump button again and again to fly ofk like flappy bird"
                     if ((currentLevel == 5 && (currentChunk == 1 || currentChunk == 2 || currentChunk == 3)) ||
                         (currentLevel == 6 && currentChunk == 3) ||
-                        (currentLevel == 7 && currentChunk == 1)) {
+                        (currentLevel == 7 && (currentChunk == 1 || currentChunk == 2))) {
                         if (reverseGravity) {
                             velocityY = -currentJumpStrength
                         } else {
@@ -1711,6 +1753,70 @@ class GameScreen(
 
         val currentGravity = if (currentLevel == 5 && (currentChunk == 2 || currentChunk == 3)) -1800f else if (currentLevel == 6 && currentChunk == 1 && isPortalLoopActive) -3200f * 3f else -3200f
 
+        // --- LEVEL 7 CHUNK 2 LOGIC (The Gravity Pendulum) ---
+        if (currentLevel == 7 && currentChunk == 2 && !isDead && !isLevelComplete) {
+            // Re-bind laser cage
+            for (laser in lasers) laser.rect.set(laser.rect.x, laser.rect.y, laser.rect.width, laser.rect.height)
+
+            // Re-bind mask
+            maskRect.set(maskX, maskY, maskWidth, maskHeight)
+
+            // Tilt Controls
+            if (isRightPressed) {
+                worldTilt += 48f * delta
+            } else if (isLeftPressed) {
+                worldTilt -= 48f * delta
+            }
+
+            // Cap the tilt
+            if (worldTilt > 20f) worldTilt = 20f
+            if (worldTilt < -20f) worldTilt = -20f
+
+            // The Pendulum Physics: simulated dynamic gravity X-pull
+            val slideForce = 800f * MathUtils.sinDeg(worldTilt)
+            playerX += slideForce * delta
+
+            // Swinging Sharks
+            // tethered at their starting X positions (440f and 840f), moving like pendulums
+            val shark1Swing = 440f + 250f * MathUtils.sinDeg(worldTilt)
+            val shark2Swing = 840f + 250f * MathUtils.sinDeg(worldTilt)
+
+            if (sharks.size >= 2) {
+                sharks[0].x = shark1Swing
+                sharks[1].x = shark2Swing
+            }
+
+            // Sync SAFE_SHARK platforms
+            if (platforms.size >= 3) {
+                platforms[1].rect.x = shark1Swing
+                platforms[2].rect.x = shark2Swing
+            }
+
+            // Symmetrical Acceleration Walls
+            if (movingWalls.size >= 2) {
+                val baseSpeed = 30f
+                movingWalls[0].speed = baseSpeed + worldTilt // Left wall speeds up if worldTilt > 0
+                movingWalls[1].speed = -baseSpeed + worldTilt // Right wall speeds up (magnitude wise) if worldTilt < 0
+            }
+
+            // Inversion Button
+            for (btn in gameButtons) {
+                if (!btn.isPressed && Intersector.overlaps(playerRect, btn.rect)) {
+                    btn.isPressed = true
+                    reverseGravity = true
+                }
+            }
+
+            // The Precision Gate (Mask)
+            val isGateOpen = Math.abs(worldTilt) in 14f..16f
+
+            if (Intersector.overlaps(playerRect, maskRect)) {
+                if (isGateOpen) {
+                    win()
+                }
+            }
+        }
+
         // --- LEVEL 7 CHUNK 1 LOGIC (The Tilt Engine) ---
         if (currentLevel == 7 && currentChunk == 1 && !isDead && !isLevelComplete) {
             canJump = true
@@ -1755,8 +1861,8 @@ class GameScreen(
             playerY += velocityY * delta
 
 
-            // Ceiling check
-            if (playerY > 720f && currentLevel != 5) die("Gravity hurts.")
+            // Ceiling check (bypass for L7C2 and L5)
+            if (playerY > 720f && currentLevel != 5 && !(currentLevel == 7 && currentChunk == 2)) die("Gravity hurts.")
         } else {
             gravity = currentGravity
             velocityY += gravity * delta
@@ -1959,8 +2065,14 @@ class GameScreen(
                 }
             }
             if (Intersector.overlaps(playerRect, laser.rect)) {
-                if (currentLevel == 5 && currentChunk == 2) die("You ain't no Newton")
-                else die("Grilled to perfection. Serve with a side of failure.")
+                // If Level 7 Chunk 2, the laser cage is safe when the tilt is exactly between 14-16 degrees
+                if (currentLevel == 7 && currentChunk == 2 && Math.abs(worldTilt) in 14f..16f) {
+                    // Safe!
+                } else if (currentLevel == 5 && currentChunk == 2) {
+                    die("You ain't no Newton")
+                } else {
+                    die("Grilled to perfection. Serve with a side of failure.")
+                }
             }
         }
 
@@ -2224,6 +2336,18 @@ class GameScreen(
             roast = customMessage ?: listOf("Can't even keep your balance? Pathetic.", "The world is literally leaning in your favor and you still failed.", "Newton is rolling in his grave watching you slide.").random()
         }
 
+        if (currentLevel == 7 && currentChunk == 2) {
+            roast = customMessage ?: listOf("Newton is laughing at your lack of coordination.", "You're falling for the same tricks... literally.").random()
+            // Immediate reset protocol for L7C2
+            stateTimer = -9999f
+            Gdx.app.postRunnable {
+                isDead = false
+                stateTimer = 0f
+                setupChunk(2)
+            }
+            // Do not return early; let the label setup execute so it can be drawn (even briefly)
+        }
+
         messageLabel?.setText(roast)
         messageLabel?.color = Color.RED
         messageLabel?.isVisible = true
@@ -2281,10 +2405,14 @@ class GameScreen(
 
     private fun draw() {
         // Apply world tilt to camera
-        if (currentLevel == 7 && currentChunk == 1) {
+        if (currentLevel == 7 && (currentChunk == 1 || currentChunk == 2)) {
             gameViewport.camera.up.set(0f, 1f, 0f)
             gameViewport.camera.direction.set(0f, 0f, -1f)
             gameViewport.camera.rotate(worldTilt, 0f, 0f, 1f)
+            if (currentChunk == 2) {
+                val targetY = Math.max(360f, Math.min(playerY, 850f))
+                gameViewport.camera.position.y = targetY
+            }
             gameViewport.camera.update()
         }
 
@@ -2468,9 +2596,10 @@ class GameScreen(
         game.batch.end()
 
         // Reset camera tilt
-        if (currentLevel == 7 && currentChunk == 1) {
+        if (currentLevel == 7 && (currentChunk == 1 || currentChunk == 2)) {
             gameViewport.camera.up.set(0f, 1f, 0f)
             gameViewport.camera.direction.set(0f, 0f, -1f)
+            gameViewport.camera.position.y = 360f // Reset Y
             gameViewport.camera.update()
         }
     }
