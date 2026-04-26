@@ -136,6 +136,11 @@ class GameScreen(
     private var centerMaskY = 0f
     private val centerMaskRect = Rectangle()
     private var hasTouchedRightMask = false
+
+    // --- Mask Physics Specific ---
+    private var maskVelocityX = 0f
+    private var maskVelocityY = 0f
+    private var isMaskFreefalling = false
     private var isSharkRainActive = false
 
     // Level 7 Chunk 1 Variables
@@ -612,18 +617,26 @@ class GameScreen(
                 reverseGravity = false
                 isControlsInverted = false
                 worldTilt = 0f
+                chunkTime = 0f
+                maskVelocityX = 0f
+                maskVelocityY = 0f
+                isMaskFreefalling = false
 
-                // Solid base platform at y=150f. Since height is 20, top is 170, wait, base platform at x=640, y=150. Let's say top is 150. So y=130, height=20.
+                // Solid base platform
                 platforms.add(Platform(Rectangle(540f, 130f, 200f, 20f), PlatformType.NORMAL))
 
-                // Swinging Safe Sharks (Platforms attached to them logic handled in update)
-                sharks.add(Shark(440f, 350f, 0f, 0f, 1280f)) // Left pendulum shark
-                platforms.add(Platform(Rectangle(440f, 350f, 120f, 60f), PlatformType.SAFE_SHARK))
+                // Swinging Safe Sharks (3 sharks)
+                // Left Shark
+                sharks.add(Shark(300f, 350f, 0f, 0f, 1280f))
+                platforms.add(Platform(Rectangle(300f, 350f, 120f, 60f), PlatformType.SAFE_SHARK))
+                // Middle Shark
+                sharks.add(Shark(580f, 450f, 0f, 0f, 1280f))
+                platforms.add(Platform(Rectangle(580f, 450f, 120f, 60f), PlatformType.SAFE_SHARK))
+                // Right Shark
+                sharks.add(Shark(860f, 600f, 0f, 0f, 1280f))
+                platforms.add(Platform(Rectangle(860f, 600f, 120f, 60f), PlatformType.SAFE_SHARK))
 
-                sharks.add(Shark(840f, 600f, 0f, 0f, 1280f)) // Right pendulum shark
-                platforms.add(Platform(Rectangle(840f, 600f, 120f, 60f), PlatformType.SAFE_SHARK))
-
-                // Symmetrical Red Laser Walls closing in at 30f base speed
+                // Symmetrical Red Laser Walls closing in
                 movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 30f, isActive = true))
                 movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -30f, isActive = true))
 
@@ -636,8 +649,13 @@ class GameScreen(
                 maskX = 640f
                 maskY = 850f
 
+                // Yellow lines (GameButtons) above the sharks
+                gameButtons.add(GameButton(Rectangle(340f, 410f, 40f, 10f))) // Above Left Shark
+                gameButtons.add(GameButton(Rectangle(620f, 510f, 40f, 10f))) // Above Middle Shark
+                gameButtons.add(GameButton(Rectangle(900f, 660f, 40f, 10f))) // Above Right Shark
+
                 // Inversion Button
-                gameButtons.add(GameButton(Rectangle(480f, 410f, 40f, 10f))) // Placed above the first shark (y=350, top=410)
+                gameButtons.add(GameButton(Rectangle(100f, 150f, 40f, 10f))) // Moved away from sharks
             }
         }
     }
@@ -1776,20 +1794,54 @@ class GameScreen(
             val slideForce = 800f * MathUtils.sinDeg(worldTilt)
             playerX += slideForce * delta
 
-            // Swinging Sharks
-            // tethered at their starting X positions (440f and 840f), moving like pendulums
-            val shark1Swing = 440f + 250f * MathUtils.sinDeg(worldTilt)
-            val shark2Swing = 840f + 250f * MathUtils.sinDeg(worldTilt)
+            chunkTime += delta
 
-            if (sharks.size >= 2) {
-                sharks[0].x = shark1Swing
-                sharks[1].x = shark2Swing
+            // Swinging Sharks (Automatic true pendulums)
+            // Tethered at their pivot points high above the screen, swinging in a true arc.
+            val swingAngle = MathUtils.sin(chunkTime * 2f) * 45f // +/- 45 degree swing
+
+            val pivotY = 900f
+
+            // Shark 1: pivotX = 300f, length = 550f (y=350)
+            val len1 = 550f
+            val shark1X = 300f + len1 * MathUtils.sinDeg(swingAngle)
+            val shark1Y = pivotY - len1 * MathUtils.cosDeg(swingAngle)
+
+            // Shark 2: pivotX = 580f, length = 450f (y=450)
+            val len2 = 450f
+            val shark2X = 580f + len2 * MathUtils.sinDeg(swingAngle)
+            val shark2Y = pivotY - len2 * MathUtils.cosDeg(swingAngle)
+
+            // Shark 3: pivotX = 860f, length = 300f (y=600)
+            val len3 = 300f
+            val shark3X = 860f + len3 * MathUtils.sinDeg(swingAngle)
+            val shark3Y = pivotY - len3 * MathUtils.cosDeg(swingAngle)
+
+            if (sharks.size >= 3) {
+                sharks[0].x = shark1X
+                sharks[0].y = shark1Y
+                sharks[1].x = shark2X
+                sharks[1].y = shark2Y
+                sharks[2].x = shark3X
+                sharks[2].y = shark3Y
             }
 
-            // Sync SAFE_SHARK platforms
-            if (platforms.size >= 3) {
-                platforms[1].rect.x = shark1Swing
-                platforms[2].rect.x = shark2Swing
+            // Sync SAFE_SHARK platforms & GameButtons (yellow lines)
+            if (platforms.size >= 4) {
+                platforms[1].rect.x = shark1X
+                platforms[1].rect.y = shark1Y
+                platforms[2].rect.x = shark2X
+                platforms[2].rect.y = shark2Y
+                platforms[3].rect.x = shark3X
+                platforms[3].rect.y = shark3Y
+            }
+            if (gameButtons.size >= 3) {
+                gameButtons[0].rect.x = shark1X + 40f
+                gameButtons[0].rect.y = shark1Y + 60f
+                gameButtons[1].rect.x = shark2X + 40f
+                gameButtons[1].rect.y = shark2Y + 60f
+                gameButtons[2].rect.x = shark3X + 40f
+                gameButtons[2].rect.y = shark3Y + 60f
             }
 
             // Symmetrical Acceleration Walls
@@ -1799,21 +1851,50 @@ class GameScreen(
                 movingWalls[1].speed = -baseSpeed + worldTilt // Right wall speeds up (magnitude wise) if worldTilt < 0
             }
 
-            // Inversion Button
-            for (btn in gameButtons) {
-                if (!btn.isPressed && Intersector.overlaps(playerRect, btn.rect)) {
-                    btn.isPressed = true
+            // Buttons & Laser Cage Logic
+            if (gameButtons.size >= 4) {
+                // Left Shark Button -> Left Laser
+                if (!gameButtons[0].isPressed && Intersector.overlaps(playerRect, gameButtons[0].rect)) {
+                    gameButtons[0].isPressed = true
+                    if (lasers.size > 0) lasers[0].rect.set(0f, 0f, 0f, 0f)
+                }
+                // Middle Shark Button -> Bottom Laser (Frees mask)
+                if (!gameButtons[1].isPressed && Intersector.overlaps(playerRect, gameButtons[1].rect)) {
+                    gameButtons[1].isPressed = true
+                    if (lasers.size > 2) lasers[2].rect.set(0f, 0f, 0f, 0f)
+                    isMaskFreefalling = true // Mask starts falling
+                }
+                // Right Shark Button -> Right Laser
+                if (!gameButtons[2].isPressed && Intersector.overlaps(playerRect, gameButtons[2].rect)) {
+                    gameButtons[2].isPressed = true
+                    if (lasers.size > 1) lasers[1].rect.set(0f, 0f, 0f, 0f)
+                }
+                // Inversion Button (the 4th one)
+                if (!gameButtons[3].isPressed && Intersector.overlaps(playerRect, gameButtons[3].rect)) {
+                    gameButtons[3].isPressed = true
                     reverseGravity = true
                 }
             }
 
-            // The Precision Gate (Mask)
-            val isGateOpen = Math.abs(worldTilt) in 14f..16f
+            // Mask Freefall Physics
+            if (isMaskFreefalling) {
+                maskVelocityY -= 800f * delta // gravity
+                maskVelocityX += slideForce * delta // affected by world tilt
 
-            if (Intersector.overlaps(playerRect, maskRect)) {
-                if (isGateOpen) {
-                    win()
+                maskX += maskVelocityX * delta
+                maskY += maskVelocityY * delta
+
+                // Check wall collision for Mask
+                for (wall in movingWalls) {
+                    if (wall.isActive && Intersector.overlaps(maskRect, wall.rect)) {
+                        die("The mask shattered into pieces!")
+                    }
                 }
+            }
+
+            // The Precision Gate logic is removed, just standard overlap for Mask win
+            if (Intersector.overlaps(playerRect, maskRect)) {
+                win()
             }
         }
 
@@ -2338,14 +2419,6 @@ class GameScreen(
 
         if (currentLevel == 7 && currentChunk == 2) {
             roast = customMessage ?: listOf("Newton is laughing at your lack of coordination.", "You're falling for the same tricks... literally.").random()
-            // Immediate reset protocol for L7C2
-            stateTimer = -9999f
-            Gdx.app.postRunnable {
-                isDead = false
-                stateTimer = 0f
-                setupChunk(2)
-            }
-            // Do not return early; let the label setup execute so it can be drawn (even briefly)
         }
 
         messageLabel?.setText(roast)
