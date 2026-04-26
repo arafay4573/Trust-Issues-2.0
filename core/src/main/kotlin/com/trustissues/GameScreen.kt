@@ -1770,9 +1770,6 @@ class GameScreen(
 
         // --- LEVEL 7 CHUNK 2 LOGIC (The Gravity Pendulum) ---
         if (currentLevel == 7 && currentChunk == 2 && !isDead && !isLevelComplete) {
-            // Re-bind laser cage
-            for (laser in lasers) laser.rect.set(laser.rect.x, laser.rect.y, laser.rect.width, laser.rect.height)
-
             // Re-bind mask
             maskRect.set(maskX, maskY, maskWidth, maskHeight)
 
@@ -1853,32 +1850,50 @@ class GameScreen(
                 // Left Shark Button -> Left Laser
                 if (!gameButtons[0].isPressed && Intersector.overlaps(playerRect, gameButtons[0].rect)) {
                     gameButtons[0].isPressed = true
-                    if (lasers.size > 0) lasers[0].rect.set(0f, 0f, 0f, 0f)
+                    if (lasers.size > 0) lasers[0].rect.x = -5000f
                 }
                 // Middle Shark Button -> Bottom Laser (Frees mask)
                 if (!gameButtons[1].isPressed && Intersector.overlaps(playerRect, gameButtons[1].rect)) {
                     gameButtons[1].isPressed = true
-                    if (lasers.size > 2) lasers[2].rect.set(0f, 0f, 0f, 0f)
+                    if (lasers.size > 2) lasers[2].rect.x = -5000f
                     isMaskFreefalling = true // Mask starts falling
                 }
                 // Right Shark Button -> Right Laser
                 if (!gameButtons[2].isPressed && Intersector.overlaps(playerRect, gameButtons[2].rect)) {
                     gameButtons[2].isPressed = true
-                    if (lasers.size > 1) lasers[1].rect.set(0f, 0f, 0f, 0f)
+                    if (lasers.size > 1) lasers[1].rect.x = -5000f
                 }
             }
 
             // Mask Freefall Physics
             if (isMaskFreefalling) {
-                maskVelocityY -= 800f * delta // gravity
+                maskVelocityY -= 400f * delta // floaty gravity
                 maskVelocityX += slideForce * delta // affected by world tilt
 
                 maskX += maskVelocityX * delta
                 maskY += maskVelocityY * delta
 
+                // Bounce off floor
+                if (maskY <= 150f) {
+                    maskY = 150f
+                    maskVelocityY = Math.abs(maskVelocityY) * 0.8f
+                }
+                // Bounce off ceiling
+                if (maskY >= 850f) {
+                    maskY = 850f
+                    maskVelocityY = -Math.abs(maskVelocityY) * 0.8f
+                }
+
                 // Check wall collision for Mask
                 for (wall in movingWalls) {
                     if (wall.isActive && Intersector.overlaps(maskRect, wall.rect)) {
+                        die("The mask shattered into pieces!")
+                    }
+                }
+
+                // Check laser collision for Mask
+                for (laser in lasers) {
+                    if (laser.rect.x > -1000f && Intersector.overlaps(maskRect, laser.rect)) {
                         die("The mask shattered into pieces!")
                     }
                 }
