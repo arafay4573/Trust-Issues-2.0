@@ -182,6 +182,22 @@ class GameScreen(
     )
     private val lasers = mutableListOf<Laser>()
 
+    private object Level7Chunk3State {
+        var voidLeft = 0f
+        var voidRight = 1280f
+        var voidTop = 720f
+        var voidBottom = 0f
+        var shrinkRatio = 1f
+
+        fun reset() {
+            voidLeft = 0f
+            voidRight = 1280f
+            voidTop = 720f
+            voidBottom = 0f
+            shrinkRatio = 1f
+        }
+    }
+
     data class MovingWall(
         val rect: Rectangle,
         var speed: Float,
@@ -659,6 +675,33 @@ class GameScreen(
                 gameButtons.add(GameButton(Rectangle(900f, 660f, 120f, 30f)) {
                     if (lasers.size > 1) lasers[1].rect.x = -5000f
                 }) // Above Right Shark
+            }
+            3 -> {
+                // Chunk 3: The Shrinking Reality
+                platforms.clear()
+                lasers.clear()
+                movingWalls.clear()
+                gameButtons.clear()
+                gravitySwitches.clear()
+                sharks.clear()
+
+                playerX = 640f
+                playerY = 500f
+                velocityY = 0f
+
+                // State Reset
+                reverseGravity = false
+                isControlsInverted = false
+                worldTilt = 0f
+                chunkTime = 0f
+                Level7Chunk3State.reset()
+
+                // Safe Platform
+                platforms.add(Platform(Rectangle(640f - 30f, 480f, 60f, 20f), PlatformType.NORMAL))
+
+                // Mask Herding
+                maskX = 1100f
+                maskY = 900f
             }
         }
     }
@@ -1881,6 +1924,64 @@ class GameScreen(
             }
         }
 
+        // --- LEVEL 7 CHUNK 3 LOGIC (The Shrinking Reality) ---
+        if (currentLevel == 7 && currentChunk == 3 && !isDead && !isLevelComplete) {
+            canJump = true // Flappy bird hover style
+            chunkTime += delta
+
+            // The Shrinking Window
+            if (chunkTime > 2f) {
+                // Shrink speed: roughly 20f per second on all sides
+                val shrinkSpeed = 40f
+                Level7Chunk3State.voidLeft += shrinkSpeed * delta
+                Level7Chunk3State.voidRight -= shrinkSpeed * delta
+                Level7Chunk3State.voidBottom += shrinkSpeed * delta
+                Level7Chunk3State.voidTop -= shrinkSpeed * delta
+
+                // Calculate shrink ratio based on width vs original 1280
+                val currentWidth = Level7Chunk3State.voidRight - Level7Chunk3State.voidLeft
+                Level7Chunk3State.shrinkRatio = Math.max(0f, currentWidth / 1280f)
+            }
+
+            // Mask Herding (Clamp to void boundaries)
+            maskX = Math.max(Level7Chunk3State.voidLeft, Math.min(maskX, Level7Chunk3State.voidRight - maskWidth))
+            maskY = Math.max(Level7Chunk3State.voidBottom, Math.min(maskY, Level7Chunk3State.voidTop - maskHeight))
+
+            // The Multi-Hazard Chaos
+            if (Level7Chunk3State.shrinkRatio <= 0.5f) {
+                isControlsInverted = true
+
+                // Tilt Returns
+                if (isRightPressed) {
+                    worldTilt += 48f * delta
+                } else if (isLeftPressed) {
+                    worldTilt -= 48f * delta
+                }
+                if (worldTilt > 20f) worldTilt = 20f
+                if (worldTilt < -20f) worldTilt = -20f
+
+                // Simulated Tilt gravity Pull
+                val slideForce = 800f * MathUtils.sinDeg(worldTilt)
+                playerX += slideForce * delta
+            }
+
+            if (Level7Chunk3State.shrinkRatio <= 0.25f) {
+                reverseGravity = true
+            }
+
+            // Void Death Check
+            if (playerX < Level7Chunk3State.voidLeft || playerX + playerWidth > Level7Chunk3State.voidRight ||
+                playerY < Level7Chunk3State.voidBottom || playerY + playerHeight > Level7Chunk3State.voidTop) {
+                die(listOf("The world is getting smaller, and so are your chances.", "Getting crushed by your own game? Ironic.").random())
+                return
+            }
+
+            if (Intersector.overlaps(playerRect, maskRect)) {
+                win()
+                return
+            }
+        }
+
         // --- LEVEL 7 CHUNK 1 LOGIC (The Tilt Engine) ---
         if (currentLevel == 7 && currentChunk == 1 && !isDead && !isLevelComplete) {
             canJump = true
@@ -1925,8 +2026,8 @@ class GameScreen(
             playerY += velocityY * delta
 
 
-            // Ceiling check (bypass for L7C2 and L5)
-            if (playerY > 720f && currentLevel != 5 && !(currentLevel == 7 && currentChunk == 2)) die("Gravity hurts.")
+            // Ceiling check (bypass for L7C2, L7C3, and L5)
+            if (playerY > 720f && currentLevel != 5 && !(currentLevel == 7 && currentChunk == 2) && !(currentLevel == 7 && currentChunk == 3)) die("Gravity hurts.")
         } else {
             gravity = currentGravity
             velocityY += gravity * delta
@@ -2015,6 +2116,7 @@ class GameScreen(
         // Platform Collision
         canJump = false // Reset per frame
         if (currentLevel == 6 && currentChunk == 3) canJump = true
+        if (currentLevel == 7 && currentChunk == 3) canJump = true
         if (!reverseGravity && playerY <= floorY + 1f && !isExemptLevel) canJump = true
 
         // --- CRITICAL FIX: Remove destroyed platforms so player falls! ---
@@ -2458,7 +2560,7 @@ class GameScreen(
 
     private fun draw() {
         // Apply world tilt to camera
-        if (currentLevel == 7 && (currentChunk == 1 || currentChunk == 2)) {
+        if (currentLevel == 7 && (currentChunk == 1 || currentChunk == 2 || currentChunk == 3)) {
             gameViewport.camera.up.set(0f, 1f, 0f)
             gameViewport.camera.direction.set(0f, 0f, -1f)
             gameViewport.camera.rotate(worldTilt, 0f, 0f, 1f)
@@ -2599,6 +2701,19 @@ class GameScreen(
                 // Just draw a line or thin rect, since we need to check collision let's draw a rect line
                 shapeRenderer.rectLine(centerX, centerY, endX, endY, 4f)
             }
+        }
+
+        // Draw The Shrinking Void Overlay (Level 7 Chunk 3)
+        if (currentLevel == 7 && currentChunk == 3) {
+            shapeRenderer.color = Color.BLACK
+            // Left Void
+            shapeRenderer.rect(-2000f + renderOffset, -2000f, 2000f + Level7Chunk3State.voidLeft, 4000f)
+            // Right Void
+            shapeRenderer.rect(Level7Chunk3State.voidRight + renderOffset, -2000f, 4000f, 4000f)
+            // Bottom Void
+            shapeRenderer.rect(Level7Chunk3State.voidLeft + renderOffset, -2000f, Level7Chunk3State.voidRight - Level7Chunk3State.voidLeft, 2000f + Level7Chunk3State.voidBottom)
+            // Top Void
+            shapeRenderer.rect(Level7Chunk3State.voidLeft + renderOffset, Level7Chunk3State.voidTop, Level7Chunk3State.voidRight - Level7Chunk3State.voidLeft, 4000f)
         }
 
         shapeRenderer.end()
