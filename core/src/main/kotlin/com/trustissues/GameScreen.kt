@@ -653,9 +653,6 @@ class GameScreen(
                 gameButtons.add(GameButton(Rectangle(340f, 410f, 40f, 10f))) // Above Left Shark
                 gameButtons.add(GameButton(Rectangle(620f, 510f, 40f, 10f))) // Above Middle Shark
                 gameButtons.add(GameButton(Rectangle(900f, 660f, 40f, 10f))) // Above Right Shark
-
-                // Inversion Button
-                gameButtons.add(GameButton(Rectangle(100f, 150f, 40f, 10f))) // Moved away from sharks
             }
         }
     }
@@ -1798,7 +1795,7 @@ class GameScreen(
 
             // Swinging Sharks (Automatic true pendulums)
             // Tethered at their pivot points high above the screen, swinging in a true arc.
-            val swingAngle = MathUtils.sin(chunkTime * 2f) * 45f // +/- 45 degree swing
+            val swingAngle = MathUtils.sin(chunkTime * 1.2f) * 45f // Slower +/- 45 degree swing
 
             val pivotY = 900f
 
@@ -1837,11 +1834,11 @@ class GameScreen(
             }
             if (gameButtons.size >= 3) {
                 gameButtons[0].rect.x = shark1X + 40f
-                gameButtons[0].rect.y = shark1Y + 60f
+                gameButtons[0].rect.y = shark1Y + 90f
                 gameButtons[1].rect.x = shark2X + 40f
-                gameButtons[1].rect.y = shark2Y + 60f
+                gameButtons[1].rect.y = shark2Y + 90f
                 gameButtons[2].rect.x = shark3X + 40f
-                gameButtons[2].rect.y = shark3Y + 60f
+                gameButtons[2].rect.y = shark3Y + 90f
             }
 
             // Symmetrical Acceleration Walls
@@ -1852,7 +1849,7 @@ class GameScreen(
             }
 
             // Buttons & Laser Cage Logic
-            if (gameButtons.size >= 4) {
+            if (gameButtons.size >= 3) {
                 // Left Shark Button -> Left Laser
                 if (!gameButtons[0].isPressed && Intersector.overlaps(playerRect, gameButtons[0].rect)) {
                     gameButtons[0].isPressed = true
@@ -1868,11 +1865,6 @@ class GameScreen(
                 if (!gameButtons[2].isPressed && Intersector.overlaps(playerRect, gameButtons[2].rect)) {
                     gameButtons[2].isPressed = true
                     if (lasers.size > 1) lasers[1].rect.set(0f, 0f, 0f, 0f)
-                }
-                // Inversion Button (the 4th one)
-                if (!gameButtons[3].isPressed && Intersector.overlaps(playerRect, gameButtons[3].rect)) {
-                    gameButtons[3].isPressed = true
-                    reverseGravity = true
                 }
             }
 
