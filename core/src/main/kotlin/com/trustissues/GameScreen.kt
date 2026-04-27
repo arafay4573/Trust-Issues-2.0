@@ -1946,13 +1946,13 @@ class GameScreen(
             }
 
             // Mask Teleportation Logic
-            if (chunkTime >= 1.5f && chunkTime < 4f && Level7Chunk3State.maskPhase == 0) {
+            if (chunkTime >= 1.5f && chunkTime < 3f && Level7Chunk3State.maskPhase == 0) {
                 Level7Chunk3State.maskPhase = 1
                 maskX = 180f // Parallel left side
-            } else if (chunkTime >= 4f && chunkTime < 6f && Level7Chunk3State.maskPhase == 1) {
+            } else if (chunkTime >= 3f && chunkTime < 4.5f && Level7Chunk3State.maskPhase == 1) {
                 Level7Chunk3State.maskPhase = 2
                 maskX = 1100f // Back to initial right spot
-            } else if (chunkTime >= 6f && Level7Chunk3State.maskPhase == 2) {
+            } else if (chunkTime >= 4.5f && Level7Chunk3State.maskPhase == 2) {
                 Level7Chunk3State.maskPhase = 3
                 maskX = 1100f
                 maskY = 100f // Bottom parallel
