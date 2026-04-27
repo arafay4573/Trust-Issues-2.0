@@ -133,6 +133,9 @@ class GameScreen(
 
     // Level 8 Chunk 1 variables
     private var launchVelocityX = 0f
+    private var lastPlayerX = 100f
+    private var lastPlayerY = 280f
+    private var maskHelpBubbleTimer = 0f
 
     // Level 6 Chunk 3 variables
     private var centerMaskX = 0f
@@ -603,10 +606,10 @@ class GameScreen(
                 movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -35f, isActive = true))
 
                 // The Sneezing Staircase
-                platforms.add(Platform(Rectangle(600f, 260f, 80f, 20f), PlatformType.CRUMBLING)) // Platform 1 (Even)
-                platforms.add(Platform(Rectangle(600f, 420f, 80f, 20f), PlatformType.CRUMBLING)) // Platform 2 (Odd)
-                platforms.add(Platform(Rectangle(600f, 580f, 80f, 20f), PlatformType.CRUMBLING)) // Platform 3 (Even)
-                platforms.add(Platform(Rectangle(600f, 740f, 80f, 20f), PlatformType.CRUMBLING)) // Platform 4 (Odd)
+                platforms.add(Platform(Rectangle(600f, 260f, 80f, 20f), PlatformType.NORMAL)) // Platform 1 (Even)
+                platforms.add(Platform(Rectangle(600f, 420f, 80f, 20f), PlatformType.NORMAL)) // Platform 2 (Odd)
+                platforms.add(Platform(Rectangle(600f, 580f, 80f, 20f), PlatformType.NORMAL)) // Platform 3 (Even)
+                platforms.add(Platform(Rectangle(600f, 740f, 80f, 20f), PlatformType.NORMAL)) // Platform 4 (Odd)
 
                 // Mask at the top
                 maskX = 640f + (120f - 30f) / 2f
@@ -1975,25 +1978,26 @@ class GameScreen(
                 if (wall.isActive && Intersector.overlaps(playerRect, wall.rect)) {
                     // No death call! Just apply Impulse/Velocity and a small shake
                     if (playerX < wall.rect.x + wall.rect.width / 2f) {
-                        launchVelocityX = -1200f
+                        launchVelocityX = -3000f
                     } else {
-                        launchVelocityX = 1200f
+                        launchVelocityX = 3000f
                     }
                 }
             }
 
             if (Math.abs(launchVelocityX) > 0f) {
                 playerX += launchVelocityX * delta
-                launchVelocityX *= 0.95f // Decay launch velocity
-                if (Math.abs(launchVelocityX) < 10f) launchVelocityX = 0f
+                // Very light decay so they bounce fully back to the other wall
+                launchVelocityX *= 0.99f
+                if (Math.abs(launchVelocityX) < 50f) launchVelocityX = 0f
             }
 
             // The Sneezing Staircase
-            val platformOffset = platforms.indexOfFirst { it.type == PlatformType.CRUMBLING }
+            val platformOffset = platforms.indexOfFirst { it.type == PlatformType.NORMAL }
             if (platformOffset != -1) {
                 for (i in platformOffset until platforms.size) {
                     val plat = platforms[i]
-                    if (plat.type == PlatformType.CRUMBLING) {
+                    if (plat.type == PlatformType.NORMAL) {
                         val sneezeCycle = chunkTime % 2f
                         val platformIndex = i - platformOffset
 
@@ -2048,13 +2052,47 @@ class GameScreen(
                 }
             }
 
+            // Mask AI: Introverted Mask runs away
+            val isPlayerMoving = Math.abs(playerX - lastPlayerX) > 1f || Math.abs(playerY - lastPlayerY) > 1f
+            lastPlayerX = playerX
+            lastPlayerY = playerY
+
+            val maskSpeed = 600f
+            if (isPlayerMoving) {
+                // Run away from player
+                val dx = maskX - playerX
+                val dy = maskY - playerY
+                val dist = Math.sqrt((dx * dx + dy * dy).toDouble()).toFloat()
+                if (dist < 400f && dist > 0.1f) {
+                    maskX += (dx / dist) * maskSpeed * delta
+                    maskY += (dy / dist) * maskSpeed * delta
+
+                    // Keep mask in bounds roughly
+                    maskX = Math.max(50f, Math.min(maskX, 1200f))
+                    maskY = Math.max(200f, Math.min(maskY, 1400f)) // Mask can go high
+
+                    // Scream help
+                    // (Rendering handled in draw call via bubble text simulation below)
+                }
+            } else {
+                // If player is perfectly still, mask comes to them slowly
+                val dx = playerX - maskX
+                val dy = playerY - maskY
+                val dist = Math.sqrt((dx * dx + dy * dy).toDouble()).toFloat()
+                if (dist > 5f) {
+                    maskX += (dx / dist) * (maskSpeed * 0.4f) * delta
+                    maskY += (dy / dist) * (maskSpeed * 0.4f) * delta
+                }
+            }
+
             // Only die if falling in the void
             if (playerY < 0f) {
                 die(
                     arrayOf(
                         "Bless you. Also, you're terrible at this.",
                         "Stop playing with the walls and get the mask.",
-                        "Is the sneezing distracting you? Good."
+                        "Is the sneezing distracting you? Good.",
+                        "The mask was introverted"
                     ).random()
                 )
             }
@@ -2629,6 +2667,9 @@ class GameScreen(
             // Handled explicitly in update loop
         } else if (currentLevel == 7 && currentChunk == 1) {
             // Handled explicitly in update loop
+        } else if (currentLevel == 8 && currentChunk == 1) {
+            // Handled exclusively in update loop? Wait, actually we can just let it overlap and win here since it runs away
+            if (!isDead && Intersector.overlaps(playerRect, maskRect)) win()
         } else if (currentLevel != 4 || currentChunk != 3) {
             if (!isDead && Intersector.overlaps(playerRect, maskRect)) win()
         }
@@ -2900,10 +2941,17 @@ class GameScreen(
         if (currentLevel == 8 && currentChunk == 1) {
             buttonFont?.let { font ->
                 for (plat in platforms) {
-                    if (plat.type == PlatformType.CRUMBLING && plat.crumbleTimer == 2f) {
+                    if (plat.type == PlatformType.NORMAL && plat.crumbleTimer == 2f) {
                         font.color = Color.WHITE
                         font.draw(game.batch, "ACHOO!", plat.rect.x + renderOffset + 10f, plat.rect.y + plat.rect.height + 40f)
                     }
+                }
+
+                // Draw mask help text
+                val isPlayerMoving = Math.abs(playerX - lastPlayerX) > 1f || Math.abs(playerY - lastPlayerY) > 1f
+                if (isPlayerMoving) {
+                    font.color = Color.RED
+                    font.draw(game.batch, "Help!", maskX + renderOffset, maskY + 60f)
                 }
             }
         }
