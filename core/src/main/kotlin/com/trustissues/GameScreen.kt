@@ -188,6 +188,7 @@ class GameScreen(
         var voidTop = 720f
         var voidBottom = 0f
         var shrinkRatio = 1f
+        var maskPhase = 0
 
         fun reset() {
             voidLeft = 0f
@@ -195,6 +196,7 @@ class GameScreen(
             voidTop = 720f
             voidBottom = 0f
             shrinkRatio = 1f
+            maskPhase = 0
         }
     }
 
@@ -1941,6 +1943,15 @@ class GameScreen(
                 // Calculate shrink ratio based on width vs original 1280
                 val currentWidth = Level7Chunk3State.voidRight - Level7Chunk3State.voidLeft
                 Level7Chunk3State.shrinkRatio = Math.max(0f, currentWidth / 1280f)
+            }
+
+            // Mask Teleportation Logic
+            if (chunkTime >= 3f && chunkTime < 5f && Level7Chunk3State.maskPhase == 0) {
+                Level7Chunk3State.maskPhase = 1
+                maskX = 180f // Parallel left side (1280 - 1100)
+            } else if (chunkTime >= 5f && Level7Chunk3State.maskPhase == 1) {
+                Level7Chunk3State.maskPhase = 2
+                maskX = 1100f // Back to initial right spot
             }
 
             // Mask Herding (Clamp to void boundaries)
