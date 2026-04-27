@@ -665,18 +665,18 @@ class GameScreen(
                 maskY = 850f
 
                 // Yellow lines (GameButtons) above the sharks
-                gameButtons.add(GameButton(Rectangle(340f, 410f, 120f, 30f)) {
+                gameButtons.add(GameButton(Rectangle(340f, 410f, 120f, 30f), false, {
                     if (lasers.size > 0) lasers[0].rect.x = -5000f
-                }) // Above Left Shark
+                })) // Above Left Shark
 
-                gameButtons.add(GameButton(Rectangle(620f, 510f, 120f, 30f)) {
+                gameButtons.add(GameButton(Rectangle(620f, 510f, 120f, 30f), false, {
                     if (lasers.size > 2) lasers[2].rect.x = -5000f
                     isMaskFreefalling = true
-                }) // Above Middle Shark
+                })) // Above Middle Shark
 
-                gameButtons.add(GameButton(Rectangle(900f, 660f, 120f, 30f)) {
+                gameButtons.add(GameButton(Rectangle(900f, 660f, 120f, 30f), false, {
                     if (lasers.size > 1) lasers[1].rect.x = -5000f
-                }) // Above Right Shark
+                })) // Above Right Shark
             }
             3 -> {
                 // Chunk 3: The Shrinking Reality
@@ -688,7 +688,7 @@ class GameScreen(
                 sharks.clear()
 
                 playerX = 640f
-                playerY = 500f
+                playerY = 360f // Middle of the screen
                 velocityY = 0f
 
                 // State Reset
@@ -699,11 +699,11 @@ class GameScreen(
                 Level7Chunk3State.reset()
 
                 // Safe Platform
-                platforms.add(Platform(Rectangle(640f - 30f, 480f, 60f, 20f), PlatformType.NORMAL))
+                platforms.add(Platform(Rectangle(610f, 340f, 60f, 20f), PlatformType.NORMAL))
 
-                // Mask Herding
+                // Mask Herding Initial Position
                 maskX = 1100f
-                maskY = 900f
+                maskY = 600f
             }
         }
     }
@@ -1946,12 +1946,16 @@ class GameScreen(
             }
 
             // Mask Teleportation Logic
-            if (chunkTime >= 3f && chunkTime < 5f && Level7Chunk3State.maskPhase == 0) {
+            if (chunkTime >= 2f && chunkTime < 4f && Level7Chunk3State.maskPhase == 0) {
                 Level7Chunk3State.maskPhase = 1
-                maskX = 180f // Parallel left side (1280 - 1100)
-            } else if (chunkTime >= 5f && Level7Chunk3State.maskPhase == 1) {
+                maskX = 180f // Parallel left side
+            } else if (chunkTime >= 4f && chunkTime < 6f && Level7Chunk3State.maskPhase == 1) {
                 Level7Chunk3State.maskPhase = 2
                 maskX = 1100f // Back to initial right spot
+            } else if (chunkTime >= 6f && Level7Chunk3State.maskPhase == 2) {
+                Level7Chunk3State.maskPhase = 3
+                maskX = 1100f
+                maskY = 100f // Bottom parallel
             }
 
             // Mask Herding (Clamp to void boundaries)
