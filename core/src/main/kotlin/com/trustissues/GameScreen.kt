@@ -1934,7 +1934,7 @@ class GameScreen(
             // The Shrinking Window
             if (chunkTime > 2f) {
                 // Shrink speed: roughly 20f per second on all sides
-                val shrinkSpeed = 40f
+                val shrinkSpeed = 60f
                 Level7Chunk3State.voidLeft += shrinkSpeed * delta
                 Level7Chunk3State.voidRight -= shrinkSpeed * delta
                 Level7Chunk3State.voidBottom += shrinkSpeed * delta
@@ -1946,7 +1946,7 @@ class GameScreen(
             }
 
             // Mask Teleportation Logic
-            if (chunkTime >= 2f && chunkTime < 4f && Level7Chunk3State.maskPhase == 0) {
+            if (chunkTime >= 1.5f && chunkTime < 4f && Level7Chunk3State.maskPhase == 0) {
                 Level7Chunk3State.maskPhase = 1
                 maskX = 180f // Parallel left side
             } else if (chunkTime >= 4f && chunkTime < 6f && Level7Chunk3State.maskPhase == 1) {
