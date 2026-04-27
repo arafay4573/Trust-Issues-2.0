@@ -131,6 +131,9 @@ class GameScreen(
     private var fakeMaskTouched = false
     private var ceilingLaserDrop = false
 
+    // Level 8 Chunk 1 variables
+    private var launchVelocityX = 0f
+
     // Level 6 Chunk 3 variables
     private var centerMaskX = 0f
     private var centerMaskY = 0f
@@ -335,6 +338,8 @@ class GameScreen(
             setupLevel6(chunk)
         } else if (currentLevel == 7) {
             setupLevel7(chunk)
+        } else if (currentLevel == 8) {
+            setupLevel8(chunk)
         }
 
         maskRect.set(maskX, maskY, maskWidth, maskHeight)
@@ -574,6 +579,41 @@ class GameScreen(
         }
     }
 
+
+    private fun setupLevel8(chunk: Int) {
+        when (chunk) {
+            1 -> {
+                // Chunk 1: The Sneezing Comedy
+                platforms.clear()
+                movingWalls.clear()
+                sharks.clear()
+                lasers.clear()
+                gameButtons.clear()
+                bubbles.clear()
+                gravitySwitches.clear()
+                worldTilt = 0f
+                isControlsInverted = false
+                canJump = true
+
+                playerX = 640f
+                playerY = 100f
+
+                // The Walls: Symmetrical Red Walls closing in at 35f
+                movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 35f, isActive = true))
+                movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -35f, isActive = true))
+
+                // The Sneezing Staircase
+                platforms.add(Platform(Rectangle(600f, 260f, 80f, 20f), PlatformType.CRUMBLING)) // Platform 1 (Even)
+                platforms.add(Platform(Rectangle(600f, 420f, 80f, 20f), PlatformType.CRUMBLING)) // Platform 2 (Odd)
+                platforms.add(Platform(Rectangle(600f, 580f, 80f, 20f), PlatformType.CRUMBLING)) // Platform 3 (Even)
+                platforms.add(Platform(Rectangle(600f, 740f, 80f, 20f), PlatformType.CRUMBLING)) // Platform 4 (Odd)
+
+                // Mask at the top
+                maskX = 640f + (120f - 30f) / 2f
+                maskY = 900f
+            }
+        }
+    }
 
     private fun setupLevel7(chunk: Int) {
         when (chunk) {
@@ -1132,7 +1172,7 @@ class GameScreen(
 
     private fun completeChunk() {
         val nextChunk = currentChunk + 1
-        val isEndOfLevel = nextChunk > 3 || (currentLevel == 7 && nextChunk > 2)
+        val isEndOfLevel = nextChunk > 3 || (currentLevel == 7 && nextChunk > 2) || (currentLevel == 8 && nextChunk > 1)
 
         val prefs = Gdx.app.getPreferences("TrustIssues")
         val savedMaxChunk = prefs.getInteger("level_${currentLevel}_maxChunk", 1)
@@ -1147,7 +1187,7 @@ class GameScreen(
                 prefs.putInteger("unlockedLevel", nextLevel).flush()
                 prefs.putInteger("level_${nextLevel}_maxChunk", 1).flush()
             }
-            game.screen = if (nextLevel > 7) LevelSelectScreen(game) else GameScreen(game, nextLevel, 1)
+            game.screen = if (nextLevel > 8) LevelSelectScreen(game) else GameScreen(game, nextLevel, 1)
         } else {
             game.screen = GameScreen(game, currentLevel, nextChunk)
         }
@@ -1926,6 +1966,100 @@ class GameScreen(
             }
         }
 
+        // --- LEVEL 8 CHUNK 1 LOGIC (The Sneezing Comedy) ---
+        if (currentLevel == 8 && currentChunk == 1 && !isDead && !isLevelComplete) {
+            chunkTime += delta
+
+            // The Walls Tickle Effect
+            for (wall in movingWalls) {
+                if (wall.isActive && Intersector.overlaps(playerRect, wall.rect)) {
+                    // No death call! Just apply Impulse/Velocity and a small shake
+                    if (playerX < wall.rect.x + wall.rect.width / 2f) {
+                        launchVelocityX = -1200f
+                    } else {
+                        launchVelocityX = 1200f
+                    }
+                }
+            }
+
+            if (Math.abs(launchVelocityX) > 0f) {
+                playerX += launchVelocityX * delta
+                launchVelocityX *= 0.95f // Decay launch velocity
+                if (Math.abs(launchVelocityX) < 10f) launchVelocityX = 0f
+            }
+
+            // The Sneezing Staircase
+            val platformOffset = platforms.indexOfFirst { it.type == PlatformType.CRUMBLING }
+            if (platformOffset != -1) {
+                for (i in platformOffset until platforms.size) {
+                    val plat = platforms[i]
+                    if (plat.type == PlatformType.CRUMBLING) {
+                        val sneezeCycle = chunkTime % 2f
+                        val platformIndex = i - platformOffset
+
+                        val isEvenPlatform = (platformIndex % 2 == 0)
+
+                        // Every 2 seconds
+                        // Even platforms: inhale 1.8-2.0, sneeze at 2.0 (wrap to 0), reset at 0.5
+                        // Odd platforms: inhale 0.8-1.0, sneeze at 1.0, reset at 1.5
+
+                        val isSneezingTime = if (isEvenPlatform) {
+                            sneezeCycle > 1.8f
+                        } else {
+                            sneezeCycle > 0.8f && sneezeCycle < 1.0f
+                        }
+
+                        val isPostSneezeTime = if (isEvenPlatform) {
+                            sneezeCycle < 0.5f
+                        } else {
+                            sneezeCycle > 1.0f && sneezeCycle < 1.5f
+                        }
+
+                        if (isSneezingTime) {
+                            if (plat.crumbleTimer == 0f) {
+                                plat.crumbleTimer = 1f // Inhaling
+                                plat.rect.height = 10f
+                            }
+                        } else if (isPostSneezeTime) {
+                            if (plat.crumbleTimer == 1f) {
+                                // ACHOO!
+                                plat.crumbleTimer = 2f // Post-sneeze state
+                                plat.rect.height = 20f
+                                plat.rect.y += 150f
+
+                                // Text text text!! ACHOO! - Text rendering requires drawing directly, so we just launch them.
+                                // The instructions asked for ACHOO text, so we add a bubble, but bubble requires text... Wait, bubble only has float coordinates.
+                                // Instead, let's just make sure the mechanics work. The text bubble is a string which we don't have a class for right now easily without touching the render loop.
+                                // Actually, I'll add a quick draw loop for ACHOO text in the render method!
+
+                                // Launch player
+                                if (playerRect.overlaps(Rectangle(plat.rect.x, plat.rect.y - 150f, plat.rect.width, 20f)) && playerY >= plat.rect.y - 150f - playerHeight) {
+                                    velocityY = 1200f
+                                }
+                            }
+                        } else {
+                            // Recovery time
+                            if (plat.crumbleTimer == 2f) {
+                                plat.crumbleTimer = 0f // Ready for next sneeze
+                                plat.rect.y -= 150f
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Only die if falling in the void
+            if (playerY < 0f) {
+                die(
+                    arrayOf(
+                        "Bless you. Also, you're terrible at this.",
+                        "Stop playing with the walls and get the mask.",
+                        "Is the sneezing distracting you? Good."
+                    ).random()
+                )
+            }
+        }
+
         // --- LEVEL 7 CHUNK 3 LOGIC (The Shrinking Reality) ---
         if (currentLevel == 7 && currentChunk == 3 && !isDead && !isLevelComplete) {
             canJump = true // Flappy bird hover style
@@ -2041,8 +2175,8 @@ class GameScreen(
             playerY += velocityY * delta
 
 
-            // Ceiling check (bypass for L7C2, L7C3, and L5)
-            if (playerY > 720f && currentLevel != 5 && !(currentLevel == 7 && currentChunk == 2) && !(currentLevel == 7 && currentChunk == 3)) die("Gravity hurts.")
+            // Ceiling check (bypass for L7C2, L7C3, L8C1, and L5)
+            if (playerY > 720f && currentLevel != 5 && !(currentLevel == 7 && currentChunk == 2) && !(currentLevel == 7 && currentChunk == 3) && !(currentLevel == 8 && currentChunk == 1)) die("Gravity hurts.")
         } else {
             gravity = currentGravity
             velocityY += gravity * delta
@@ -2261,11 +2395,14 @@ class GameScreen(
                 wall.rect.x += wall.speed * delta
                 // Check if wall crushes player
                 if (Intersector.overlaps(playerRect, wall.rect)) {
-                    if (currentLevel == 5 && currentChunk == 2) die("You ain't no Newton")
-                    else if (currentLevel == 6 && currentChunk == 1) {
-                        die("Did you think the Mask was your friend? Cute.")
-                        // stateTimer = -9999f
-                    } else die("Squished like a bug. And just as insignificant.")
+                    // Level 8 Chunk 1: Tickle, don't crush
+                    if (currentLevel != 8 || currentChunk != 1) {
+                        if (currentLevel == 5 && currentChunk == 2) die("You ain't no Newton")
+                        else if (currentLevel == 6 && currentChunk == 1) {
+                            die("Did you think the Mask was your friend? Cute.")
+                            // stateTimer = -9999f
+                        } else die("Squished like a bug. And just as insignificant.")
+                    }
                 }
             }
         }
@@ -2756,6 +2893,18 @@ class GameScreen(
             }
             if (currentLevel == 6 && currentChunk == 3 && isVisible(centerMaskX, centerMaskY)) {
                 game.batch.draw(tex, centerMaskX + renderOffset, centerMaskY + renderOffsetY, 32f, 32f)
+            }
+        }
+
+        // Draw ACHOO! text for Level 8 Chunk 1
+        if (currentLevel == 8 && currentChunk == 1) {
+            buttonFont?.let { font ->
+                for (plat in platforms) {
+                    if (plat.type == PlatformType.CRUMBLING && plat.crumbleTimer == 2f) {
+                        font.color = Color.WHITE
+                        font.draw(game.batch, "ACHOO!", plat.rect.x + renderOffset + 10f, plat.rect.y + plat.rect.height + 40f)
+                    }
+                }
             }
         }
 
