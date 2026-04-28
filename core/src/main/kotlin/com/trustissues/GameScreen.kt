@@ -618,8 +618,8 @@ class GameScreen(
                 maskX = 640f + (120f - 30f) / 2f
                 maskY = 900f
 
-                // Magnet button on the 2nd sneezing platform (Platform 2 at y=420f)
-                gameButtons.add(GameButton(Rectangle(620f, 440f, 40f, 30f), false) {
+                // Magnet button on the 4th sneezing platform (Platform 4 at y=740f)
+                gameButtons.add(GameButton(Rectangle(620f, 760f, 40f, 30f), false) {
                     isWallMagnetActive = true
                 })
             }
@@ -2016,8 +2016,12 @@ class GameScreen(
                 for (i in platformOffset until platforms.size) {
                     val plat = platforms[i]
                     if (plat.type == PlatformType.NORMAL) {
-                        val sneezeCycle = chunkTime % 2f
                         val platformIndex = i - platformOffset
+
+                        // Base platform (index 0) does not sneeze
+                        if (platformIndex == 0) continue
+
+                        val sneezeCycle = chunkTime % 2f
 
                         val isEvenPlatform = (platformIndex % 2 == 0)
 
