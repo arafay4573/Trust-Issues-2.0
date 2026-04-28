@@ -598,6 +598,8 @@ class GameScreen(
                 worldTilt = 0f
                 isControlsInverted = false
                 canJump = true
+                launchVelocityX = 0f
+                isWallMagnetActive = false
 
                 playerX = 640f
                 playerY = 285f
