@@ -136,6 +136,7 @@ class GameScreen(
     private var lastPlayerX = 100f
     private var lastPlayerY = 280f
     private var maskHelpBubbleTimer = 0f
+    private var isWallMagnetActive = false
 
     // Level 6 Chunk 3 variables
     private var centerMaskX = 0f
@@ -614,6 +615,11 @@ class GameScreen(
                 // Mask at the top
                 maskX = 640f + (120f - 30f) / 2f
                 maskY = 900f
+
+                // Magnet button at start
+                gameButtons.add(GameButton(Rectangle(620f, 100f, 40f, 30f), false) {
+                    isWallMagnetActive = true
+                })
             }
         }
     }
@@ -1985,6 +1991,15 @@ class GameScreen(
                 }
             }
 
+            // Wall Magnet Effect
+            if (isWallMagnetActive && launchVelocityX == 0f) {
+                if (playerX < 640f) {
+                    playerX -= 500f * delta // Pull to left wall
+                } else {
+                    playerX += 500f * delta // Pull to right wall
+                }
+            }
+
             if (Math.abs(launchVelocityX) > 0f) {
                 playerX += launchVelocityX * delta
                 // Very light decay so they bounce fully back to the other wall
@@ -2028,16 +2043,15 @@ class GameScreen(
                             if (plat.crumbleTimer == 1f) {
                                 // ACHOO!
                                 plat.crumbleTimer = 2f // Post-sneeze state
-                                plat.rect.height = 20f
-                                plat.rect.y += 150f
+                                plat.rect.height = 20f // Relax
 
                                 // Text text text!! ACHOO! - Text rendering requires drawing directly, so we just launch them.
                                 // The instructions asked for ACHOO text, so we add a bubble, but bubble requires text... Wait, bubble only has float coordinates.
                                 // Instead, let's just make sure the mechanics work. The text bubble is a string which we don't have a class for right now easily without touching the render loop.
                                 // Actually, I'll add a quick draw loop for ACHOO text in the render method!
 
-                                // Launch player
-                                if (playerRect.overlaps(Rectangle(plat.rect.x, plat.rect.y - 150f, plat.rect.width, 20f)) && playerY >= plat.rect.y - 150f - playerHeight) {
+                                // Launch player (trampoline effect)
+                                if (playerRect.overlaps(Rectangle(plat.rect.x, plat.rect.y, plat.rect.width, 20f)) && playerY >= plat.rect.y - playerHeight) {
                                     velocityY = 1200f
                                 }
                             }
@@ -2045,7 +2059,6 @@ class GameScreen(
                             // Recovery time
                             if (plat.crumbleTimer == 2f) {
                                 plat.crumbleTimer = 0f // Ready for next sneeze
-                                plat.rect.y -= 150f
                             }
                         }
                     }
