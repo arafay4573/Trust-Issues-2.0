@@ -616,8 +616,8 @@ class GameScreen(
                 maskX = 640f + (120f - 30f) / 2f
                 maskY = 900f
 
-                // Magnet button at start
-                gameButtons.add(GameButton(Rectangle(620f, 100f, 40f, 30f), false) {
+                // Magnet button on the 2nd sneezing platform (Platform 2 at y=420f)
+                gameButtons.add(GameButton(Rectangle(620f, 440f, 40f, 30f), false) {
                     isWallMagnetActive = true
                 })
             }
@@ -1993,10 +1993,11 @@ class GameScreen(
 
             // Wall Magnet Effect
             if (isWallMagnetActive && launchVelocityX == 0f) {
+                // Pull dynamically to nearest wall
                 if (playerX < 640f) {
-                    playerX -= 500f * delta // Pull to left wall
+                    playerX -= 2500f * delta // Pull to left wall strongly
                 } else {
-                    playerX += 500f * delta // Pull to right wall
+                    playerX += 2500f * delta // Pull to right wall strongly
                 }
             }
 
@@ -2297,7 +2298,7 @@ class GameScreen(
             }
         }
 
-            if (playerY < floorY && !isExemptLevel) {
+            if (playerY < floorY && !isExemptLevel && !(currentLevel == 8 && currentChunk == 1)) {
                 playerY = floorY
                 velocityY = 0f
                 canJump = true
