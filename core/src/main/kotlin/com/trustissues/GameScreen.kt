@@ -600,7 +600,7 @@ class GameScreen(
                 canJump = true
 
                 playerX = 640f
-                playerY = 100f
+                playerY = 285f
 
                 // The Walls: Symmetrical Red Walls closing in at 35f
                 movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 35f, isActive = true))
