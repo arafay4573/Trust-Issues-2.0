@@ -189,6 +189,16 @@ class GameScreen(
     )
     private val lasers = mutableListOf<Laser>()
 
+    private object Level8Chunk1State {
+        var bounceTimer = 0f
+        var isBouncing = false
+
+        fun reset() {
+            bounceTimer = 0f
+            isBouncing = false
+        }
+    }
+
     private object Level7Chunk3State {
         var voidLeft = 0f
         var voidRight = 1280f
@@ -600,13 +610,14 @@ class GameScreen(
                 canJump = true
                 launchVelocityX = 0f
                 isWallMagnetActive = false
+                Level8Chunk1State.reset()
 
                 playerX = 640f
                 playerY = 285f
 
-                // The Walls: Symmetrical Red Walls closing in at 35f
-                movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 35f, isActive = true))
-                movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -35f, isActive = true))
+                // The Walls: Symmetrical Static Red Walls
+                movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 0f, isActive = true))
+                movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = 0f, isActive = true))
 
                 // The Sneezing Staircase
                 platforms.add(Platform(Rectangle(600f, 260f, 80f, 20f), PlatformType.NORMAL)) // Platform 1 (Even)
@@ -1984,6 +1995,7 @@ class GameScreen(
             // The Walls Tickle Effect
             for (wall in movingWalls) {
                 if (wall.isActive && Intersector.overlaps(playerRect, wall.rect)) {
+                    Level8Chunk1State.isBouncing = true
                     // No death call! Just apply Impulse/Velocity and a small shake
                     if (playerX < wall.rect.x + wall.rect.width / 2f) {
                         launchVelocityX = -3000f
@@ -1994,12 +2006,21 @@ class GameScreen(
             }
 
             // Wall Magnet Effect
-            if (isWallMagnetActive && launchVelocityX == 0f) {
+            if (isWallMagnetActive && launchVelocityX == 0f && movingWalls.isNotEmpty()) {
+                Level8Chunk1State.isBouncing = true
                 // Pull dynamically to nearest wall
                 if (playerX < 640f) {
                     playerX -= 2500f * delta // Pull to left wall strongly
                 } else {
                     playerX += 2500f * delta // Pull to right wall strongly
+                }
+            }
+
+            // Bounce Timer Logic
+            if (Level8Chunk1State.isBouncing) {
+                Level8Chunk1State.bounceTimer += delta
+                if (Level8Chunk1State.bounceTimer > 5f) {
+                    movingWalls.clear() // Remove walls
                 }
             }
 
