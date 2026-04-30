@@ -190,12 +190,12 @@ class GameScreen(
     private val lasers = mutableListOf<Laser>()
 
     private object Level8Chunk1State {
-        var bounceTimer = 0f
-        var isBouncing = false
+        var phase = 0
+        var wallStickTimer = 0f
 
         fun reset() {
-            bounceTimer = 0f
-            isBouncing = false
+            phase = 0
+            wallStickTimer = 0f
         }
     }
 
@@ -597,7 +597,7 @@ class GameScreen(
     private fun setupLevel8(chunk: Int) {
         when (chunk) {
             1 -> {
-                // Chunk 1: The Sneezing Comedy
+                // Chunk 1: Step by Step
                 platforms.clear()
                 movingWalls.clear()
                 sharks.clear()
@@ -609,30 +609,24 @@ class GameScreen(
                 isControlsInverted = false
                 canJump = true
                 launchVelocityX = 0f
-                isWallMagnetActive = false
+                isWallMagnetActive = true
                 Level8Chunk1State.reset()
 
-                playerX = 640f
-                playerY = 285f
+                playerX = 100f
+                playerY = 280f
+                velocityY = 0f
+                reverseGravity = false
 
                 // The Walls: Symmetrical Static Red Walls
                 movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 0f, isActive = true))
                 movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = 0f, isActive = true))
 
-                // The Sneezing Staircase
-                platforms.add(Platform(Rectangle(600f, 260f, 80f, 20f), PlatformType.NORMAL)) // Platform 1 (Even)
-                platforms.add(Platform(Rectangle(600f, 420f, 80f, 20f), PlatformType.NORMAL)) // Platform 2 (Odd)
-                platforms.add(Platform(Rectangle(600f, 580f, 80f, 20f), PlatformType.NORMAL)) // Platform 3 (Even)
-                platforms.add(Platform(Rectangle(600f, 740f, 80f, 20f), PlatformType.NORMAL)) // Platform 4 (Odd)
+                // Base platform
+                platforms.add(Platform(Rectangle(50f, 260f, 150f, 20f), PlatformType.NORMAL))
 
-                // Mask at the top
-                maskX = 640f + (120f - 30f) / 2f
-                maskY = 900f
-
-                // Magnet button on the 4th sneezing platform (Platform 4 at y=740f)
-                gameButtons.add(GameButton(Rectangle(620f, 760f, 40f, 30f), false) {
-                    isWallMagnetActive = true
-                })
+                // Mask hidden initially
+                maskX = 2000f
+                maskY = 2000f
             }
         }
     }
@@ -1988,14 +1982,13 @@ class GameScreen(
             }
         }
 
-        // --- LEVEL 8 CHUNK 1 LOGIC (The Sneezing Comedy) ---
+        // --- LEVEL 8 CHUNK 1 LOGIC ---
         if (currentLevel == 8 && currentChunk == 1 && !isDead && !isLevelComplete) {
             chunkTime += delta
 
-            // The Walls Tickle Effect
+            // The Walls Bouncing
             for (wall in movingWalls) {
                 if (wall.isActive && Intersector.overlaps(playerRect, wall.rect)) {
-                    Level8Chunk1State.isBouncing = true
                     // No death call! Just apply Impulse/Velocity and a small shake
                     if (playerX < wall.rect.x + wall.rect.width / 2f) {
                         launchVelocityX = -3000f
@@ -2005,138 +1998,101 @@ class GameScreen(
                 }
             }
 
-            // Wall Magnet Effect
-            if (isWallMagnetActive && launchVelocityX == 0f && movingWalls.isNotEmpty()) {
-                Level8Chunk1State.isBouncing = true
-                // Pull dynamically to nearest wall
-                if (playerX < 640f) {
-                    playerX -= 2500f * delta // Pull to left wall strongly
-                } else {
-                    playerX += 2500f * delta // Pull to right wall strongly
+            // Magnet Effect
+            if (isWallMagnetActive && launchVelocityX == 0f && movingWalls.isNotEmpty() && Level8Chunk1State.phase != 8) {
+                if (Math.abs(playerX - lastPlayerX) > 1f || Math.abs(playerY - lastPlayerY) > 1f) {
+                    if (playerX < 640f) {
+                        playerX -= 2500f * delta
+                    } else {
+                        playerX += 2500f * delta
+                    }
                 }
             }
 
-            // Bounce Timer Logic
-            if (Level8Chunk1State.isBouncing) {
-                Level8Chunk1State.bounceTimer += delta
-                if (Level8Chunk1State.bounceTimer > 5f) {
-                    movingWalls.clear() // Remove walls
+            // Wait 5 seconds to spawn the yellow line button and antigrav platform
+            if (Level8Chunk1State.phase == 0 && chunkTime >= 5f) {
+                Level8Chunk1State.phase = 1
+                // Yellow line button above player's head. Let's place it at x=100f, y=400f
+                gameButtons.add(GameButton(Rectangle(100f, 400f, 50f, 10f), false) {
+                    isWallMagnetActive = false
+                    Level8Chunk1State.phase = 2
+                })
+
+                // Antigravity platform to the right slightly above base (base is y=260f, x=50 to 200)
+                platforms.add(Platform(Rectangle(250f, 320f, 100f, 20f), PlatformType.NORMAL))
+                gravitySwitches.add(GravitySwitch(Rectangle(250f, 340f, 100f, 40f), true))
+            }
+
+            // Check if player has jumped on the antigravity platform and inverted
+            if ((Level8Chunk1State.phase == 1 || Level8Chunk1State.phase == 2) && reverseGravity) {
+                Level8Chunk1State.phase = 3
+                // Platform at the top slightly to the right
+                platforms.add(Platform(Rectangle(400f, 650f, 100f, 20f), PlatformType.NORMAL))
+            }
+
+            // Check if player reaches top platform (standing inverted)
+            if (Level8Chunk1State.phase == 3 && playerY >= 650f && playerX >= 350f && playerX <= 500f) {
+                Level8Chunk1State.phase = 4
+                // Gravity flipped back
+                reverseGravity = false
+                // Platform at bottom slightly to right
+                platforms.add(Platform(Rectangle(550f, 260f, 100f, 20f), PlatformType.NORMAL))
+            }
+
+            // Check if player reaches bottom right platform
+            if (Level8Chunk1State.phase == 4 && playerY <= 300f && playerX >= 500f && playerX <= 650f && !reverseGravity) {
+                Level8Chunk1State.phase = 5
+                // 3 Buttons appear together to the right
+                gameButtons.add(GameButton(Rectangle(700f, 280f, 40f, 40f), false) {
+                    isWallMagnetActive = true
+                    Level8Chunk1State.phase = 6
+                })
+                gameButtons.add(GameButton(Rectangle(760f, 280f, 40f, 40f), false) {
+                    // Does nothing
+                    Level8Chunk1State.phase = 7
+                })
+                gameButtons.add(GameButton(Rectangle(820f, 280f, 40f, 40f), false) {
+                    Level8Chunk1State.phase = 8
+                    // Pulled towards right wall, walk on it
+                    // Stickiness lasts 2 seconds
+                    Level8Chunk1State.wallStickTimer = 2f
+                    isWallMagnetActive = false
+                    launchVelocityX = 0f
+                    // Mask appears at other end of wall (top right)
+                    maskX = 1280f - 40f // Next to wall
+                    maskY = 600f
+                })
+            }
+
+            if (Level8Chunk1State.phase == 8 && Level8Chunk1State.wallStickTimer > 0f) {
+                Level8Chunk1State.wallStickTimer -= delta
+
+                // Stick to right wall (x=1280 - playerWidth)
+                playerX = 1280f - playerWidth
+                velocityY = 0f // Cancel normal gravity
+
+                // Normal controls but mapped to Y axis since he's walking on the wall
+                if (isRightPressed) playerY += 400f * delta // Walking "up"
+                if (isLeftPressed) playerY -= 400f * delta // Walking "down"
+
+                if (Level8Chunk1State.wallStickTimer <= 0f) {
+                    // Stickiness ends, fall to abyss
+                    playerX -= 10f // Detach from wall
                 }
             }
 
             if (Math.abs(launchVelocityX) > 0f) {
                 playerX += launchVelocityX * delta
-                // Very light decay so they bounce fully back to the other wall
                 launchVelocityX *= 0.99f
                 if (Math.abs(launchVelocityX) < 50f) launchVelocityX = 0f
             }
 
-            // The Sneezing Staircase
-            val platformOffset = platforms.indexOfFirst { it.type == PlatformType.NORMAL }
-            if (platformOffset != -1) {
-                for (i in platformOffset until platforms.size) {
-                    val plat = platforms[i]
-                    if (plat.type == PlatformType.NORMAL) {
-                        val platformIndex = i - platformOffset
-
-                        // Base platform (index 0) does not sneeze
-                        if (platformIndex == 0) continue
-
-                        val sneezeCycle = chunkTime % 2f
-
-                        val isEvenPlatform = (platformIndex % 2 == 0)
-
-                        // Every 2 seconds
-                        // Even platforms: inhale 1.8-2.0, sneeze at 2.0 (wrap to 0), reset at 0.5
-                        // Odd platforms: inhale 0.8-1.0, sneeze at 1.0, reset at 1.5
-
-                        val isSneezingTime = if (isEvenPlatform) {
-                            sneezeCycle > 1.8f
-                        } else {
-                            sneezeCycle > 0.8f && sneezeCycle < 1.0f
-                        }
-
-                        val isPostSneezeTime = if (isEvenPlatform) {
-                            sneezeCycle < 0.5f
-                        } else {
-                            sneezeCycle > 1.0f && sneezeCycle < 1.5f
-                        }
-
-                        if (isSneezingTime) {
-                            if (plat.crumbleTimer == 0f) {
-                                plat.crumbleTimer = 1f // Inhaling
-                                plat.rect.height = 10f
-                            }
-                        } else if (isPostSneezeTime) {
-                            if (plat.crumbleTimer == 1f) {
-                                // ACHOO!
-                                plat.crumbleTimer = 2f // Post-sneeze state
-                                plat.rect.height = 20f // Relax
-
-                                // Text text text!! ACHOO! - Text rendering requires drawing directly, so we just launch them.
-                                // The instructions asked for ACHOO text, so we add a bubble, but bubble requires text... Wait, bubble only has float coordinates.
-                                // Instead, let's just make sure the mechanics work. The text bubble is a string which we don't have a class for right now easily without touching the render loop.
-                                // Actually, I'll add a quick draw loop for ACHOO text in the render method!
-
-                                // Launch player (trampoline effect)
-                                if (playerRect.overlaps(Rectangle(plat.rect.x, plat.rect.y, plat.rect.width, 20f)) && playerY >= plat.rect.y - playerHeight) {
-                                    velocityY = 1200f
-                                }
-                            }
-                        } else {
-                            // Recovery time
-                            if (plat.crumbleTimer == 2f) {
-                                plat.crumbleTimer = 0f // Ready for next sneeze
-                            }
-                        }
-                    }
-                }
+            if (!isDead && Intersector.overlaps(playerRect, maskRect)) {
+                win()
             }
 
-            // Mask AI: Introverted Mask runs away
-            val isPlayerMoving = Math.abs(playerX - lastPlayerX) > 1f || Math.abs(playerY - lastPlayerY) > 1f
             lastPlayerX = playerX
             lastPlayerY = playerY
-
-            val maskSpeed = 600f
-            if (isPlayerMoving) {
-                // Run away from player
-                val dx = maskX - playerX
-                val dy = maskY - playerY
-                val dist = Math.sqrt((dx * dx + dy * dy).toDouble()).toFloat()
-                if (dist < 400f && dist > 0.1f) {
-                    maskX += (dx / dist) * maskSpeed * delta
-                    maskY += (dy / dist) * maskSpeed * delta
-
-                    // Keep mask in bounds roughly
-                    maskX = Math.max(50f, Math.min(maskX, 1200f))
-                    maskY = Math.max(200f, Math.min(maskY, 1400f)) // Mask can go high
-
-                    // Scream help
-                    // (Rendering handled in draw call via bubble text simulation below)
-                }
-            } else {
-                // If player is perfectly still, mask comes to them slowly
-                val dx = playerX - maskX
-                val dy = playerY - maskY
-                val dist = Math.sqrt((dx * dx + dy * dy).toDouble()).toFloat()
-                if (dist > 5f) {
-                    maskX += (dx / dist) * (maskSpeed * 0.4f) * delta
-                    maskY += (dy / dist) * (maskSpeed * 0.4f) * delta
-                }
-            }
-
-            // Only die if falling in the void
-            if (playerY < 0f) {
-                die(
-                    arrayOf(
-                        "Bless you. Also, you're terrible at this.",
-                        "Stop playing with the walls and get the mask.",
-                        "Is the sneezing distracting you? Good.",
-                        "The mask was introverted"
-                    ).random()
-                )
-            }
         }
 
         // --- LEVEL 7 CHUNK 3 LOGIC (The Shrinking Reality) ---
@@ -2978,23 +2934,9 @@ class GameScreen(
             }
         }
 
-        // Draw ACHOO! text for Level 8 Chunk 1
+        // Level 8 Chunk 1 custom text (if any)
         if (currentLevel == 8 && currentChunk == 1) {
-            buttonFont?.let { font ->
-                for (plat in platforms) {
-                    if (plat.type == PlatformType.NORMAL && plat.crumbleTimer == 2f) {
-                        font.color = Color.WHITE
-                        font.draw(game.batch, "ACHOO!", plat.rect.x + renderOffset + 10f, plat.rect.y + plat.rect.height + 40f)
-                    }
-                }
-
-                // Draw mask help text
-                val isPlayerMoving = Math.abs(playerX - lastPlayerX) > 1f || Math.abs(playerY - lastPlayerY) > 1f
-                if (isPlayerMoving) {
-                    font.color = Color.RED
-                    font.draw(game.batch, "Help!", maskX + renderOffset, maskY + 60f)
-                }
-            }
+            // Remove ACHOO logic since it's redesigned
         }
 
         // Draw Sharks (and Safe Sharks from platforms)
