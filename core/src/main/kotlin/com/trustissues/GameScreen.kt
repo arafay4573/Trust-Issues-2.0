@@ -616,10 +616,11 @@ class GameScreen(
                 playerY = 280f
                 velocityY = 0f
                 reverseGravity = false
+                chunkTime = 0f
 
-                // The Walls: Symmetrical Static Red Walls
-                movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 0f, isActive = true))
-                movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = 0f, isActive = true))
+                // The Walls: Visible Bouncing Walls
+                movingWalls.add(MovingWall(Rectangle(-150f, 0f, 200f, 1500f), speed = 0f, isActive = true))
+                movingWalls.add(MovingWall(Rectangle(1230f, 0f, 200f, 1500f), speed = 0f, isActive = true))
 
                 // Base platform
                 platforms.add(Platform(Rectangle(50f, 260f, 150f, 20f), PlatformType.NORMAL))
@@ -1998,8 +1999,8 @@ class GameScreen(
                 }
             }
 
-            // Magnet Effect
-            if (isWallMagnetActive && launchVelocityX == 0f && movingWalls.isNotEmpty() && Level8Chunk1State.phase != 8) {
+            // Magnet Effect (Only active in Phase 0)
+            if (isWallMagnetActive && launchVelocityX == 0f && movingWalls.isNotEmpty() && Level8Chunk1State.phase == 0) {
                 if (Math.abs(playerX - lastPlayerX) > 1f || Math.abs(playerY - lastPlayerY) > 1f) {
                     if (playerX < 640f) {
                         playerX -= 2500f * delta
@@ -2009,76 +2010,18 @@ class GameScreen(
                 }
             }
 
-            // Wait 5 seconds to spawn the yellow line button and antigrav platform
+            // Wait 5 seconds to stop attraction and spawn the yellow line button
             if (Level8Chunk1State.phase == 0 && chunkTime >= 5f) {
                 Level8Chunk1State.phase = 1
+                isWallMagnetActive = false // Attraction stops
+
                 // Yellow line button above player's head. Let's place it at x=100f, y=400f
                 gameButtons.add(GameButton(Rectangle(100f, 400f, 50f, 10f), false) {
-                    isWallMagnetActive = false
                     Level8Chunk1State.phase = 2
+                    // Antigravity platform to the right slightly above base appears when touched
+                    platforms.add(Platform(Rectangle(250f, 320f, 100f, 20f), PlatformType.NORMAL))
+                    gravitySwitches.add(GravitySwitch(Rectangle(250f, 340f, 100f, 40f), true))
                 })
-
-                // Antigravity platform to the right slightly above base (base is y=260f, x=50 to 200)
-                platforms.add(Platform(Rectangle(250f, 320f, 100f, 20f), PlatformType.NORMAL))
-                gravitySwitches.add(GravitySwitch(Rectangle(250f, 340f, 100f, 40f), true))
-            }
-
-            // Check if player has jumped on the antigravity platform and inverted
-            if ((Level8Chunk1State.phase == 1 || Level8Chunk1State.phase == 2) && reverseGravity) {
-                Level8Chunk1State.phase = 3
-                // Platform at the top slightly to the right
-                platforms.add(Platform(Rectangle(400f, 650f, 100f, 20f), PlatformType.NORMAL))
-            }
-
-            // Check if player reaches top platform (standing inverted)
-            if (Level8Chunk1State.phase == 3 && playerY >= 650f && playerX >= 350f && playerX <= 500f) {
-                Level8Chunk1State.phase = 4
-                // Gravity flipped back
-                reverseGravity = false
-                // Platform at bottom slightly to right
-                platforms.add(Platform(Rectangle(550f, 260f, 100f, 20f), PlatformType.NORMAL))
-            }
-
-            // Check if player reaches bottom right platform
-            if (Level8Chunk1State.phase == 4 && playerY <= 300f && playerX >= 500f && playerX <= 650f && !reverseGravity) {
-                Level8Chunk1State.phase = 5
-                // 3 Buttons appear together to the right
-                gameButtons.add(GameButton(Rectangle(700f, 280f, 40f, 40f), false) {
-                    isWallMagnetActive = true
-                    Level8Chunk1State.phase = 6
-                })
-                gameButtons.add(GameButton(Rectangle(760f, 280f, 40f, 40f), false) {
-                    // Does nothing
-                    Level8Chunk1State.phase = 7
-                })
-                gameButtons.add(GameButton(Rectangle(820f, 280f, 40f, 40f), false) {
-                    Level8Chunk1State.phase = 8
-                    // Pulled towards right wall, walk on it
-                    // Stickiness lasts 2 seconds
-                    Level8Chunk1State.wallStickTimer = 2f
-                    isWallMagnetActive = false
-                    launchVelocityX = 0f
-                    // Mask appears at other end of wall (top right)
-                    maskX = 1280f - 40f // Next to wall
-                    maskY = 600f
-                })
-            }
-
-            if (Level8Chunk1State.phase == 8 && Level8Chunk1State.wallStickTimer > 0f) {
-                Level8Chunk1State.wallStickTimer -= delta
-
-                // Stick to right wall (x=1280 - playerWidth)
-                playerX = 1280f - playerWidth
-                velocityY = 0f // Cancel normal gravity
-
-                // Normal controls but mapped to Y axis since he's walking on the wall
-                if (isRightPressed) playerY += 400f * delta // Walking "up"
-                if (isLeftPressed) playerY -= 400f * delta // Walking "down"
-
-                if (Level8Chunk1State.wallStickTimer <= 0f) {
-                    // Stickiness ends, fall to abyss
-                    playerX -= 10f // Detach from wall
-                }
             }
 
             if (Math.abs(launchVelocityX) > 0f) {
