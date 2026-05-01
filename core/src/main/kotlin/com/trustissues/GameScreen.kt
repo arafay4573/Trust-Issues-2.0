@@ -612,8 +612,8 @@ class GameScreen(
                 isWallMagnetActive = true
                 Level8Chunk1State.reset()
 
-                playerX = 80f
-                playerY = 100f
+                playerX = 145f // Center of platform (80 + 150/2 - playerWidth/2 approx)
+                playerY = 285f
                 velocityY = 0f
                 reverseGravity = false
                 chunkTime = 0f
@@ -622,8 +622,8 @@ class GameScreen(
                 movingWalls.add(MovingWall(Rectangle(-150f, 0f, 200f, 1500f), speed = 0f, isActive = true))
                 movingWalls.add(MovingWall(Rectangle(1230f, 0f, 200f, 1500f), speed = 0f, isActive = true))
 
-                // Base platform - lower and not touching left wall
-                platforms.add(Platform(Rectangle(80f, 80f, 150f, 20f), PlatformType.NORMAL))
+                // Base platform - just above controls
+                platforms.add(Platform(Rectangle(80f, 260f, 150f, 20f), PlatformType.NORMAL))
 
                 // Mask hidden initially
                 maskX = 2000f
@@ -2032,9 +2032,9 @@ class GameScreen(
                     Level8Chunk1State.phase = 2
                     isWallMagnetActive = false // Pull mechanism totally closed
 
-                    // Antigravity platform appears a lil right to ours (y=80, x=80, so let's say x=300, y=150)
-                    platforms.add(Platform(Rectangle(300f, 150f, 100f, 20f), PlatformType.NORMAL))
-                    gravitySwitches.add(GravitySwitch(Rectangle(300f, 170f, 100f, 40f), true))
+                    // Antigravity platform appears a lil right to ours (y=360, since base is 260)
+                    platforms.add(Platform(Rectangle(300f, 360f, 100f, 20f), PlatformType.NORMAL))
+                    gravitySwitches.add(GravitySwitch(Rectangle(300f, 380f, 100f, 40f), true))
                 })
             }
 
@@ -2048,13 +2048,11 @@ class GameScreen(
             if (Level8Chunk1State.phase == 3 && playerY >= 650f && playerX >= 400f && playerX <= 550f) {
                 Level8Chunk1State.phase = 4
                 reverseGravity = false
-                // Final platform exactly parallel to antigravity platform (which is at y=150)
-                // Right to antigravity platform -> Antigrav is at 300, Top is at 450.
-                // Final platform parallel to antigravity platform -> y=150, right of antigrav -> let's say x=600
-                platforms.add(Platform(Rectangle(600f, 150f, 100f, 20f), PlatformType.NORMAL))
+                // Final platform exactly parallel to antigravity platform (which is at y=360)
+                platforms.add(Platform(Rectangle(600f, 360f, 100f, 20f), PlatformType.NORMAL))
             }
 
-            if (Level8Chunk1State.phase == 4 && playerY <= 170f && playerX >= 550f && playerX <= 700f && !reverseGravity) {
+            if (Level8Chunk1State.phase == 4 && playerY <= 380f && playerX >= 550f && playerX <= 700f && !reverseGravity) {
                 Level8Chunk1State.phase = 5
             }
 
