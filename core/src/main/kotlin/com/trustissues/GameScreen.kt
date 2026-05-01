@@ -612,8 +612,8 @@ class GameScreen(
                 isWallMagnetActive = true
                 Level8Chunk1State.reset()
 
-                playerX = 100f
-                playerY = 280f
+                playerX = 80f
+                playerY = 100f
                 velocityY = 0f
                 reverseGravity = false
                 chunkTime = 0f
@@ -622,8 +622,8 @@ class GameScreen(
                 movingWalls.add(MovingWall(Rectangle(-150f, 0f, 200f, 1500f), speed = 0f, isActive = true))
                 movingWalls.add(MovingWall(Rectangle(1230f, 0f, 200f, 1500f), speed = 0f, isActive = true))
 
-                // Base platform
-                platforms.add(Platform(Rectangle(50f, 260f, 150f, 20f), PlatformType.NORMAL))
+                // Base platform - lower and not touching left wall
+                platforms.add(Platform(Rectangle(80f, 80f, 150f, 20f), PlatformType.NORMAL))
 
                 // Mask hidden initially
                 maskX = 2000f
@@ -1990,7 +1990,6 @@ class GameScreen(
             // The Walls Bouncing
             for (wall in movingWalls) {
                 if (wall.isActive && Intersector.overlaps(playerRect, wall.rect)) {
-                    // No death call! Just apply Impulse/Velocity and a small shake
                     if (playerX < wall.rect.x + wall.rect.width / 2f) {
                         launchVelocityX = -3000f
                     } else {
@@ -1999,9 +1998,23 @@ class GameScreen(
                 }
             }
 
-            // Magnet Effect (Only active in Phase 0)
-            if (isWallMagnetActive && launchVelocityX == 0f && movingWalls.isNotEmpty() && Level8Chunk1State.phase == 0) {
-                if (Math.abs(playerX - lastPlayerX) > 1f || Math.abs(playerY - lastPlayerY) > 1f) {
+            // Magnet Effect
+            if (isWallMagnetActive && launchVelocityX == 0f && movingWalls.isNotEmpty()) {
+                var triggerMagnet = false
+
+                if (Level8Chunk1State.phase == 0) {
+                    // Any movement for first 4 seconds triggers magnet
+                    if (Math.abs(playerX - lastPlayerX) > 1f || Math.abs(playerY - lastPlayerY) > 1f || isLeftPressed || isRightPressed) {
+                        triggerMagnet = true
+                    }
+                } else if (Level8Chunk1State.phase == 1) {
+                    // After 4s, jumping is allowed, but left/right press triggers magnet
+                    if (isLeftPressed || isRightPressed) {
+                        triggerMagnet = true
+                    }
+                }
+
+                if (triggerMagnet) {
                     if (playerX < 640f) {
                         playerX -= 2500f * delta
                     } else {
@@ -2010,18 +2023,39 @@ class GameScreen(
                 }
             }
 
-            // Wait 5 seconds to stop attraction and spawn the yellow line button
-            if (Level8Chunk1State.phase == 0 && chunkTime >= 5f) {
+            // At exactly 4 seconds, spawn the yellow line above the player's head
+            if (Level8Chunk1State.phase == 0 && chunkTime >= 4f) {
                 Level8Chunk1State.phase = 1
-                isWallMagnetActive = false // Attraction stops
 
-                // Yellow line button above player's head. Let's place it at x=100f, y=400f
-                gameButtons.add(GameButton(Rectangle(100f, 400f, 50f, 10f), false) {
+                // Yellow line button right above the player's head
+                gameButtons.add(GameButton(Rectangle(playerX + playerWidth/2f - 25f, playerY + 80f, 50f, 10f), false) {
                     Level8Chunk1State.phase = 2
-                    // Antigravity platform to the right slightly above base appears when touched
-                    platforms.add(Platform(Rectangle(250f, 320f, 100f, 20f), PlatformType.NORMAL))
-                    gravitySwitches.add(GravitySwitch(Rectangle(250f, 340f, 100f, 40f), true))
+                    isWallMagnetActive = false // Pull mechanism totally closed
+
+                    // Antigravity platform appears a lil right to ours (y=80, x=80, so let's say x=300, y=150)
+                    platforms.add(Platform(Rectangle(300f, 150f, 100f, 20f), PlatformType.NORMAL))
+                    gravitySwitches.add(GravitySwitch(Rectangle(300f, 170f, 100f, 40f), true))
                 })
+            }
+
+            // Phase 3: Platform at the top a lil right to the antigravity platform
+            if (Level8Chunk1State.phase == 2 && reverseGravity) {
+                Level8Chunk1State.phase = 3
+                platforms.add(Platform(Rectangle(450f, 650f, 100f, 20f), PlatformType.NORMAL))
+            }
+
+            // Phase 4: Touch top platform, gravity back, final platform parallel to antigrav
+            if (Level8Chunk1State.phase == 3 && playerY >= 650f && playerX >= 400f && playerX <= 550f) {
+                Level8Chunk1State.phase = 4
+                reverseGravity = false
+                // Final platform exactly parallel to antigravity platform (which is at y=150)
+                // Right to antigravity platform -> Antigrav is at 300, Top is at 450.
+                // Final platform parallel to antigravity platform -> y=150, right of antigrav -> let's say x=600
+                platforms.add(Platform(Rectangle(600f, 150f, 100f, 20f), PlatformType.NORMAL))
+            }
+
+            if (Level8Chunk1State.phase == 4 && playerY <= 170f && playerX >= 550f && playerX <= 700f && !reverseGravity) {
+                Level8Chunk1State.phase = 5
             }
 
             if (Math.abs(launchVelocityX) > 0f) {
