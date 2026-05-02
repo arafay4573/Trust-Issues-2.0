@@ -614,6 +614,8 @@ class GameScreen(
 
                 playerX = 145f // Center of platform (80 + 150/2 - playerWidth/2 approx)
                 playerY = 285f
+                lastPlayerX = 145f
+                lastPlayerY = 285f
                 velocityY = 0f
                 reverseGravity = false
                 chunkTime = 0f
