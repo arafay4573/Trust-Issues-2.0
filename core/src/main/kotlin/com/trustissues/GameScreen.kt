@@ -2008,7 +2008,7 @@ class GameScreen(
             }
 
             // Magnet Effect
-            if (isWallMagnetActive && launchVelocityX == 0f && movingWalls.isNotEmpty()) {
+            if (isWallMagnetActive && launchVelocityX == 0f && movingWalls.isNotEmpty() && Level8Chunk1State.phase != 8) {
                 var triggerMagnet = false
 
                 if (Level8Chunk1State.phase == 0) {
@@ -2023,6 +2023,9 @@ class GameScreen(
                     if (isLeftPressed || isRightPressed || Math.abs(playerX - lastPlayerX) > 1f) {
                         triggerMagnet = true
                     }
+                } else if (Level8Chunk1State.phase == 6) {
+                    // Button 1 triggers constant magnet
+                    triggerMagnet = true
                 }
 
                 if (triggerMagnet) {
@@ -2073,6 +2076,47 @@ class GameScreen(
 
             if (Level8Chunk1State.phase == 4 && playerY <= 170f && playerX >= 550f && playerX <= 700f && !reverseGravity) {
                 Level8Chunk1State.phase = 5
+
+                // 3 buttons right together
+                val startX = 750f
+                val btnY = 180f
+                gameButtons.add(GameButton(Rectangle(startX, btnY, 30f, 30f), false) {
+                    isWallMagnetActive = true
+                    Level8Chunk1State.phase = 6
+                })
+                gameButtons.add(GameButton(Rectangle(startX + 40f, btnY, 30f, 30f), false) {
+                    Level8Chunk1State.phase = 7
+                })
+                gameButtons.add(GameButton(Rectangle(startX + 80f, btnY, 30f, 30f), false) {
+                    Level8Chunk1State.phase = 8
+                    Level8Chunk1State.wallStickTimer = 2f
+                    isWallMagnetActive = false
+                    launchVelocityX = 0f
+                    // Mask appears at other end of wall
+                    maskX = 1230f - 40f
+                    maskY = 650f
+                    maskRect.set(maskX, maskY, maskWidth, maskHeight)
+                })
+            }
+
+            // Phase 8: Wall Walking
+            if (Level8Chunk1State.phase == 8) {
+                if (Level8Chunk1State.wallStickTimer > 0f) {
+                    Level8Chunk1State.wallStickTimer -= delta
+
+                    // Stick to right wall (x=1230 is left edge of right wall)
+                    playerX = 1230f - playerWidth
+                    velocityY = 0f // Cancel normal gravity
+
+                    // Walk on wall
+                    if (isRightPressed) playerY += 400f * delta // Up
+                    if (isLeftPressed) playerY -= 400f * delta // Down
+
+                    if (Level8Chunk1State.wallStickTimer <= 0f) {
+                        // Timer expired, detach and fall
+                        playerX -= 10f
+                    }
+                }
             }
 
             if (Math.abs(launchVelocityX) > 0f) {
