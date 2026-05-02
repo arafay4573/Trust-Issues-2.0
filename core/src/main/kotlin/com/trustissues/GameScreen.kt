@@ -2877,10 +2877,20 @@ class GameScreen(
         val waistOffset = if (isCrouching) 5f else 18f
         val legOffset = if (isCrouching) 0f else (Math.sin(walkTime.toDouble()).toFloat() * 6f)
 
+        val oldTransform = shapeRenderer.transformMatrix.cpy()
+        if (currentLevel == 8 && currentChunk == 1 && Level8Chunk1State.phase == 8 && Level8Chunk1State.wallStickTimer > 0f) {
+            // Rotate the player 90 degrees clockwise so feet are on the right wall
+            shapeRenderer.translate(centerX, playerY + 22f, 0f)
+            shapeRenderer.rotate(0f, 0f, 1f, 90f)
+            shapeRenderer.translate(-centerX, -(playerY + 22f), 0f)
+        }
+
         shapeRenderer.circle(centerX, playerY + headOffset, 6f)
         shapeRenderer.rectLine(centerX, playerY + neckOffset, centerX, playerY + waistOffset, 3f)
         shapeRenderer.rectLine(centerX, playerY + waistOffset, centerX - 6f - legOffset, playerY, 3f)
         shapeRenderer.rectLine(centerX, playerY + waistOffset, centerX + 6f + legOffset, playerY, 3f)
+
+        shapeRenderer.transformMatrix = oldTransform
 
         // Draw Echo (Transparent Red) for Level 5
         if ((currentLevel == 5 && (currentChunk == 1 || currentChunk == 3)) && echoActive) {
