@@ -2047,9 +2047,9 @@ class GameScreen(
                     Level8Chunk1State.phase = 2
                     isWallMagnetActive = false // Pull mechanism totally closed
 
-                    // Antigravity platform appears a lil right to ours (y=360, since base is 260)
-                    platforms.add(Platform(Rectangle(300f, 360f, 100f, 20f), PlatformType.NORMAL))
-                    gravitySwitches.add(GravitySwitch(Rectangle(300f, 380f, 100f, 40f), true))
+                    // Antigravity platform appears a lil lower than base (base is 260)
+                    platforms.add(Platform(Rectangle(300f, 150f, 100f, 20f), PlatformType.NORMAL))
+                    gravitySwitches.add(GravitySwitch(Rectangle(300f, 170f, 100f, 40f), true))
                 })
             }
 
@@ -2066,12 +2066,12 @@ class GameScreen(
                 if (topPlat != null && Intersector.overlaps(playerRect, topPlat.rect)) {
                     Level8Chunk1State.phase = 4
                     reverseGravity = false
-                    // Final platform exactly parallel to antigravity platform (which is at y=360)
-                    platforms.add(Platform(Rectangle(600f, 360f, 100f, 20f), PlatformType.NORMAL))
+                    // Final platform exactly parallel to antigravity platform (which is at y=150)
+                    platforms.add(Platform(Rectangle(600f, 150f, 100f, 20f), PlatformType.NORMAL))
                 }
             }
 
-            if (Level8Chunk1State.phase == 4 && playerY <= 380f && playerX >= 550f && playerX <= 700f && !reverseGravity) {
+            if (Level8Chunk1State.phase == 4 && playerY <= 170f && playerX >= 550f && playerX <= 700f && !reverseGravity) {
                 Level8Chunk1State.phase = 5
             }
 
