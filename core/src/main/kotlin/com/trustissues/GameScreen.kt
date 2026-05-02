@@ -612,11 +612,11 @@ class GameScreen(
                 isWallMagnetActive = true
                 Level8Chunk1State.reset()
 
-                // Center of 150f wide platform at x=80f. Platform center = 155f. Player width = 25f. 155 - 12.5 = 142.5f
-                playerX = 142.5f
-                playerY = 285f
-                lastPlayerX = 142.5f
-                lastPlayerY = 285f
+                // Center of 200f wide platform at x=80f. Platform center = 180f. Player width = 25f. 180 - 12.5 = 167.5f
+                playerX = 167.5f
+                playerY = 280f // Exactly on platform to avoid gravity drop delta
+                lastPlayerX = 167.5f
+                lastPlayerY = 280f
                 velocityY = 0f
                 reverseGravity = false
                 chunkTime = 0f
@@ -626,7 +626,7 @@ class GameScreen(
                 movingWalls.add(MovingWall(Rectangle(1230f, 0f, 200f, 1500f), speed = 0f, isActive = true))
 
                 // Base platform - just above controls
-                platforms.add(Platform(Rectangle(80f, 260f, 150f, 20f), PlatformType.NORMAL))
+                platforms.add(Platform(Rectangle(80f, 260f, 200f, 20f), PlatformType.NORMAL))
 
                 // Mask hidden initially
                 maskX = 2000f
@@ -2012,13 +2012,15 @@ class GameScreen(
                 var triggerMagnet = false
 
                 if (Level8Chunk1State.phase == 0) {
-                    // Any movement for first 4 seconds triggers magnet
-                    if (Math.abs(playerX - lastPlayerX) > 1f || Math.abs(playerY - lastPlayerY) > 1f || isLeftPressed || isRightPressed) {
+                    // Any intentional movement for first 4 seconds triggers magnet
+                    // Ignore small Y deltas caused by floating point physics settling
+                    val intentionalMove = Math.abs(playerX - lastPlayerX) > 1f || velocityY > 0f || isLeftPressed || isRightPressed
+                    if (intentionalMove) {
                         triggerMagnet = true
                     }
                 } else if (Level8Chunk1State.phase == 1) {
                     // After 4s, jumping is allowed, but left/right press triggers magnet
-                    if (isLeftPressed || isRightPressed) {
+                    if (isLeftPressed || isRightPressed || Math.abs(playerX - lastPlayerX) > 1f) {
                         triggerMagnet = true
                     }
                 }
