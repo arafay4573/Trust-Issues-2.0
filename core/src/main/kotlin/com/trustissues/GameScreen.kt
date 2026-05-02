@@ -612,9 +612,10 @@ class GameScreen(
                 isWallMagnetActive = true
                 Level8Chunk1State.reset()
 
-                playerX = 145f // Center of platform (80 + 150/2 - playerWidth/2 approx)
+                // Center of 150f wide platform at x=80f. Platform center = 155f. Player width = 25f. 155 - 12.5 = 142.5f
+                playerX = 142.5f
                 playerY = 285f
-                lastPlayerX = 145f
+                lastPlayerX = 142.5f
                 lastPlayerY = 285f
                 velocityY = 0f
                 reverseGravity = false
@@ -1989,6 +1990,12 @@ class GameScreen(
         if (currentLevel == 8 && currentChunk == 1 && !isDead && !isLevelComplete) {
             chunkTime += delta
 
+            // Abyss / Sky Death
+            if (playerY < 0f || playerY > 720f) {
+                die("Lost to the void.")
+                return
+            }
+
             // The Walls Bouncing
             for (wall in movingWalls) {
                 if (wall.isActive && Intersector.overlaps(playerRect, wall.rect)) {
@@ -2030,7 +2037,11 @@ class GameScreen(
                 Level8Chunk1State.phase = 1
 
                 // Yellow line button right above the player's head
-                gameButtons.add(GameButton(Rectangle(playerX + playerWidth/2f - 25f, playerY + 80f, 50f, 10f), false) {
+                val btnWidth = 50f
+                val btnX = playerX + (playerWidth / 2f) - (btnWidth / 2f)
+                val btnY = playerY + playerHeight + 30f // Slightly above head
+
+                gameButtons.add(GameButton(Rectangle(btnX, btnY, btnWidth, 10f), false) {
                     Level8Chunk1State.phase = 2
                     isWallMagnetActive = false // Pull mechanism totally closed
 
@@ -2047,11 +2058,15 @@ class GameScreen(
             }
 
             // Phase 4: Touch top platform, gravity back, final platform parallel to antigrav
-            if (Level8Chunk1State.phase == 3 && playerY >= 650f && playerX >= 400f && playerX <= 550f) {
-                Level8Chunk1State.phase = 4
-                reverseGravity = false
-                // Final platform exactly parallel to antigravity platform (which is at y=360)
-                platforms.add(Platform(Rectangle(600f, 360f, 100f, 20f), PlatformType.NORMAL))
+            if (Level8Chunk1State.phase == 3) {
+                // Find top platform
+                val topPlat = platforms.find { it.rect.y == 650f }
+                if (topPlat != null && Intersector.overlaps(playerRect, topPlat.rect)) {
+                    Level8Chunk1State.phase = 4
+                    reverseGravity = false
+                    // Final platform exactly parallel to antigravity platform (which is at y=360)
+                    platforms.add(Platform(Rectangle(600f, 360f, 100f, 20f), PlatformType.NORMAL))
+                }
             }
 
             if (Level8Chunk1State.phase == 4 && playerY <= 380f && playerX >= 550f && playerX <= 700f && !reverseGravity) {
