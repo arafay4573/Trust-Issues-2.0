@@ -189,6 +189,20 @@ class GameScreen(
     )
     private val lasers = mutableListOf<Laser>()
 
+    private object Level8Chunk2State {
+        var sharkTeleportCooldown = 0f
+        var isSharkPanic = false
+        var sharkPanicTimer = 0f
+        var isFacingRight = true
+
+        fun reset() {
+            sharkTeleportCooldown = 0f
+            isSharkPanic = false
+            sharkPanicTimer = 0f
+            isFacingRight = true
+        }
+    }
+
     private object Level8Chunk1State {
         var phase = 0
         var wallStickTimer = 0f
@@ -631,6 +645,48 @@ class GameScreen(
                 // Mask hidden initially
                 maskX = 2000f
                 maskY = 2000f
+            }
+            2 -> {
+                // Chunk 2: The Socially Anxious Shark
+                platforms.clear()
+                movingWalls.clear()
+                sharks.clear()
+                lasers.clear()
+                gameButtons.clear()
+                bubbles.clear()
+                gravitySwitches.clear()
+                worldTilt = 0f
+                isControlsInverted = false
+                canJump = true
+                launchVelocityX = 0f
+
+                Level8Chunk2State.reset()
+
+                playerX = 100f
+                playerY = 200f
+                velocityY = 0f
+                reverseGravity = false // gravityDirection = DOWN
+                chunkTime = 0f
+
+                // Base Platform
+                platforms.add(Platform(Rectangle(0f, 180f, 250f, 20f), PlatformType.NORMAL))
+
+                // Safe Shark
+                sharks.add(Shark(800f, 400f, 0f, 0f, 1280f))
+                platforms.add(Platform(Rectangle(800f, 400f, 120f, 60f), PlatformType.SAFE_SHARK))
+
+                // Squeeze: Symmetrical Red Laser Walls closing in at 30f
+                movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 30f, isActive = true))
+                movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -30f, isActive = true))
+
+                // Gravity Button
+                gameButtons.add(GameButton(Rectangle(450f, 300f, 40f, 40f), false) {
+                    reverseGravity = !reverseGravity
+                })
+
+                // Mask attached to shark later
+                maskX = 800f
+                maskY = 460f
             }
         }
     }
@@ -1986,6 +2042,89 @@ class GameScreen(
             }
         }
 
+        // --- LEVEL 8 CHUNK 2 LOGIC (The Socially Anxious Shark) ---
+        if (currentLevel == 8 && currentChunk == 2 && !isDead && !isLevelComplete) {
+            chunkTime += delta
+
+            // 1. Determine facing direction. The prompt requests "Use player.getScaleX() > 0 to determine if the player is facing right."
+            // However, this is LibGDX and we don't have a Sprite player object with getScaleX().
+            // We use `isRightPressed` and `isLeftPressed` to infer direction, or we track it.
+            // Let's create an isFacingRight tracking state in Level8Chunk2State based on input.
+            if (isRightPressed) Level8Chunk2State.isFacingRight = true
+            if (isLeftPressed) Level8Chunk2State.isFacingRight = false
+
+            // 2. Locate the Shark and Platform
+            val shark = sharks.firstOrNull()
+            val sharkPlat = platforms.find { it.type == PlatformType.SAFE_SHARK }
+
+            if (shark != null && sharkPlat != null) {
+                // 3. The "Anxiety" Detection
+                // Trigger: (playerX < shark.x) AND (isFacingRight)
+                if (playerX < shark.x && Level8Chunk2State.isFacingRight && Level8Chunk2State.sharkTeleportCooldown <= 0f) {
+                    // Panic Reaction
+                    Level8Chunk2State.isSharkPanic = true
+                    Level8Chunk2State.sharkPanicTimer = 2f // Duration for speech bubble
+                    shark.x += 350f
+                    Level8Chunk2State.sharkTeleportCooldown = 1.5f
+
+                    // Update mask attached to shark immediately if the player is about to touch it
+                    // "If they accidentally face right just before touching the Mask, the Shark teleports away, and the player falls into the abyss."
+                }
+
+                // Cooldown logic
+                if (Level8Chunk2State.sharkTeleportCooldown > 0f) {
+                    Level8Chunk2State.sharkTeleportCooldown -= delta
+                }
+
+                if (Level8Chunk2State.sharkPanicTimer > 0f) {
+                    Level8Chunk2State.sharkPanicTimer -= delta
+                } else {
+                    Level8Chunk2State.isSharkPanic = false
+                }
+
+                // The Loop
+                if (shark.x > 1280f && Level8Chunk2State.sharkTeleportCooldown <= 0f) {
+                    shark.x = 800f
+                }
+
+                // Synchronize Safe Shark platform to Shark
+                sharkPlat.rect.x = shark.x
+
+                // The Finish Line: Mask is attached to the Shark's hitbox
+                maskX = shark.x + 60f - 15f // Center mask on shark
+                maskY = shark.y + 60f
+                maskRect.set(maskX, maskY, maskWidth, maskHeight)
+
+                // Win Condition
+                if (Intersector.overlaps(playerRect, maskRect)) {
+                    // But if they faced right just before touching...
+                    // We check if shark is stationary (not teleporting right now).
+                    // Wait, if they face right, the panic block above runs first and teleports the shark away!
+                    // So they won't overlap if they faced right, they will fall.
+                    // Thus, just standard win check here.
+                    win()
+                }
+            }
+
+            // 4. Death Mechanics & System Stability
+            // Touching Symmetrical Red Walls
+            for (wall in movingWalls) {
+                if (wall.isActive && Intersector.overlaps(playerRect, wall.rect)) {
+                    die(listOf("He's just not that into you.", "Stop staring, it's rude.", "You're so ugly the obstacles are literally running away.").random())
+                }
+            }
+
+            // Falling into bottom void (if gravity is normal)
+            if (!reverseGravity && playerY < 0f) {
+                die(listOf("He's just not that into you.", "Stop staring, it's rude.", "You're so ugly the obstacles are literally running away.").random())
+            }
+
+            // Falling into top void (if gravity is inverted)
+            if (reverseGravity && playerY > 720f) {
+                die(listOf("He's just not that into you.", "Stop staring, it's rude.", "You're so ugly the obstacles are literally running away.").random())
+            }
+        }
+
         // --- LEVEL 8 CHUNK 1 LOGIC ---
         if (currentLevel == 8 && currentChunk == 1 && !isDead && !isLevelComplete) {
             chunkTime += delta
@@ -2984,7 +3123,21 @@ class GameScreen(
 
         // Level 8 Chunk 1 custom text (if any)
         if (currentLevel == 8 && currentChunk == 1) {
-            // Remove ACHOO logic since it's redesigned
+            buttonFont?.let { font ->
+                // Draw mask help text (if we want, or leave it)
+            }
+        }
+
+        if (currentLevel == 8 && currentChunk == 2) {
+            buttonFont?.let { font ->
+                font.color = Color.WHITE
+                if (Level8Chunk2State.isSharkPanic) {
+                    val shark = sharks.firstOrNull()
+                    if (shark != null) {
+                        font.draw(game.batch, "EWW, DON'T LOOK AT ME!", shark.x + renderOffset - 20f, shark.y + 90f)
+                    }
+                }
+            }
         }
 
         // Draw Sharks (and Safe Sharks from platforms)
