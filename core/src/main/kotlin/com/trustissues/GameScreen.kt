@@ -669,20 +669,20 @@ class GameScreen(
                 platforms.add(Platform(Rectangle(0f, 680f, 1280f, 40f), PlatformType.DEADLY_RED)) // Top Wall
 
                 // Spawn Platform (Must be the ONLY NORMAL platform!)
-                // Let's spawn player at x=80f, y=280f
+                // Lowering platforms and adjusting spawn
                 playerX = 80f
-                playerY = 280f
+                playerY = 160f
                 lastPlayerX = 80f
-                lastPlayerY = 280f
-                platforms.add(Platform(Rectangle(40f, 260f, 100f, 20f), PlatformType.NORMAL))
+                lastPlayerY = 160f
+                platforms.add(Platform(Rectangle(40f, 140f, 100f, 20f), PlatformType.NORMAL))
 
-                // Crumbling Path
-                platforms.add(Platform(Rectangle(220f, 300f, 80f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(380f, 380f, 80f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(540f, 460f, 80f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(700f, 400f, 80f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(860f, 320f, 80f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(1020f, 240f, 80f, 20f), PlatformType.CRUMBLING))
+                // Crumbling Path (lowered)
+                platforms.add(Platform(Rectangle(220f, 180f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(380f, 260f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(540f, 340f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(700f, 280f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(860f, 200f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(1020f, 120f, 80f, 20f), PlatformType.CRUMBLING))
 
                 // Shark
                 sharks.add(Shark(1120f, 40f, 0f, 0f, 1280f))
@@ -2805,6 +2805,8 @@ class GameScreen(
         } else if (currentLevel == 8 && currentChunk == 1) {
             // Handled exclusively in update loop? Wait, actually we can just let it overlap and win here since it runs away
             if (!isDead && Intersector.overlaps(playerRect, maskRect)) win()
+        } else if (currentLevel == 8 && currentChunk == 2) {
+            // Default win condition ignored (handled exclusively in update loop where mask overlapping kills and shark overlapping wins)
         } else if (currentLevel != 4 || currentChunk != 3) {
             if (!isDead && Intersector.overlaps(playerRect, maskRect)) win()
         }
