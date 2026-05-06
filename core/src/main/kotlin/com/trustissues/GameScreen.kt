@@ -662,22 +662,27 @@ class GameScreen(
                 reverseGravity = false
                 chunkTime = 0f
 
-                // Bounding Box (Walls)
-                platforms.add(Platform(Rectangle(0f, 0f, 40f, 720f), PlatformType.NORMAL)) // Left Wall
-                platforms.add(Platform(Rectangle(1240f, 0f, 40f, 720f), PlatformType.NORMAL)) // Right Wall
-                platforms.add(Platform(Rectangle(0f, 0f, 1280f, 40f), PlatformType.NORMAL)) // Bottom Wall
-                platforms.add(Platform(Rectangle(0f, 680f, 1280f, 40f), PlatformType.NORMAL)) // Top Wall
+                // Bounding Box (Walls) using DEADLY_RED platforms so they are red and deadly
+                platforms.add(Platform(Rectangle(0f, 0f, 40f, 720f), PlatformType.DEADLY_RED)) // Left Wall
+                platforms.add(Platform(Rectangle(1240f, 0f, 40f, 720f), PlatformType.DEADLY_RED)) // Right Wall
+                platforms.add(Platform(Rectangle(0f, 0f, 1280f, 40f), PlatformType.DEADLY_RED)) // Bottom Wall
+                platforms.add(Platform(Rectangle(0f, 680f, 1280f, 40f), PlatformType.DEADLY_RED)) // Top Wall
 
-                // Spawn Platform
-                platforms.add(Platform(Rectangle(40f, 340f, 100f, 20f), PlatformType.NORMAL))
+                // Spawn Platform (Must be the ONLY NORMAL platform!)
+                // Let's spawn player at x=80f, y=280f
+                playerX = 80f
+                playerY = 280f
+                lastPlayerX = 80f
+                lastPlayerY = 280f
+                platforms.add(Platform(Rectangle(40f, 260f, 100f, 20f), PlatformType.NORMAL))
 
                 // Crumbling Path
-                platforms.add(Platform(Rectangle(220f, 380f, 80f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(380f, 460f, 80f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(540f, 540f, 80f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(700f, 480f, 80f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(860f, 400f, 80f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(1020f, 320f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(220f, 300f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(380f, 380f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(540f, 460f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(700f, 400f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(860f, 320f, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(1020f, 240f, 80f, 20f), PlatformType.CRUMBLING))
 
                 // Shark
                 sharks.add(Shark(1120f, 40f, 0f, 0f, 1280f))
