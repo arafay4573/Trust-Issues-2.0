@@ -676,13 +676,13 @@ class GameScreen(
                 lastPlayerY = 160f
                 platforms.add(Platform(Rectangle(40f, 140f, 100f, 20f), PlatformType.NORMAL))
 
-                // Crumbling Path (lowered)
-                platforms.add(Platform(Rectangle(220f, 180f, 80f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(380f, 260f, 80f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(540f, 340f, 80f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(700f, 280f, 80f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(860f, 200f, 80f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(1020f, 120f, 80f, 20f), PlatformType.CRUMBLING))
+                // Normal Path (lowered)
+                platforms.add(Platform(Rectangle(220f, 180f, 80f, 20f), PlatformType.NORMAL))
+                platforms.add(Platform(Rectangle(380f, 260f, 80f, 20f), PlatformType.NORMAL))
+                platforms.add(Platform(Rectangle(540f, 340f, 80f, 20f), PlatformType.NORMAL))
+                platforms.add(Platform(Rectangle(700f, 280f, 80f, 20f), PlatformType.NORMAL))
+                platforms.add(Platform(Rectangle(860f, 200f, 80f, 20f), PlatformType.NORMAL))
+                platforms.add(Platform(Rectangle(1020f, 120f, 80f, 20f), PlatformType.NORMAL))
 
                 // Shark
                 sharks.add(Shark(1120f, 40f, 0f, 0f, 1280f))
