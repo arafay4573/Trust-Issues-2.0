@@ -1935,7 +1935,7 @@ class GameScreen(
         if (isWalking) walkTime += delta * 15f else walkTime = 0f
 
         // Physics
-        val isExemptLevel = (currentLevel == 4 && (currentChunk == 2 || currentChunk == 3)) || currentLevel == 3 || currentLevel == 5 || currentLevel == 6 || currentLevel == 7
+        val isExemptLevel = (currentLevel == 4 && (currentChunk == 2 || currentChunk == 3)) || currentLevel == 3 || currentLevel == 5 || currentLevel == 6 || currentLevel == 7 || (currentLevel == 8 && currentChunk == 2)
 
         val currentGravity = if (currentLevel == 5 && (currentChunk == 2 || currentChunk == 3)) -1800f else if (currentLevel == 6 && currentChunk == 1 && isPortalLoopActive) -3200f * 3f else -3200f
 
@@ -2452,8 +2452,8 @@ class GameScreen(
             // Skip if destroyed
             if (plat.state == PlatformState.DESTROYED) continue
 
-            // 1. Trigger Crumble on Touch (Level 2, 3, 4, 5)
-            if ((currentLevel == 2 || currentLevel == 3 || currentLevel == 4 || currentLevel == 5 || currentLevel == 6 || currentLevel == 7) && plat.type == PlatformType.CRUMBLING) {
+            // 1. Trigger Crumble on Touch (Level 2, 3, 4, 5, 8)
+            if ((currentLevel == 2 || currentLevel == 3 || currentLevel == 4 || currentLevel == 5 || currentLevel == 6 || currentLevel == 7 || currentLevel == 8) && plat.type == PlatformType.CRUMBLING) {
                 // Determine if Player or Echo overlaps (Level 5)
                 val isTouchedByPlayer = playerRect.overlaps(plat.rect)
                 val isTouchedByEcho = (currentLevel == 5 && currentChunk == 1 && echoActive && echoRect.overlaps(plat.rect))
@@ -2591,10 +2591,11 @@ class GameScreen(
 
 
         // Check Deadly Red Collision specifically for player
-        if ((currentLevel == 5 && currentChunk == 2) || (currentLevel == 6 && currentChunk == 1)) {
+        if ((currentLevel == 5 && currentChunk == 2) || (currentLevel == 6 && currentChunk == 1) || (currentLevel == 8 && currentChunk == 2)) {
             for (plat in platforms) {
                 if (plat.type == PlatformType.DEADLY_RED && Intersector.overlaps(playerRect, plat.rect)) {
                     if (currentLevel == 6 && currentChunk == 1) die("Is your screen dirty, or is it just your lack of skill?")
+                    else if (currentLevel == 8 && currentChunk == 2) die("The box consumes you.")
                     else die("You ain't no Newton")
                 }
             }
