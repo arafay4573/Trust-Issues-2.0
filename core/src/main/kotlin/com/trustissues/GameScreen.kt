@@ -190,8 +190,14 @@ class GameScreen(
     private val lasers = mutableListOf<Laser>()
 
     private object Level8Chunk2State {
+        var blinkTimer = 0f
+        var isVisible = true
+        var nextBlinkTime = 2f
+
         fun reset() {
-            // Intentionally empty. Kept for backwards compatibility if needed.
+            blinkTimer = 0f
+            isVisible = true
+            nextBlinkTime = 2f
         }
     }
 
@@ -676,13 +682,13 @@ class GameScreen(
                 lastPlayerY = 160f
                 platforms.add(Platform(Rectangle(40f, 140f, 100f, 20f), PlatformType.NORMAL))
 
-                // Normal Path (lowered)
-                platforms.add(Platform(Rectangle(220f, 180f, 80f, 20f), PlatformType.NORMAL))
-                platforms.add(Platform(Rectangle(380f, 260f, 80f, 20f), PlatformType.NORMAL))
-                platforms.add(Platform(Rectangle(540f, 340f, 80f, 20f), PlatformType.NORMAL))
-                platforms.add(Platform(Rectangle(700f, 280f, 80f, 20f), PlatformType.NORMAL))
-                platforms.add(Platform(Rectangle(860f, 200f, 80f, 20f), PlatformType.NORMAL))
-                platforms.add(Platform(Rectangle(1020f, 120f, 80f, 20f), PlatformType.NORMAL))
+                // Normal Path (lowered). We use 80.5f width to identify them uniquely.
+                platforms.add(Platform(Rectangle(220f, 180f, 80.5f, 20f), PlatformType.NORMAL))
+                platforms.add(Platform(Rectangle(380f, 260f, 80.5f, 20f), PlatformType.NORMAL))
+                platforms.add(Platform(Rectangle(540f, 340f, 80.5f, 20f), PlatformType.NORMAL))
+                platforms.add(Platform(Rectangle(700f, 280f, 80.5f, 20f), PlatformType.NORMAL))
+                platforms.add(Platform(Rectangle(860f, 200f, 80.5f, 20f), PlatformType.NORMAL))
+                platforms.add(Platform(Rectangle(1020f, 120f, 80.5f, 20f), PlatformType.NORMAL))
 
                 // Shark
                 sharks.add(Shark(1120f, 40f, 0f, 0f, 1280f))
@@ -2050,14 +2056,52 @@ class GameScreen(
         if (currentLevel == 8 && currentChunk == 2 && !isDead && !isLevelComplete) {
             chunkTime += delta
 
+            // Blinking Platforms Logic
+            Level8Chunk2State.blinkTimer += delta
+            if (Level8Chunk2State.blinkTimer >= Level8Chunk2State.nextBlinkTime) {
+                Level8Chunk2State.blinkTimer = 0f
+                Level8Chunk2State.isVisible = !Level8Chunk2State.isVisible
+                Level8Chunk2State.nextBlinkTime = 1f + MathUtils.random(1.5f) // random between 1s and 2.5s
+
+                for (plat in platforms) {
+                    if (plat.rect.width == 80.5f) {
+                        if (Level8Chunk2State.isVisible) {
+                            plat.type = PlatformType.NORMAL
+                            // Restore original X positions (they were staggered by 160f starting at 220f)
+                            // We can restore based on Y coordinate since they are unique
+                            val newX = when (plat.rect.y) {
+                                180f -> 220f
+                                260f -> 380f
+                                340f -> 540f
+                                280f -> 700f
+                                200f -> 860f
+                                120f -> 1020f
+                                else -> plat.rect.x
+                            }
+                            plat.rect.x = newX
+                        } else {
+                            plat.type = PlatformType.INVISIBLE
+                            plat.rect.x = -5000f
+                        }
+                    }
+                }
+            }
+
             val shark = sharks.firstOrNull()
             val sharkPlat = platforms.find { it.type == PlatformType.SAFE_SHARK }
 
             if (shark != null && sharkPlat != null) {
-                // The introverted shark mirrors the player's X position in the box
-                // Player spawn is at 40f, box width is 1200f (between 40f and 1240f)
-                // So when player is at 40f, shark is at 1120f
-                shark.x = 1280f - playerX - 120f
+                // The introverted shark mirrors the player's X position in the box but FASTER.
+                // Player spawn is at 80f (center). Max distance right is 1200f.
+                // We want the shark to move faster opposite to the player.
+                // Let's use a multiplier of 2.0f for distance from spawn.
+                // Player starts at 80f. Displacement = playerX - 80f
+                // Shark starts at 1120f. Shark displacement = -2.0f * (playerX - 80f)
+                val newSharkX = 1120f - 2.5f * (playerX - 80f)
+
+                // Clamp shark within the box so it doesn't leave the walls (wall left is 40f, right is 1240f)
+                // Shark width is 120f, so minX = 40f, maxX = 1240f - 120f = 1120f
+                shark.x = MathUtils.clamp(newSharkX, 40f, 1120f)
 
                 // Synchronize Safe Shark platform to Shark
                 sharkPlat.rect.x = shark.x
