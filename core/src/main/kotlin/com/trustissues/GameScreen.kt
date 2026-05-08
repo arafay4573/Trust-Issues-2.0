@@ -190,8 +190,12 @@ class GameScreen(
     private val lasers = mutableListOf<Laser>()
 
     private object Level8Chunk2State {
+        var wallState = 0 // 0=Floor, 1=Left Wall, 2=Ceiling, 3=Right Wall
+        var isSharkFree = false
+
         fun reset() {
-            // Intentionally empty.
+            wallState = 0
+            isSharkFree = false
         }
     }
 
@@ -1901,8 +1905,33 @@ class GameScreen(
         val leftInput = if (isControlsInverted) isRightPressed else isLeftPressed
         val rightInput = if (isControlsInverted) isLeftPressed else isRightPressed
 
-        if (leftInput) { playerX -= moveSpeed * delta; isWalking = true }
-        if (rightInput) { playerX += moveSpeed * delta; isWalking = true }
+        // Custom Movement Logic for Level 8 Chunk 2 Wall Walking
+        if (currentLevel == 8 && currentChunk == 2 && Level8Chunk2State.wallState != 0) {
+            // Cancel horizontal standard movement
+            if (Level8Chunk2State.wallState == 1) {
+                // Left Wall: move up/down
+                if (leftInput) { playerY -= moveSpeed * delta; isWalking = true }
+                if (rightInput) { playerY += moveSpeed * delta; isWalking = true }
+                playerX = 40f
+                velocityY = 0f
+            } else if (Level8Chunk2State.wallState == 2) {
+                // Ceiling: move left/right (inverted visually but left/right buttons remain intuitive)
+                if (leftInput) { playerX -= moveSpeed * delta; isWalking = true }
+                if (rightInput) { playerX += moveSpeed * delta; isWalking = true }
+                playerY = 680f - playerHeight
+                velocityY = 0f
+            } else if (Level8Chunk2State.wallState == 3) {
+                // Right Wall: move up/down
+                if (leftInput) { playerY += moveSpeed * delta; isWalking = true }
+                if (rightInput) { playerY -= moveSpeed * delta; isWalking = true }
+                playerX = 1240f - playerWidth
+                velocityY = 0f
+            }
+        } else {
+            // Standard Movement
+            if (leftInput) { playerX -= moveSpeed * delta; isWalking = true }
+            if (rightInput) { playerX += moveSpeed * delta; isWalking = true }
+        }
 
         // Level 6 Chunk 1: Sticky Drift Mechanic
         if (currentLevel == 6 && currentChunk == 1 && !isDead && !isLevelComplete) {
@@ -2050,28 +2079,55 @@ class GameScreen(
         if (currentLevel == 8 && currentChunk == 2 && !isDead && !isLevelComplete) {
             chunkTime += delta
 
+            // Wall Walking Transitions
+            if (Level8Chunk2State.wallState == 0) {
+                // Floor to Left Wall
+                if (playerX <= 40f && playerY > 40f) {
+                    Level8Chunk2State.wallState = 1
+                    Level8Chunk2State.isSharkFree = true // Release shark control
+                }
+            } else if (Level8Chunk2State.wallState == 1) {
+                // Left Wall to Ceiling
+                if (playerY >= 680f - playerHeight) {
+                    Level8Chunk2State.wallState = 2
+                }
+            } else if (Level8Chunk2State.wallState == 2) {
+                // Ceiling to Right Wall
+                if (playerX >= 1240f - playerWidth) {
+                    Level8Chunk2State.wallState = 3
+                }
+            } else if (Level8Chunk2State.wallState == 3) {
+                // Right Wall to Floor
+                // We check collision with platforms normally, but let's force it if Y drops
+                if (playerY <= 40f) {
+                    Level8Chunk2State.wallState = 0
+                }
+            }
+
+            // Allow returning to Floor from Left wall as well
+            if (Level8Chunk2State.wallState == 1 && playerY <= 40f) {
+                Level8Chunk2State.wallState = 0
+            }
+
             val shark = sharks.firstOrNull()
             val sharkPlat = platforms.find { it.type == PlatformType.SAFE_SHARK }
 
             if (shark != null && sharkPlat != null) {
-                // The introverted shark mirrors the player's X position in the box but FASTER.
-                // Player spawn is at 80f (center). Max distance right is 1200f.
-                // We want the shark to move faster opposite to the player.
-                // Let's use a multiplier of 2.0f for distance from spawn.
-                // Player starts at 80f. Displacement = playerX - 80f
-                // Shark starts at 1120f. Shark displacement = -2.0f * (playerX - 80f)
-                val newSharkX = 1120f - 2.5f * (playerX - 80f)
+                // If player is back on the floor, regain control of the shark
+                if (Level8Chunk2State.wallState == 0 && Level8Chunk2State.isSharkFree) {
+                    Level8Chunk2State.isSharkFree = false
+                }
 
-                // Clamp shark within the box so it doesn't leave the walls (wall left is 40f, right is 1240f)
-                // Shark width is 120f, so minX = 40f, maxX = 1240f - 120f = 1120f
-                shark.x = MathUtils.clamp(newSharkX, 40f, 1120f)
+                if (!Level8Chunk2State.isSharkFree) {
+                    // The introverted shark mirrors the player's X position in the box but FASTER.
+                    val newSharkX = 1120f - 2.5f * (playerX - 80f)
+                    shark.x = MathUtils.clamp(newSharkX, 40f, 1120f)
+                }
+                // When isSharkFree is true, the shark stays where it was.
 
                 // Synchronize Safe Shark platform to Shark
                 sharkPlat.rect.x = shark.x
 
-                // The Mask is stationary at the initial position
-                // maskX = 1120f + 60f - 15f
-                // maskY = 40f + 60f
                 maskRect.set(maskX, maskY, maskWidth, maskHeight)
 
                 // Win/Death Conditions
@@ -2602,7 +2658,14 @@ class GameScreen(
             for (plat in platforms) {
                 if (plat.type == PlatformType.DEADLY_RED && Intersector.overlaps(playerRect, plat.rect)) {
                     if (currentLevel == 6 && currentChunk == 1) die("Is your screen dirty, or is it just your lack of skill?")
-                    else if (currentLevel == 8 && currentChunk == 2) die("The box consumes you.")
+                    else if (currentLevel == 8 && currentChunk == 2) {
+                        // The floor is deadly in Level 8 Chunk 2, but the left, top, and right walls are sticky and safe.
+                        // We check the wall coordinates. The floor is y=0.
+                        if (plat.rect.y == 0f && plat.rect.width > 40f) {
+                            die("The floor is lava. And so is your skill.")
+                        }
+                        // Left, right, and top walls are safe.
+                    }
                     else die("You ain't no Newton")
                 }
             }
@@ -2993,6 +3056,20 @@ class GameScreen(
             shapeRenderer.translate(centerX, playerY + 22f, 0f)
             shapeRenderer.rotate(0f, 0f, 1f, 90f)
             shapeRenderer.translate(-centerX, -(playerY + 22f), 0f)
+        } else if (currentLevel == 8 && currentChunk == 2) {
+            if (Level8Chunk2State.wallState == 1) { // Left Wall
+                shapeRenderer.translate(centerX, playerY + 22f, 0f)
+                shapeRenderer.rotate(0f, 0f, 1f, -90f)
+                shapeRenderer.translate(-centerX, -(playerY + 22f), 0f)
+            } else if (Level8Chunk2State.wallState == 2) { // Ceiling
+                shapeRenderer.translate(centerX, playerY + 22f, 0f)
+                shapeRenderer.rotate(0f, 0f, 1f, 180f)
+                shapeRenderer.translate(-centerX, -(playerY + 22f), 0f)
+            } else if (Level8Chunk2State.wallState == 3) { // Right Wall
+                shapeRenderer.translate(centerX, playerY + 22f, 0f)
+                shapeRenderer.rotate(0f, 0f, 1f, 90f)
+                shapeRenderer.translate(-centerX, -(playerY + 22f), 0f)
+            }
         }
 
         shapeRenderer.circle(centerX, playerY + headOffset, 6f)
