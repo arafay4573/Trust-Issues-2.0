@@ -210,15 +210,8 @@ class GameScreen(
     }
 
     private object Level8Chunk3State {
-        var lagTimer = 0f
-        var isLagging = false
-        var visualPlayerX = 640f
-        var visualPlayerY = 280f
-        var visualMirrorX = 640f
-        var visualMirrorY = 280f
-
-        var phase = 0 // 0 = Lag Engine, 1 = Wall Running
-        var isPermanentlyPaused = false
+        var phase = 0 // 0 = Start, 1 = Trap Phase (Frozen, Walls crush), 2 = Win Phase (Inverted, Cages)
+        var isFrozen = false // Replaces isPermanentlyPaused
         var wallState = 0 // 0 = Normal, 1 = Left Wall, 2 = Right Wall
 
         var leftMaskX = 200f
@@ -229,15 +222,11 @@ class GameScreen(
         var isRightMaskTaken = false
 
         fun reset() {
-            lagTimer = 0f
-            isLagging = false
-            visualPlayerX = 640f
-            visualPlayerY = 280f
-            visualMirrorX = 640f
-            visualMirrorY = 280f
             phase = 0
-            isPermanentlyPaused = false
+            isFrozen = false
             wallState = 0
+            leftMaskX = 200f
+            leftMaskY = 600f
             rightMaskX = 1048f
             rightMaskY = 600f
             isLeftMaskTaken = false
@@ -758,16 +747,11 @@ class GameScreen(
                 reverseGravity = false
                 chunkTime = 0f
 
-                Level8Chunk3State.visualPlayerX = playerX
-                Level8Chunk3State.visualPlayerY = playerY
-
                 // Base platform
                 platforms.add(Platform(Rectangle(540f, 260f, 200f, 20f), PlatformType.NORMAL))
 
                 // The Mirror Player is back
                 mirrorActive = true
-                Level8Chunk3State.visualMirrorX = 1280f - playerWidth - playerX
-                Level8Chunk3State.visualMirrorY = playerY
 
                 // Symmetrical Crumbling Platforms leading up to masks
                 // Right path
@@ -2016,22 +2000,26 @@ class GameScreen(
                 playerX = 1240f - playerWidth
                 velocityY = 0f
             }
-        } else if (currentLevel == 8 && currentChunk == 3 && Level8Chunk3State.phase == 1 && Level8Chunk3State.wallState != 0) {
-            // Level 8 Chunk 3 Wall Phase
+        } else if (currentLevel == 8 && currentChunk == 3 && (Level8Chunk3State.phase == 1 || Level8Chunk3State.phase == 2) && Level8Chunk3State.wallState != 0) {
+            // Level 8 Chunk 3 Wall Phase (Phase 1 & 2)
             if (Level8Chunk3State.wallState == 1) {
-                if (leftInput) { playerY -= moveSpeed * delta; isWalking = true }
-                if (rightInput) { playerY += moveSpeed * delta; isWalking = true }
+                if (!Level8Chunk3State.isFrozen) {
+                    if (leftInput) { playerY -= moveSpeed * delta; isWalking = true }
+                    if (rightInput) { playerY += moveSpeed * delta; isWalking = true }
+                }
                 playerX = movingWalls[0].rect.x + movingWalls[0].rect.width
                 velocityY = 0f
             } else if (Level8Chunk3State.wallState == 2) {
-                if (leftInput) { playerY += moveSpeed * delta; isWalking = true }
-                if (rightInput) { playerY -= moveSpeed * delta; isWalking = true }
+                if (!Level8Chunk3State.isFrozen) {
+                    if (leftInput) { playerY += moveSpeed * delta; isWalking = true }
+                    if (rightInput) { playerY -= moveSpeed * delta; isWalking = true }
+                }
                 playerX = movingWalls[1].rect.x - playerWidth
                 velocityY = 0f
             }
         } else {
-            // Standard Movement (unless permanently paused)
-            if (!(currentLevel == 8 && currentChunk == 3 && Level8Chunk3State.isPermanentlyPaused)) {
+            // Standard Movement (unless frozen)
+            if (!(currentLevel == 8 && currentChunk == 3 && Level8Chunk3State.isFrozen)) {
                 if (leftInput) { playerX -= moveSpeed * delta; isWalking = true }
                 if (rightInput) { playerX += moveSpeed * delta; isWalking = true }
             }
@@ -2262,74 +2250,56 @@ class GameScreen(
             chunkTime += delta
 
             if (Level8Chunk3State.phase == 0) {
-                if (!Level8Chunk3State.isPermanentlyPaused) {
-                    Level8Chunk3State.lagTimer += delta
-
-                    if (!Level8Chunk3State.isLagging && Level8Chunk3State.lagTimer >= 3f) {
-                        Level8Chunk3State.isLagging = true
-                        Level8Chunk3State.lagTimer = 0f // Reset to count lag duration
-                    } else if (Level8Chunk3State.isLagging && Level8Chunk3State.lagTimer >= 1.5f) {
-                        Level8Chunk3State.isLagging = false
-                        Level8Chunk3State.lagTimer = 0f // Reset to count next lag
-                    }
-                } else {
-                    Level8Chunk3State.isLagging = true // Permanent freeze
-                }
-
-                if (!Level8Chunk3State.isLagging) {
-                    Level8Chunk3State.visualPlayerX = MathUtils.lerp(Level8Chunk3State.visualPlayerX, playerX, 20f * delta)
-                    Level8Chunk3State.visualPlayerY = MathUtils.lerp(Level8Chunk3State.visualPlayerY, playerY, 20f * delta)
-                    if (mirrorActive) {
-                        Level8Chunk3State.visualMirrorX = MathUtils.lerp(Level8Chunk3State.visualMirrorX, 1280f - playerWidth - playerX, 20f * delta)
-                        Level8Chunk3State.visualMirrorY = MathUtils.lerp(Level8Chunk3State.visualMirrorY, playerY, 20f * delta)
-                    }
-                }
-
-                // Masks logic Phase 0
                 val leftMaskHitbox = Rectangle(Level8Chunk3State.leftMaskX, Level8Chunk3State.leftMaskY, maskWidth, maskHeight)
                 val rightMaskHitbox = Rectangle(Level8Chunk3State.rightMaskX, Level8Chunk3State.rightMaskY, maskWidth, maskHeight)
 
-                if (Intersector.overlaps(playerRect, leftMaskHitbox) || Intersector.overlaps(mirrorRect, leftMaskHitbox)) {
+                // If they touch side masks in Phase 0 -> Trigger Phase 1 (Trap)
+                if (Intersector.overlaps(playerRect, leftMaskHitbox) || Intersector.overlaps(mirrorRect, leftMaskHitbox) ||
+                    Intersector.overlaps(playerRect, rightMaskHitbox) || Intersector.overlaps(mirrorRect, rightMaskHitbox)) {
+
                     Level8Chunk3State.isLeftMaskTaken = true
                     Level8Chunk3State.isRightMaskTaken = true
-                    Level8Chunk3State.isPermanentlyPaused = true
-                }
+                    Level8Chunk3State.phase = 1
+                    Level8Chunk3State.isFrozen = true
 
-                if (Intersector.overlaps(playerRect, rightMaskHitbox) || Intersector.overlaps(mirrorRect, rightMaskHitbox)) {
-                    Level8Chunk3State.isLeftMaskTaken = true
-                    Level8Chunk3State.isRightMaskTaken = true
-                    Level8Chunk3State.isPermanentlyPaused = true
-                }
-
-                if (Level8Chunk3State.isLagging) {
-                    maskRect.set(maskX, maskY, maskWidth, maskHeight)
-                    if (Intersector.overlaps(playerRect, maskRect) || Intersector.overlaps(mirrorRect, maskRect)) {
-                        // Got the center mask! Phase 1!
-                        Level8Chunk3State.phase = 1
-                        Level8Chunk3State.isLagging = false
-                        Level8Chunk3State.isPermanentlyPaused = false
-                        Level8Chunk3State.isLeftMaskTaken = false
-                        Level8Chunk3State.isRightMaskTaken = false
-
-                        // Start walls moving inward
-                        if (movingWalls.size >= 2) {
-                            movingWalls[0].speed = 50f
-                            movingWalls[1].speed = -50f
-                        }
+                    if (movingWalls.size >= 2) {
+                        movingWalls[0].speed = 25f
+                        movingWalls[1].speed = -25f
                     }
-                } else {
-                    maskRect.set(-5000f, -5000f, maskWidth, maskHeight)
                 }
 
-            } else if (Level8Chunk3State.phase == 1) {
-                // Wall Phase
-                // Walls are sticky.
-                Level8Chunk3State.visualPlayerX = playerX
-                Level8Chunk3State.visualPlayerY = playerY
-                Level8Chunk3State.visualMirrorX = mirrorRect.x
-                Level8Chunk3State.visualMirrorY = mirrorRect.y
+                // If they touch the center mask first -> Trigger Phase 2 (Win path)
+                if (Intersector.overlaps(playerRect, maskRect) || Intersector.overlaps(mirrorRect, maskRect)) {
+                    Level8Chunk3State.phase = 2
+                    isControlsInverted = true
 
-                // Stick to walls
+                    if (movingWalls.size >= 2) {
+                        movingWalls[0].speed = 30f
+                        movingWalls[1].speed = -30f
+                    }
+
+                    // Remove center mask
+                    maskX = -5000f
+                    maskY = -5000f
+
+                    // Create cages for the side masks
+                    val cageThick = 20f
+                    val cageWidth = 100f
+                    val cageHeight = 100f
+
+                    // Left Mask Cage (Open on left side, facing left wall)
+                    platforms.add(Platform(Rectangle(Level8Chunk3State.leftMaskX - 40f, Level8Chunk3State.leftMaskY - 40f, cageWidth, cageThick), PlatformType.NORMAL)) // Bottom
+                    platforms.add(Platform(Rectangle(Level8Chunk3State.leftMaskX - 40f, Level8Chunk3State.leftMaskY + 60f, cageWidth, cageThick), PlatformType.NORMAL)) // Top
+                    platforms.add(Platform(Rectangle(Level8Chunk3State.leftMaskX + cageWidth - 40f, Level8Chunk3State.leftMaskY - 40f, cageThick, cageHeight + cageThick), PlatformType.NORMAL)) // Right
+
+                    // Right Mask Cage (Open on right side, facing right wall)
+                    platforms.add(Platform(Rectangle(Level8Chunk3State.rightMaskX - 40f, Level8Chunk3State.rightMaskY - 40f, cageWidth, cageThick), PlatformType.NORMAL)) // Bottom
+                    platforms.add(Platform(Rectangle(Level8Chunk3State.rightMaskX - 40f, Level8Chunk3State.rightMaskY + 60f, cageWidth, cageThick), PlatformType.NORMAL)) // Top
+                    platforms.add(Platform(Rectangle(Level8Chunk3State.rightMaskX - 40f, Level8Chunk3State.rightMaskY - 40f, cageThick, cageHeight + cageThick), PlatformType.NORMAL)) // Left
+                }
+
+            } else if (Level8Chunk3State.phase == 1 || Level8Chunk3State.phase == 2) {
+                // Wall Phase (Either Trap or Win)
                 if (movingWalls.size >= 2) {
                     val leftWall = movingWalls[0]
                     val rightWall = movingWalls[1]
@@ -2347,26 +2317,27 @@ class GameScreen(
                     }
                 }
 
-                val leftMaskHitbox = Rectangle(Level8Chunk3State.leftMaskX, Level8Chunk3State.leftMaskY, maskWidth, maskHeight)
-                val rightMaskHitbox = Rectangle(Level8Chunk3State.rightMaskX, Level8Chunk3State.rightMaskY, maskWidth, maskHeight)
+                // If in Phase 2, track mask collection
+                if (Level8Chunk3State.phase == 2) {
+                    val leftMaskHitbox = Rectangle(Level8Chunk3State.leftMaskX, Level8Chunk3State.leftMaskY, maskWidth, maskHeight)
+                    val rightMaskHitbox = Rectangle(Level8Chunk3State.rightMaskX, Level8Chunk3State.rightMaskY, maskWidth, maskHeight)
 
-                // Track masks taken
-                if (!Level8Chunk3State.isLeftMaskTaken && (Intersector.overlaps(playerRect, leftMaskHitbox) || Intersector.overlaps(mirrorRect, leftMaskHitbox))) {
-                    Level8Chunk3State.isLeftMaskTaken = true
-                }
-                if (!Level8Chunk3State.isRightMaskTaken && (Intersector.overlaps(playerRect, rightMaskHitbox) || Intersector.overlaps(mirrorRect, rightMaskHitbox))) {
-                    Level8Chunk3State.isRightMaskTaken = true
-                }
+                    if (!Level8Chunk3State.isLeftMaskTaken && (Intersector.overlaps(playerRect, leftMaskHitbox) || Intersector.overlaps(mirrorRect, leftMaskHitbox))) {
+                        Level8Chunk3State.isLeftMaskTaken = true
+                    }
+                    if (!Level8Chunk3State.isRightMaskTaken && (Intersector.overlaps(playerRect, rightMaskHitbox) || Intersector.overlaps(mirrorRect, rightMaskHitbox))) {
+                        Level8Chunk3State.isRightMaskTaken = true
+                    }
 
-                // Win if both are taken
-                if (Level8Chunk3State.isLeftMaskTaken && Level8Chunk3State.isRightMaskTaken) {
-                    win()
+                    if (Level8Chunk3State.isLeftMaskTaken && Level8Chunk3State.isRightMaskTaken) {
+                        win()
+                    }
                 }
             }
 
             // Abyss Death
             if (playerY < 0f) {
-                die("Dropped like a stone with bad ping.")
+                die("Dropped like a stone.")
             }
         }
 
@@ -2636,8 +2607,12 @@ class GameScreen(
             if (playerY > 720f && currentLevel != 5 && !(currentLevel == 7 && currentChunk == 2) && !(currentLevel == 7 && currentChunk == 3) && !(currentLevel == 8 && currentChunk == 1)) die("Gravity hurts.")
         } else {
             gravity = currentGravity
-            velocityY += gravity * delta
-            playerY += velocityY * delta
+            if (!(currentLevel == 8 && currentChunk == 3 && Level8Chunk3State.isFrozen)) {
+                velocityY += gravity * delta
+                playerY += velocityY * delta
+            } else {
+                velocityY = 0f
+            }
         if (currentLevel == 6 && currentChunk == 1 && !isDead && !isLevelComplete) {
             if (isPortalLoopActive) {
                 // Wrap around
@@ -3284,8 +3259,8 @@ class GameScreen(
         }
         if (isDead) shapeRenderer.color = Color.GRAY
 
-        val renderPlayerX = if (currentLevel == 8 && currentChunk == 3) Level8Chunk3State.visualPlayerX else playerX
-        val renderPlayerY = if (currentLevel == 8 && currentChunk == 3) Level8Chunk3State.visualPlayerY else playerY
+        val renderPlayerX = playerX
+        val renderPlayerY = playerY
 
         val centerX = renderPlayerX + 12.5f + renderOffset
         val isCrouching = playerHeight < normalHeight
@@ -3352,8 +3327,8 @@ class GameScreen(
         if ((currentLevel == 5 && currentChunk == 2 && mirrorActive) || (currentLevel == 6 && currentChunk == 2) || (currentLevel == 8 && currentChunk == 3 && mirrorActive)) {
             shapeRenderer.color = Color.RED // Deadly Red
 
-            val renderMirrorX = if (currentLevel == 8 && currentChunk == 3) Level8Chunk3State.visualMirrorX else mirrorRect.x
-            val renderMirrorY = if (currentLevel == 8 && currentChunk == 3) Level8Chunk3State.visualMirrorY else mirrorRect.y
+            val renderMirrorX = mirrorRect.x
+            val renderMirrorY = mirrorRect.y
 
             val mCenterX = renderMirrorX + 12.5f + renderOffset
 
@@ -3466,12 +3441,6 @@ class GameScreen(
             // No longer needed
         }
 
-        if (currentLevel == 8 && currentChunk == 3 && Level8Chunk3State.isLagging) {
-            buttonFont?.let { font ->
-                font.color = Color.RED
-                font.draw(game.batch, "RECONNECTING... 999+ MS", 640f - 150f + renderOffset, 360f)
-            }
-        }
 
         // Draw Sharks (and Safe Sharks from platforms)
         sharkTexture?.let { tex ->
