@@ -692,8 +692,8 @@ class GameScreen(
                 sharks.add(Shark(1120f, 40f, 0f, 0f, 1280f))
                 platforms.add(Platform(Rectangle(1120f, 40f, 120f, 60f), PlatformType.SAFE_SHARK))
 
-                // Mask directly above initial shark pos
-                maskX = 1120f + 60f - 15f
+                // Mask slightly to the left of the shark's initial pos to prevent wall obstruction
+                maskX = 1120f + 60f - 15f - 40f
                 maskY = 40f + 60f
             }
         }
