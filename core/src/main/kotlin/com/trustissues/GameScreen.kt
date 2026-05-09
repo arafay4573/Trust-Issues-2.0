@@ -2306,11 +2306,16 @@ class GameScreen(
                     if (Intersector.overlaps(playerRect, maskRect) || Intersector.overlaps(mirrorRect, maskRect)) {
                         // Got the center mask! Phase 1!
                         Level8Chunk3State.phase = 1
-                        isControlsInverted = true
                         Level8Chunk3State.isLagging = false
                         Level8Chunk3State.isPermanentlyPaused = false
                         Level8Chunk3State.isLeftMaskTaken = false
                         Level8Chunk3State.isRightMaskTaken = false
+
+                        // Start walls moving inward
+                        if (movingWalls.size >= 2) {
+                            movingWalls[0].speed = 50f
+                            movingWalls[1].speed = -50f
+                        }
                     }
                 } else {
                     maskRect.set(-5000f, -5000f, maskWidth, maskHeight)
@@ -2357,6 +2362,11 @@ class GameScreen(
                 if (Level8Chunk3State.isLeftMaskTaken && Level8Chunk3State.isRightMaskTaken) {
                     win()
                 }
+            }
+
+            // Abyss Death
+            if (playerY < 0f) {
+                die("Dropped like a stone with bad ping.")
             }
         }
 
@@ -3362,9 +3372,9 @@ class GameScreen(
                     shapeRenderer.translate(mCenterX, renderMirrorY + 22f, 0f)
                     shapeRenderer.rotate(0f, 0f, 1f, 90f) // Right wall
                     shapeRenderer.translate(-mCenterX, -(renderMirrorY + 22f), 0f)
-                } else if (Level8Chunk3State.wallState == 2) { // Ceiling
+                } else if (Level8Chunk3State.wallState == 2) { // Left Wall
                     shapeRenderer.translate(mCenterX, renderMirrorY + 22f, 0f)
-                    shapeRenderer.rotate(0f, 0f, 1f, 180f)
+                    shapeRenderer.rotate(0f, 0f, 1f, -90f) // Left wall
                     shapeRenderer.translate(-mCenterX, -(renderMirrorY + 22f), 0f)
                 }
             }
