@@ -3304,6 +3304,16 @@ class GameScreen(
                 shapeRenderer.rotate(0f, 0f, 1f, 90f)
                 shapeRenderer.translate(-centerX, -(renderPlayerY + 22f), 0f)
             }
+        } else if (currentLevel == 8 && currentChunk == 3 && Level8Chunk3State.phase == 1 && Level8Chunk3State.wallState != 0) {
+            if (Level8Chunk3State.wallState == 1) { // Left Wall
+                shapeRenderer.translate(centerX, renderPlayerY + 22f, 0f)
+                shapeRenderer.rotate(0f, 0f, 1f, -90f)
+                shapeRenderer.translate(-centerX, -(renderPlayerY + 22f), 0f)
+            } else if (Level8Chunk3State.wallState == 2) { // Right Wall
+                shapeRenderer.translate(centerX, renderPlayerY + 22f, 0f)
+                shapeRenderer.rotate(0f, 0f, 1f, 90f)
+                shapeRenderer.translate(-centerX, -(renderPlayerY + 22f), 0f)
+            }
         }
 
         shapeRenderer.circle(centerX, renderPlayerY + headOffset, 6f)
@@ -3348,17 +3358,13 @@ class GameScreen(
 
             val mOldTransform = shapeRenderer.transformMatrix.cpy()
             if (currentLevel == 8 && currentChunk == 3 && Level8Chunk3State.phase == 1 && Level8Chunk3State.wallState != 0) {
-                if (Level8Chunk3State.wallState == 1) { // Left Wall
+                if (Level8Chunk3State.wallState == 1) { // Right Wall (Mirror sticks to opposite wall, player on Left Wall means mirror on Right)
                     shapeRenderer.translate(mCenterX, renderMirrorY + 22f, 0f)
-                    shapeRenderer.rotate(0f, 0f, 1f, -90f)
+                    shapeRenderer.rotate(0f, 0f, 1f, 90f) // Right wall
                     shapeRenderer.translate(-mCenterX, -(renderMirrorY + 22f), 0f)
-                } else if (Level8Chunk2State.wallState == 2) { // Ceiling
+                } else if (Level8Chunk3State.wallState == 2) { // Ceiling
                     shapeRenderer.translate(mCenterX, renderMirrorY + 22f, 0f)
                     shapeRenderer.rotate(0f, 0f, 1f, 180f)
-                    shapeRenderer.translate(-mCenterX, -(renderMirrorY + 22f), 0f)
-                } else if (Level8Chunk3State.wallState == 2) { // Right Wall (Mirror Right Wall)
-                    shapeRenderer.translate(mCenterX, renderMirrorY + 22f, 0f)
-                    shapeRenderer.rotate(0f, 0f, 1f, 90f)
                     shapeRenderer.translate(-mCenterX, -(renderMirrorY + 22f), 0f)
                 }
             }
