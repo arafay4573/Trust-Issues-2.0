@@ -2135,11 +2135,15 @@ class GameScreen(
                     die("You fool! The mask was a trap!")
                 }
 
-                // Overlap with safe shark's body = win
-                // Use a slightly smaller hitbox for the shark body win condition to be precise
-                val sharkWinRect = Rectangle(shark.x + 20f, shark.y + 10f, 80f, 40f)
+                // Overlap with shark's body
+                // Use the full bounds to ensure dropping on it counts.
+                val sharkWinRect = Rectangle(shark.x, shark.y, 120f, 60f)
                 if (Intersector.overlaps(playerRect, sharkWinRect)) {
-                    win()
+                    if (Level8Chunk2State.wallState != 0) {
+                        win()
+                    } else {
+                        die("The shark doesn't like floor walkers!")
+                    }
                 }
             }
 
@@ -2810,7 +2814,7 @@ class GameScreen(
             } else {
                 // Safe Shark Logic: Skip collision if shark is at x=600 (Chunk 2 Friendly Shark)
                 // Also skip deadly collision for Level 5 Chunk 2 Safe Sharks
-            val isSafeSharkLevel5 = (currentLevel == 5 && currentChunk == 2) || (currentLevel == 7 && currentChunk == 1)
+            val isSafeSharkLevel5 = (currentLevel == 5 && currentChunk == 2) || (currentLevel == 7 && currentChunk == 1) || (currentLevel == 8 && currentChunk == 2)
             if ((currentLevel != 4 || currentChunk != 2 || shark.x != 600f) && !isSafeSharkLevel5) {
                     sharkRect.set(shark.x, shark.y, 120f, 60f) // approx
                     if (Intersector.overlaps(playerRect, sharkRect)) {
