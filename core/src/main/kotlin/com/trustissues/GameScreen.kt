@@ -2893,8 +2893,8 @@ class GameScreen(
 
         // Mirror Logic Level 8 Chunk 3
         if (currentLevel == 8 && currentChunk == 3 && mirrorActive) {
-            // Check if player collides with mirror
-            if (Intersector.overlaps(playerRect, mirrorRect)) {
+            // Check if player collides with mirror (after 2 second grace period)
+            if (chunkTime >= 2.0f && Intersector.overlaps(playerRect, mirrorRect)) {
                 die("Symmetry is a killer.")
             }
 
