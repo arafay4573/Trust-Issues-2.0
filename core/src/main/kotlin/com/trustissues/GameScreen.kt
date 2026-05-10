@@ -2889,7 +2889,32 @@ class GameScreen(
             if (Intersector.overlaps(playerRect, mirrorRect)) {
                 die("You ain't no Newton")
             }
+        }
 
+        // Mirror Logic Level 8 Chunk 3
+        if (currentLevel == 8 && currentChunk == 3 && mirrorActive) {
+            // Check if player collides with mirror
+            if (Intersector.overlaps(playerRect, mirrorRect)) {
+                die("Symmetry is a killer.")
+            }
+
+            // In Phase 1 and 2, mirror follows opposite wall logic based on player's wall state
+            if (Level8Chunk3State.phase == 1 || Level8Chunk3State.phase == 2) {
+                if (Level8Chunk3State.wallState == 1) { // Player on left wall
+                    mirrorRect.set(movingWalls[1].rect.x - playerWidth, playerY, playerWidth, playerHeight)
+                } else if (Level8Chunk3State.wallState == 2) { // Player on right wall
+                    mirrorRect.set(movingWalls[0].rect.x + movingWalls[0].rect.width, playerY, playerWidth, playerHeight)
+                } else {
+                    mirrorRect.set(1280f - playerWidth - playerX, playerY, playerWidth, playerHeight)
+                }
+            } else {
+                mirrorRect.set(1280f - playerWidth - playerX, playerY, playerWidth, playerHeight)
+            }
+
+        }
+
+        // Apply same checks to mirror globally if active in 5.2 or 8.3
+        if ((currentLevel == 5 && currentChunk == 2 && mirrorActive) || (currentLevel == 8 && currentChunk == 3 && mirrorActive)) {
             // Check lasers and walls for mirror
             for (laser in lasers) {
                 if (Intersector.overlaps(mirrorRect, laser.rect)) {
@@ -2898,7 +2923,12 @@ class GameScreen(
             }
             for (wall in movingWalls) {
                 if (wall.isActive && Intersector.overlaps(mirrorRect, wall.rect)) {
-                    die("You ain't no Newton")
+                    // Level 8 Chunk 3: walls only kill if they squish
+                    if (currentLevel == 8 && currentChunk == 3) {
+                        // Handled in specific squish block
+                    } else {
+                        die("You ain't no Newton")
+                    }
                 }
             }
 
@@ -3342,7 +3372,7 @@ class GameScreen(
             val mLegOffset = if (mCrouch) 0f else (Math.sin(walkTime.toDouble()).toFloat() * -6f)
 
             val mOldTransform = shapeRenderer.transformMatrix.cpy()
-            if (currentLevel == 8 && currentChunk == 3 && Level8Chunk3State.phase == 1 && Level8Chunk3State.wallState != 0) {
+            if (currentLevel == 8 && currentChunk == 3 && (Level8Chunk3State.phase == 1 || Level8Chunk3State.phase == 2) && Level8Chunk3State.wallState != 0) {
                 if (Level8Chunk3State.wallState == 1) { // Right Wall (Mirror sticks to opposite wall, player on Left Wall means mirror on Right)
                     shapeRenderer.translate(mCenterX, renderMirrorY + 22f, 0f)
                     shapeRenderer.rotate(0f, 0f, 1f, 90f) // Right wall
