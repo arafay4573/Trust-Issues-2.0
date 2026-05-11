@@ -2318,15 +2318,26 @@ class GameScreen(
                     }
                 }
 
-                // If in Phase 2, track mask collection
+                // If in Phase 2, track mask collection and cage penetration
                 if (Level8Chunk3State.phase == 2) {
-                    val leftMaskHitbox = Rectangle(Level8Chunk3State.leftMaskX, Level8Chunk3State.leftMaskY, maskWidth, maskHeight)
-                    val rightMaskHitbox = Rectangle(Level8Chunk3State.rightMaskX, Level8Chunk3State.rightMaskY, maskWidth, maskHeight)
+                    // Strict mask hitboxes (center 10x10) to prevent touching from outside
+                    val leftMaskHitbox = Rectangle(Level8Chunk3State.leftMaskX + 10f, Level8Chunk3State.leftMaskY + 10f, 10f, 10f)
+                    val rightMaskHitbox = Rectangle(Level8Chunk3State.rightMaskX + 10f, Level8Chunk3State.rightMaskY + 10f, 10f, 10f)
 
-                    if (!Level8Chunk3State.isLeftMaskTaken && (Intersector.overlaps(playerRect, leftMaskHitbox) || Intersector.overlaps(mirrorRect, leftMaskHitbox))) {
+                    // Validate entry side: you can only enter from the side that doesn't have any bar.
+                    fun canCollectLeft(rect: Rectangle): Boolean {
+                        // Left mask cage is open on the left. Must not attain from right/back.
+                        return Intersector.overlaps(rect, leftMaskHitbox) && rect.x < Level8Chunk3State.leftMaskX + 40f
+                    }
+                    fun canCollectRight(rect: Rectangle): Boolean {
+                        // Right mask cage is open on the right. Must not attain from left/back.
+                        return Intersector.overlaps(rect, rightMaskHitbox) && rect.x + rect.width > Level8Chunk3State.rightMaskX - 10f
+                    }
+
+                    if (!Level8Chunk3State.isLeftMaskTaken && (canCollectLeft(playerRect) || (mirrorActive && canCollectLeft(mirrorRect)))) {
                         Level8Chunk3State.isLeftMaskTaken = true
                     }
-                    if (!Level8Chunk3State.isRightMaskTaken && (Intersector.overlaps(playerRect, rightMaskHitbox) || Intersector.overlaps(mirrorRect, rightMaskHitbox))) {
+                    if (!Level8Chunk3State.isRightMaskTaken && (canCollectRight(playerRect) || (mirrorActive && canCollectRight(mirrorRect)))) {
                         Level8Chunk3State.isRightMaskTaken = true
                     }
 
