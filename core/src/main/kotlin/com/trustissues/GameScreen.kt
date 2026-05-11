@@ -752,6 +752,7 @@ class GameScreen(
 
                 // The Mirror Player is back
                 mirrorActive = true
+                mirrorRect.set(1280f - playerWidth - playerX, playerY, playerWidth, playerHeight)
 
                 // Symmetrical Crumbling Platforms leading up to masks
                 // Right path
