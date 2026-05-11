@@ -756,11 +756,11 @@ class GameScreen(
 
                 // Symmetrical Crumbling Platforms leading up to masks
                 // Right path
-                platforms.add(Platform(Rectangle(840f, 360f, 100f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(1040f, 460f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(840f, 320f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(1040f, 420f, 100f, 20f), PlatformType.CRUMBLING))
                 // Left path
-                platforms.add(Platform(Rectangle(340f, 360f, 100f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(140f, 460f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(340f, 320f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(140f, 420f, 100f, 20f), PlatformType.CRUMBLING))
                 // Center path
                 platforms.add(Platform(Rectangle(590f, 420f, 100f, 20f), PlatformType.CRUMBLING))
 
