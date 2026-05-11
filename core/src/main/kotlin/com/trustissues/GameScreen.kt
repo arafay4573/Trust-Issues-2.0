@@ -2288,15 +2288,15 @@ class GameScreen(
                     val cageWidth = 100f
                     val cageHeight = 100f
 
-                    // Left Mask Cage (Open on left side, facing left wall)
-                    platforms.add(Platform(Rectangle(Level8Chunk3State.leftMaskX - 40f, Level8Chunk3State.leftMaskY - 40f, cageWidth, cageThick), PlatformType.NORMAL)) // Bottom
-                    platforms.add(Platform(Rectangle(Level8Chunk3State.leftMaskX - 40f, Level8Chunk3State.leftMaskY + 60f, cageWidth, cageThick), PlatformType.NORMAL)) // Top
-                    platforms.add(Platform(Rectangle(Level8Chunk3State.leftMaskX + cageWidth - 40f, Level8Chunk3State.leftMaskY - 40f, cageThick, cageHeight + cageThick), PlatformType.NORMAL)) // Right
+                    // Left Mask Cage (Open on left side, facing left wall) - Now made of Lasers!
+                    lasers.add(Laser(Rectangle(Level8Chunk3State.leftMaskX - 40f, Level8Chunk3State.leftMaskY - 40f, cageWidth, cageThick), isSweeping = false)) // Bottom
+                    lasers.add(Laser(Rectangle(Level8Chunk3State.leftMaskX - 40f, Level8Chunk3State.leftMaskY + 60f, cageWidth, cageThick), isSweeping = false)) // Top
+                    lasers.add(Laser(Rectangle(Level8Chunk3State.leftMaskX + cageWidth - 40f, Level8Chunk3State.leftMaskY - 40f, cageThick, cageHeight + cageThick), isSweeping = false)) // Right
 
-                    // Right Mask Cage (Open on right side, facing right wall)
-                    platforms.add(Platform(Rectangle(Level8Chunk3State.rightMaskX - 40f, Level8Chunk3State.rightMaskY - 40f, cageWidth, cageThick), PlatformType.NORMAL)) // Bottom
-                    platforms.add(Platform(Rectangle(Level8Chunk3State.rightMaskX - 40f, Level8Chunk3State.rightMaskY + 60f, cageWidth, cageThick), PlatformType.NORMAL)) // Top
-                    platforms.add(Platform(Rectangle(Level8Chunk3State.rightMaskX - 40f, Level8Chunk3State.rightMaskY - 40f, cageThick, cageHeight + cageThick), PlatformType.NORMAL)) // Left
+                    // Right Mask Cage (Open on right side, facing right wall) - Now made of Lasers!
+                    lasers.add(Laser(Rectangle(Level8Chunk3State.rightMaskX - 40f, Level8Chunk3State.rightMaskY - 40f, cageWidth, cageThick), isSweeping = false)) // Bottom
+                    lasers.add(Laser(Rectangle(Level8Chunk3State.rightMaskX - 40f, Level8Chunk3State.rightMaskY + 60f, cageWidth, cageThick), isSweeping = false)) // Top
+                    lasers.add(Laser(Rectangle(Level8Chunk3State.rightMaskX - 40f, Level8Chunk3State.rightMaskY - 40f, cageThick, cageHeight + cageThick), isSweeping = false)) // Left
                 }
 
             } else if (Level8Chunk3State.phase == 1 || Level8Chunk3State.phase == 2) {
