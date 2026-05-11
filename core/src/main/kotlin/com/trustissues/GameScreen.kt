@@ -209,6 +209,27 @@ class GameScreen(
         }
     }
 
+
+    private object Level9Chunk1State {
+        var phase = 0 // 0=Init/Type, 1=Wait middle, 2=Finale
+        var consoleText = ""
+        var consoleFullText = ""
+        var consoleTimer = 0f
+        var textIndex = 0
+        var loadingCrumbled = false
+        var cameraShakeTimer = 0f
+
+        fun reset() {
+            phase = 0
+            consoleText = ""
+            consoleFullText = "OSIRIS: Unauthorized connection found."
+            consoleTimer = 0f
+            textIndex = 0
+            loadingCrumbled = false
+            cameraShakeTimer = 0f
+        }
+    }
+
     private object Level8Chunk3State {
         var phase = 0 // 0 = Start, 1 = Trap Phase (Frozen, Walls crush), 2 = Win Phase (Inverted, Cages)
         var isFrozen = false // Replaces isPermanentlyPaused
@@ -255,7 +276,8 @@ class GameScreen(
     data class MovingWall(
         val rect: Rectangle,
         var speed: Float,
-        var isActive: Boolean
+        var isActive: Boolean,
+        var label: String? = null
     )
     private val movingWalls = mutableListOf<MovingWall>()
 
@@ -387,7 +409,7 @@ class GameScreen(
             setupLevel6(chunk)
         } else if (currentLevel == 7) {
             setupLevel7(chunk)
-        } else if (currentLevel == 8) {
+        } else         if (currentLevel == 8) {
             setupLevel8(chunk)
         }
 
@@ -628,6 +650,47 @@ class GameScreen(
         }
     }
 
+
+
+    private fun setupLevel9(chunk: Int) {
+        when (chunk) {
+            1 -> {
+                // Chunk 1: The Glitch in the Deep
+                platforms.clear()
+                movingWalls.clear()
+                sharks.clear()
+                lasers.clear()
+                gameButtons.clear()
+                bubbles.clear()
+                gravitySwitches.clear()
+                worldTilt = 0f
+                isControlsInverted = false
+                canJump = true
+                launchVelocityX = 0f
+
+                Level9Chunk1State.reset()
+
+                playerX = 100f
+                playerY = 150f
+                lastPlayerX = 100f
+                lastPlayerY = 150f
+                velocityY = 0f
+                reverseGravity = false
+                chunkTime = 0f
+
+                // Loading Platform
+                platforms.add(Platform(Rectangle(40f, 130f, 150f, 20f), PlatformType.NORMAL, label = "[LOADING_LEVEL_9...]"))
+
+                // Symmetrical Red Walls (Flickering Text)
+                movingWalls.add(MovingWall(Rectangle(-200f, 0f, 200f, 1500f), speed = 40f, isActive = true, label = "DELETE_SYSTEM_FILE_32..."))
+                movingWalls.add(MovingWall(Rectangle(1280f, 0f, 200f, 1500f), speed = -40f, isActive = true, label = "DELETE_SYSTEM_FILE_32..."))
+
+                // Fake Mask
+                maskX = -2000f
+                maskY = -2000f
+            }
+        }
+    }
 
     private fun setupLevel8(chunk: Int) {
         when (chunk) {
@@ -1334,7 +1397,7 @@ class GameScreen(
 
     private fun completeChunk() {
         val nextChunk = currentChunk + 1
-        val isEndOfLevel = nextChunk > 3 || (currentLevel == 7 && nextChunk > 2) || (currentLevel == 8 && nextChunk > 1)
+        val isEndOfLevel = nextChunk > 3 || (currentLevel == 7 && nextChunk > 2) || (currentLevel == 8 && nextChunk > 1) || (currentLevel == 9 && nextChunk > 1)
 
         val prefs = Gdx.app.getPreferences("TrustIssues")
         val savedMaxChunk = prefs.getInteger("level_${currentLevel}_maxChunk", 1)
@@ -1349,7 +1412,7 @@ class GameScreen(
                 prefs.putInteger("unlockedLevel", nextLevel).flush()
                 prefs.putInteger("level_${nextLevel}_maxChunk", 1).flush()
             }
-            game.screen = if (nextLevel > 8) LevelSelectScreen(game) else GameScreen(game, nextLevel, 1)
+            game.screen = if (nextLevel > 9) LevelSelectScreen(game) else GameScreen(game, nextLevel, 1)
         } else {
             game.screen = GameScreen(game, currentLevel, nextChunk)
         }
@@ -1596,6 +1659,14 @@ class GameScreen(
                 // So we SHOULD restart.
                 val wasDead = isDead
                 Gdx.app.postRunnable {
+
+            if (currentLevel == 9) {
+                // Reset camera on death just in case
+                (gameViewport.camera as com.badlogic.gdx.graphics.OrthographicCamera).zoom = 1.0f
+                gameViewport.camera.position.set(640f, 360f, 0f)
+                gameViewport.camera.update()
+            }
+
                     if (wasDead) setupChunk(currentChunk) else completeChunk()
                 }
             }
@@ -2348,6 +2419,103 @@ class GameScreen(
             // Abyss Death
             if (playerY < 0f) {
                 die("Dropped like a stone.")
+            }
+        }
+
+
+        // --- LEVEL 9 CHUNK 1 LOGIC ---
+        if (currentLevel == 9 && currentChunk == 1 && !isDead && !isLevelComplete) {
+            chunkTime += delta
+
+            // Console Typewriter Effect
+            if (Level9Chunk1State.textIndex < Level9Chunk1State.consoleFullText.length) {
+                Level9Chunk1State.consoleTimer += delta
+                if (Level9Chunk1State.consoleTimer >= 0.05f) { // Typing speed
+                    Level9Chunk1State.consoleTimer = 0f
+                    Level9Chunk1State.consoleText += Level9Chunk1State.consoleFullText[Level9Chunk1State.textIndex]
+                    Level9Chunk1State.textIndex++
+                }
+            }
+
+            if (Level9Chunk1State.phase == 0) {
+                if (chunkTime >= 3f && !Level9Chunk1State.loadingCrumbled) {
+                    Level9Chunk1State.loadingCrumbled = true
+                    // Find loading platform and turn to red
+                    val loadPlat = platforms.find { it.label == "[LOADING_LEVEL_9...]" }
+                    if (loadPlat != null) {
+                        loadPlat.type = PlatformType.CRUMBLING
+                        loadPlat.startCrumbling(0.1f) // Vanish quickly
+                    }
+
+                    Level9Chunk1State.consoleFullText = "OSIRIS: Let's see how you handle garbage data."
+                    Level9Chunk1State.consoleText = ""
+                    Level9Chunk1State.textIndex = 0
+
+                    // Spawn new solid data platforms
+                    platforms.add(Platform(Rectangle(300f, 200f, 100f, 20f), PlatformType.NORMAL, label = "[DATA]"))
+                    platforms.add(Platform(Rectangle(500f, 300f, 100f, 20f), PlatformType.NORMAL, label = "[VOID]"))
+                    platforms.add(Platform(Rectangle(700f, 400f, 100f, 20f), PlatformType.NORMAL, label = "[ERROR]"))
+                    platforms.add(Platform(Rectangle(900f, 500f, 100f, 20f), PlatformType.NORMAL, label = "[TEMP]"))
+
+                    Level9Chunk1State.phase = 1
+                }
+            } else if (Level9Chunk1State.phase == 1) {
+                if (playerX > 640f) {
+                    Level9Chunk1State.phase = 2
+                    Level9Chunk1State.consoleFullText = "OSIRIS: Reversing Gravity and Input..."
+                    Level9Chunk1State.consoleText = ""
+                    Level9Chunk1State.textIndex = 0
+
+                    isControlsInverted = true
+                    reverseGravity = true
+                    Level9Chunk1State.cameraShakeTimer = 1.0f // 1 second shake
+
+                    // Spawn fake mask
+                    maskX = 1150f
+                    maskY = 600f
+
+                    // Next phase timer handles OSIRIS backdoor text
+                    chunkTime = 0f
+                }
+            } else if (Level9Chunk1State.phase == 2) {
+                if (chunkTime >= 2.0f && Level9Chunk1State.consoleFullText != "OSIRIS: Backdoor opened: [EXIT_POINT]") {
+                    Level9Chunk1State.consoleFullText = "OSIRIS: Backdoor opened: [EXIT_POINT]"
+                    Level9Chunk1State.consoleText = ""
+                    Level9Chunk1State.textIndex = 0
+                }
+
+                // Camera shake
+                if (Level9Chunk1State.cameraShakeTimer > 0f) {
+                    Level9Chunk1State.cameraShakeTimer -= delta
+                    val shakeX = MathUtils.random(-10f, 10f)
+                    val shakeY = MathUtils.random(-10f, 10f)
+                    gameViewport.camera.position.set(640f + shakeX, 360f + shakeY, 0f)
+                    val zoom = MathUtils.random(0.9f, 1.1f)
+                    (gameViewport.camera as com.badlogic.gdx.graphics.OrthographicCamera).zoom = zoom
+                } else {
+                    gameViewport.camera.position.set(640f, 360f, 0f)
+                    (gameViewport.camera as com.badlogic.gdx.graphics.OrthographicCamera).zoom = 1.0f
+                }
+                gameViewport.camera.update()
+
+                // Win Collision
+                if (Level9Chunk1State.consoleFullText == "OSIRIS: Backdoor opened: [EXIT_POINT]" && Level9Chunk1State.textIndex >= Level9Chunk1State.consoleFullText.length) {
+                    val exitRect = Rectangle(640f - 100f, 680f, 200f, 40f)
+                    if (Intersector.overlaps(playerRect, exitRect)) {
+                        win()
+                    }
+                }
+
+                // Fake mask death
+                maskRect.set(maskX, maskY, maskWidth, maskHeight)
+                if (Intersector.overlaps(playerRect, maskRect)) {
+                    die("OSIRIS: Nice try, User.")
+                }
+            }
+
+            // Abyss Death
+            if (playerY < 0f || playerY > 720f) {
+                die("Error 404: Skill Not Found.")
             }
         }
 
@@ -3137,6 +3305,12 @@ class GameScreen(
     private fun die(customMessage: String? = null) {
         if (isDead) return
         isDead = true
+
+        if (currentLevel == 9) {
+            screenFlashColor = Color.GREEN
+            screenFlashTimer = 0.5f // Green flash instead of red
+        }
+
         var roast = customMessage ?: deathRoasts.random()
 
         if (currentLevel == 8 && currentChunk == 3) {
@@ -3158,6 +3332,15 @@ class GameScreen(
         if (currentLevel == 7 && currentChunk == 2) {
             roast = customMessage ?: listOf("Newton is laughing at your lack of coordination.", "You're falling for the same tricks... literally.").random()
         }
+
+        if (currentLevel == 9) {
+            roast = customMessage ?: listOf(
+                "Error 404: Skill Not Found.",
+                "I'm deleting your high score... Just kidding. Or am I?",
+                "Access Denied. Please uninstall your brain."
+            ).random()
+        }
+
 
         messageLabel?.setText(roast)
         messageLabel?.color = Color.RED
@@ -3419,6 +3602,22 @@ class GameScreen(
             }
         }
 
+
+        if (currentLevel == 9 && currentChunk == 1) {
+            // Semi-transparent console background
+            Gdx.gl.glEnable(com.badlogic.gdx.graphics.GL20.GL_BLEND)
+            Gdx.gl.glBlendFunc(com.badlogic.gdx.graphics.GL20.GL_SRC_ALPHA, com.badlogic.gdx.graphics.GL20.GL_ONE_MINUS_SRC_ALPHA)
+            shapeRenderer.color = Color(0f, 0f, 0f, 0.7f)
+            shapeRenderer.rect(0f + renderOffset, 660f, 1280f, 60f)
+
+            // CRT Lines
+            shapeRenderer.color = Color(0f, 1f, 0f, 0.1f)
+            for (i in 0..720 step 4) {
+                shapeRenderer.rectLine(0f + renderOffset, i.toFloat(), 1280f + renderOffset, i.toFloat(), 1f)
+            }
+            Gdx.gl.glDisable(com.badlogic.gdx.graphics.GL20.GL_BLEND)
+        }
+
         // Draw The Shrinking Void Overlay (Level 7 Chunk 3)
         if (currentLevel == 7 && currentChunk == 3) {
             shapeRenderer.color = Color.BLACK
@@ -3438,6 +3637,17 @@ class GameScreen(
         // --- 2. TEXTURES (SpriteBatch) ---
         game.batch.projectionMatrix = gameViewport.camera.combined
         game.batch.begin()
+
+
+        if (currentLevel == 9) {
+            buttonFont?.let { font ->
+                font.color = Color.GREEN
+                for (b in bubbles) {
+                    val text = if (b.radius > 5f) "1" else "0"
+                    font.draw(game.batch, text, b.x + renderOffset, b.y)
+                }
+            }
+        }
 
         // Draw Mask using Texture
         maskTexture?.let { tex ->
@@ -3466,6 +3676,35 @@ class GameScreen(
                 }
                 if (!Level8Chunk3State.isRightMaskTaken && isVisible(Level8Chunk3State.rightMaskX, Level8Chunk3State.rightMaskY)) {
                     game.batch.draw(tex, Level8Chunk3State.rightMaskX + renderOffset, Level8Chunk3State.rightMaskY + renderOffsetY, 32f, 32f)
+                }
+            }
+        }
+
+
+        // Text Platforms (SpriteBatch needs to be open)
+        if (currentLevel == 9) {
+            buttonFont?.let { font ->
+                font.color = Color.GREEN
+                for (plat in platforms) {
+                    if (plat.label != null && plat.state != PlatformState.DESTROYED) {
+                        font.draw(game.batch, plat.label, plat.rect.x + renderOffset, plat.rect.y + plat.rect.height)
+                    }
+                }
+                for (wall in movingWalls) {
+                    if (wall.label != null && wall.isActive) {
+                        // Draw vertically or just repeat? Let's just repeat it vertically.
+                        for (i in 0..30) {
+                            font.draw(game.batch, wall.label, wall.rect.x + renderOffset, i * 50f)
+                        }
+                    }
+                }
+
+                // Console Bar
+                if (Level9Chunk1State.consoleText.isNotEmpty()) {
+                    // It says semi-transparent black bar, but we are in SpriteBatch here.
+                    // We can just draw text for now, we'll do the black bar in ShapeRenderer if needed.
+                    font.color = Color.GREEN
+                    font.draw(game.batch, Level9Chunk1State.consoleText, 300f + renderOffset, 700f)
                 }
             }
         }
