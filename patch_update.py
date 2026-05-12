@@ -7,58 +7,68 @@ update_code = '''
         // --- LEVEL 9 CHUNK 1 LOGIC ---
         if (currentLevel == 9 && currentChunk == 1 && !isDead && !isLevelComplete) {
             chunkTime += delta
-            Level9Chunk1State.updateProgress += delta * 0.05f // Slow progress
 
-            // Phase A: Treadmill Bar Physics
-            val progressBar = platforms.find { it.label == "PROGRESS_BAR" }
-            if (progressBar != null) {
-                // If touching the top of the progress bar
-                if (Intersector.overlaps(playerRect, progressBar.rect)) {
-                    playerX -= 150f * delta // Treadmill pushes left
-                    // Flappy jump is enabled natively via canJump = true, but we need to ensure they can jump while on it
+            if (Level9Chunk1State.phase == 0) {
+                if (chunkTime >= 2.0f) {
+                    Level9Chunk1State.phase = 1
+
+                    // Clear dummy obstacles, leave the spawn platform
+                    val spawnPlat = platforms.firstOrNull { it.rect.x == 0f }
+                    platforms.clear()
+                    if (spawnPlat != null) platforms.add(spawnPlat)
                 }
-            }
+            } else if (Level9Chunk1State.phase == 1) {
+                // The Android Security Update Box (Center: 640, 250, Size: 400x200)
+                val boxCenterX = 640f
+                val boxCenterY = 250f
+                val boxWidth = 400f
+                val boxHeight = 200f
+                val topSurfaceY = boxCenterY + boxHeight / 2f
 
-            // Phase B: System Pop-ups every 5 seconds
-            Level9Chunk1State.popupTimer += delta
-            if (Level9Chunk1State.popupTimer >= 5.0f && Level9Chunk1State.popupsSpawned < 3) {
-                Level9Chunk1State.popupTimer = 0f
-                Level9Chunk1State.popupsSpawned++
+                Level9Chunk1State.isPlayerOnBox = false
 
-                // Spawn a popup that blocks the path. The player must jump over it.
-                val popupX = MathUtils.random(400f, 800f)
-                val popupY = 420f // Right on top of the treadmill
-                val label = if (MathUtils.randomBoolean()) "LOW BATTERY" else "NO SIGNAL"
-                platforms.add(Platform(Rectangle(popupX, popupY, 150f, 80f), PlatformType.NORMAL, label = label))
-            }
+                // Check if player is above the box bounds
+                if (playerX + playerWidth > boxCenterX - boxWidth / 2f && playerX < boxCenterX + boxWidth / 2f) {
+                    // Calculate the Y coordinate of the box's top surface at the player's X
+                    val relativeX = (playerX + playerWidth / 2f) - boxCenterX
+                    val angleRad = Math.toRadians(Level9Chunk1State.boxAngle.toDouble())
+                    // Surface Y equation: y = tan(angle) * x + topSurfaceY
+                    val currentSurfaceY = (Math.tan(angleRad) * relativeX).toFloat() + topSurfaceY
 
-            // Phase C: Finale (Hidden Close Button)
-            if (chunkTime >= 20.0f && !Level9Chunk1State.isXSpawned) {
-                Level9Chunk1State.isXSpawned = true
-                Level9Chunk1State.phase = 1
-            }
+                    // If player is falling onto it or walking on it
+                    if (playerY <= currentSurfaceY && lastPlayerY >= currentSurfaceY - 20f && velocityY <= 0f) {
+                        Level9Chunk1State.isPlayerOnBox = true
+                        playerY = currentSurfaceY
+                        velocityY = 0f
+                        canJump = true // Allow jump
 
-            // The lethal ACCEPT button & mask
-            val acceptRect = gameButtons.firstOrNull()?.rect
-            if (acceptRect != null && Intersector.overlaps(playerRect, acceptRect)) {
-                die("You should have read the Terms of Service.")
-            }
-            maskRect.set(maskX, maskY, maskWidth, maskHeight)
-            if (Intersector.overlaps(playerRect, maskRect)) {
-                die("Update Failed: User is obsolete.")
-            }
+                        // Apply torque based on player distance from center
+                        val torque = relativeX * -0.5f // Negative because right side (positive X) tilts angle negative (clockwise)
+                        Level9Chunk1State.boxAngleVel += torque * delta
 
-            // The Win (Hidden X)
-            if (Level9Chunk1State.isXSpawned) {
-                val xRect = Rectangle(1100f, 650f, 30f, 30f)
-                if (Intersector.overlaps(playerRect, xRect)) {
+                        // Apply sliding due to slope
+                        val slideForce = Math.sin(angleRad).toFloat() * -400f * delta
+                        playerX += slideForce
+                    }
+                }
+
+                // Add some damping/gravity to the box itself
+                Level9Chunk1State.boxAngleVel *= 0.95f // Friction
+                Level9Chunk1State.boxAngle += Level9Chunk1State.boxAngleVel * delta
+
+                // Limit the angle so it doesn't spin uncontrollably
+                Level9Chunk1State.boxAngle = MathUtils.clamp(Level9Chunk1State.boxAngle, -80f, 80f)
+
+                // Win Condition
+                maskRect.set(maskX, maskY, maskWidth, maskHeight)
+                if (Intersector.overlaps(playerRect, maskRect)) {
                     win()
                 }
             }
 
             // Abyss Death
-            if (playerY < 0f || playerY > 720f) {
-                die("Your battery is fine, but your skill is at 0%.")
+            if (playerY < 0f) {
+                die("The update crashed your system.")
             }
         }
 '''
