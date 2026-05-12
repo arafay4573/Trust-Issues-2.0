@@ -5,22 +5,20 @@ with open('core/src/main/kotlin/com/trustissues/GameScreen.kt', 'r') as f:
 
 state_code = '''
     private object Level9Chunk1State {
-        var phase = 0 // 0=Init/Type, 1=Wait middle, 2=Finale
-        var consoleText = ""
-        var consoleFullText = ""
-        var consoleTimer = 0f
-        var textIndex = 0
-        var loadingCrumbled = false
-        var cameraShakeTimer = 0f
+        var phase = 0 // 0=Treadmill, 1=Finale (Wait for X to appear)
+        var updateProgress = 0f
+        var popupTimer = 0f
+        var popupsSpawned = 0
+        var isXSpawned = false
+        var uiScale = 1f
 
         fun reset() {
             phase = 0
-            consoleText = ""
-            consoleFullText = "OSIRIS: Unauthorized connection found."
-            consoleTimer = 0f
-            textIndex = 0
-            loadingCrumbled = false
-            cameraShakeTimer = 0f
+            updateProgress = 0f
+            popupTimer = 0f
+            popupsSpawned = 0
+            isXSpawned = false
+            uiScale = 1f
         }
     }
 '''

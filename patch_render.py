@@ -3,62 +3,69 @@ import re
 with open('core/src/main/kotlin/com/trustissues/GameScreen.kt', 'r') as f:
     content = f.read()
 
-# Add CRT scan lines and text platforms logic to drawing
-draw_code = '''
-        // Text Platforms (SpriteBatch needs to be open)
-        if (currentLevel == 9) {
-            buttonFont?.let { font ->
-                font.color = Color.GREEN
-                for (plat in platforms) {
-                    if (plat.label != null && plat.state != PlatformState.DESTROYED) {
-                        font.draw(game.batch, plat.label, plat.rect.x + renderOffset, plat.rect.y + plat.rect.height)
-                    }
-                }
-                for (wall in movingWalls) {
-                    if (wall.label != null && wall.isActive) {
-                        // Draw vertically or just repeat? Let's just repeat it vertically.
-                        for (i in 0..30) {
-                            font.draw(game.batch, wall.label, wall.rect.x + renderOffset, i * 50f)
-                        }
-                    }
-                }
-
-                // Console Bar
-                if (Level9Chunk1State.consoleText.isNotEmpty()) {
-                    // It says semi-transparent black bar, but we are in SpriteBatch here.
-                    // We can just draw text for now, we'll do the black bar in ShapeRenderer if needed.
-                    font.color = Color.GREEN
-                    font.draw(game.batch, Level9Chunk1State.consoleText, 300f + renderOffset, 700f)
-                }
-            }
-        }
-'''
-
-content = content.replace(
-    '// Level 8 Chunk 1 custom text (if any)',
-    draw_code + '\n        // Level 8 Chunk 1 custom text (if any)'
-)
-
 shape_code = '''
         if (currentLevel == 9 && currentChunk == 1) {
-            // Semi-transparent console background
+            // Draw large gray UI window
             Gdx.gl.glEnable(com.badlogic.gdx.graphics.GL20.GL_BLEND)
             Gdx.gl.glBlendFunc(com.badlogic.gdx.graphics.GL20.GL_SRC_ALPHA, com.badlogic.gdx.graphics.GL20.GL_ONE_MINUS_SRC_ALPHA)
-            shapeRenderer.color = Color(0f, 0f, 0f, 0.7f)
-            shapeRenderer.rect(0f + renderOffset, 660f, 1280f, 60f)
 
-            // CRT Lines
-            shapeRenderer.color = Color(0f, 1f, 0f, 0.1f)
-            for (i in 0..720 step 4) {
-                shapeRenderer.rectLine(0f + renderOffset, i.toFloat(), 1280f + renderOffset, i.toFloat(), 1f)
-            }
+            // Blurred background effect (dark overlay)
+            shapeRenderer.color = Color(0f, 0f, 0f, 0.5f)
+            shapeRenderer.rect(0f + renderOffset, 0f, 1280f, 720f)
+
+            // Main OS Window
+            shapeRenderer.color = Color(0.8f, 0.8f, 0.8f, 1f) // Light gray
+            shapeRenderer.rect(240f + renderOffset, 160f, 800f, 400f)
+
+            // Window Title Bar
+            shapeRenderer.color = Color(0.6f, 0.6f, 0.6f, 1f)
+            shapeRenderer.rect(240f + renderOffset, 520f, 800f, 40f)
+
             Gdx.gl.glDisable(com.badlogic.gdx.graphics.GL20.GL_BLEND)
+
+            // Draw fake "X" if spawned
+            if (Level9Chunk1State.isXSpawned) {
+                shapeRenderer.color = if (MathUtils.randomBoolean(0.8f)) Color.RED else Color.DARK_GRAY
+                shapeRenderer.rectLine(1100f + renderOffset, 650f, 1130f + renderOffset, 680f, 4f)
+                shapeRenderer.rectLine(1100f + renderOffset, 680f, 1130f + renderOffset, 650f, 4f)
+            }
         }
 '''
 
 content = content.replace(
     '// Draw The Shrinking Void Overlay (Level 7 Chunk 3)',
     shape_code + '\n        // Draw The Shrinking Void Overlay (Level 7 Chunk 3)'
+)
+
+draw_code = '''
+        // Text Overlays for Level 9 Chunk 1
+        if (currentLevel == 9 && currentChunk == 1) {
+            buttonFont?.let { font ->
+                font.color = Color.BLACK
+                font.draw(game.batch, "SYSTEM UPDATE REQUIRES YOUR ATTENTION", 400f + renderOffset, 550f)
+
+                // Draw platform labels
+                for (plat in platforms) {
+                    if (plat.label != null && plat.state != PlatformState.DESTROYED) {
+                        if (plat.label == "PROGRESS_BAR") {
+                            // Draw scrolling effect
+                            font.draw(game.batch, "INSTALLING... " + (Level9Chunk1State.updateProgress * 100).toInt() + "%", 500f + renderOffset, 390f)
+                        } else {
+                            font.draw(game.batch, plat.label, plat.rect.x + renderOffset + 10f, plat.rect.y + plat.rect.height - 10f)
+                        }
+                    }
+                }
+
+                // Draw Accept Button Label
+                font.color = Color.WHITE
+                font.draw(game.batch, "[ACCEPT]", 1055f + renderOffset, 225f)
+            }
+        }
+'''
+
+content = content.replace(
+    '// Draw Mask using Texture',
+    draw_code + '\n        // Draw Mask using Texture'
 )
 
 
