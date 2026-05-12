@@ -6,9 +6,9 @@ with open('core/src/main/kotlin/com/trustissues/GameScreen.kt', 'r') as f:
 roast_code = '''
         if (currentLevel == 9) {
             roast = customMessage ?: listOf(
-                "Error 404: Skill Not Found.",
-                "I'm deleting your high score... Just kidding. Or am I?",
-                "Access Denied. Please uninstall your brain."
+                "You should have read the Terms of Service.",
+                "Update Failed: User is obsolete.",
+                "Your battery is fine, but your skill is at 0%."
             ).random()
         }
 '''
