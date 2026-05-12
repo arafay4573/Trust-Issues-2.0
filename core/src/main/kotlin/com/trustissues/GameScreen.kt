@@ -819,11 +819,11 @@ class GameScreen(
 
                 // Symmetrical Crumbling Platforms leading up to masks
                 // Right path
-                platforms.add(Platform(Rectangle(840f, 360f, 100f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(1040f, 460f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(840f, 320f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(1040f, 420f, 100f, 20f), PlatformType.CRUMBLING))
                 // Left path
-                platforms.add(Platform(Rectangle(340f, 360f, 100f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(140f, 460f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(340f, 320f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(140f, 420f, 100f, 20f), PlatformType.CRUMBLING))
                 // Center path
                 platforms.add(Platform(Rectangle(590f, 420f, 100f, 20f), PlatformType.CRUMBLING))
 
@@ -2359,15 +2359,13 @@ class GameScreen(
                     val cageWidth = 100f
                     val cageHeight = 100f
 
-                    // Left Mask Cage (Open on left side, facing left wall)
-                    platforms.add(Platform(Rectangle(Level8Chunk3State.leftMaskX - 40f, Level8Chunk3State.leftMaskY - 40f, cageWidth, cageThick), PlatformType.NORMAL)) // Bottom
-                    platforms.add(Platform(Rectangle(Level8Chunk3State.leftMaskX - 40f, Level8Chunk3State.leftMaskY + 60f, cageWidth, cageThick), PlatformType.NORMAL)) // Top
-                    platforms.add(Platform(Rectangle(Level8Chunk3State.leftMaskX + cageWidth - 40f, Level8Chunk3State.leftMaskY - 40f, cageThick, cageHeight + cageThick), PlatformType.NORMAL)) // Right
+                    // Left Mask Cage (Open on left side and top, facing left wall) - Now made of Lasers!
+                    lasers.add(Laser(Rectangle(Level8Chunk3State.leftMaskX - 40f, Level8Chunk3State.leftMaskY - 40f, cageWidth, cageThick), isSweeping = false)) // Bottom
+                    lasers.add(Laser(Rectangle(Level8Chunk3State.leftMaskX + cageWidth - 40f, Level8Chunk3State.leftMaskY - 40f, cageThick, cageHeight + cageThick), isSweeping = false)) // Right
 
-                    // Right Mask Cage (Open on right side, facing right wall)
-                    platforms.add(Platform(Rectangle(Level8Chunk3State.rightMaskX - 40f, Level8Chunk3State.rightMaskY - 40f, cageWidth, cageThick), PlatformType.NORMAL)) // Bottom
-                    platforms.add(Platform(Rectangle(Level8Chunk3State.rightMaskX - 40f, Level8Chunk3State.rightMaskY + 60f, cageWidth, cageThick), PlatformType.NORMAL)) // Top
-                    platforms.add(Platform(Rectangle(Level8Chunk3State.rightMaskX - 40f, Level8Chunk3State.rightMaskY - 40f, cageThick, cageHeight + cageThick), PlatformType.NORMAL)) // Left
+                    // Right Mask Cage (Open on right side and top, facing right wall) - Now made of Lasers!
+                    lasers.add(Laser(Rectangle(Level8Chunk3State.rightMaskX - 40f, Level8Chunk3State.rightMaskY - 40f, cageWidth, cageThick), isSweeping = false)) // Bottom
+                    lasers.add(Laser(Rectangle(Level8Chunk3State.rightMaskX - 40f, Level8Chunk3State.rightMaskY - 40f, cageThick, cageHeight + cageThick), isSweeping = false)) // Left
                 }
 
             } else if (Level8Chunk3State.phase == 1 || Level8Chunk3State.phase == 2) {
@@ -3503,7 +3501,7 @@ class GameScreen(
                 shapeRenderer.rotate(0f, 0f, 1f, 90f)
                 shapeRenderer.translate(-centerX, -(renderPlayerY + 22f), 0f)
             }
-        } else if (currentLevel == 8 && currentChunk == 3 && Level8Chunk3State.phase == 1 && Level8Chunk3State.wallState != 0) {
+        } else if (currentLevel == 8 && currentChunk == 3 && (Level8Chunk3State.phase == 1 || Level8Chunk3State.phase == 2) && Level8Chunk3State.wallState != 0) {
             if (Level8Chunk3State.wallState == 1) { // Left Wall
                 shapeRenderer.translate(centerX, renderPlayerY + 22f, 0f)
                 shapeRenderer.rotate(0f, 0f, 1f, -90f)
