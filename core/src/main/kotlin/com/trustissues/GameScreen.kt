@@ -409,7 +409,7 @@ class GameScreen(
             setupLevel6(chunk)
         } else if (currentLevel == 7) {
             setupLevel7(chunk)
-        } else         if (currentLevel == 8) {
+        } else if (currentLevel == 8) {
             setupLevel8(chunk)
         }
 
@@ -819,11 +819,11 @@ class GameScreen(
 
                 // Symmetrical Crumbling Platforms leading up to masks
                 // Right path
-                platforms.add(Platform(Rectangle(840f, 320f, 100f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(1040f, 420f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(840f, 360f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(1040f, 460f, 100f, 20f), PlatformType.CRUMBLING))
                 // Left path
-                platforms.add(Platform(Rectangle(340f, 320f, 100f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(140f, 420f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(340f, 360f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(140f, 460f, 100f, 20f), PlatformType.CRUMBLING))
                 // Center path
                 platforms.add(Platform(Rectangle(590f, 420f, 100f, 20f), PlatformType.CRUMBLING))
 
@@ -2359,13 +2359,15 @@ class GameScreen(
                     val cageWidth = 100f
                     val cageHeight = 100f
 
-                    // Left Mask Cage (Open on left side, facing left wall) - Now made of Lasers!
-                    lasers.add(Laser(Rectangle(Level8Chunk3State.leftMaskX - 40f, Level8Chunk3State.leftMaskY - 40f, cageWidth, cageThick), isSweeping = false)) // Bottom
-                    lasers.add(Laser(Rectangle(Level8Chunk3State.leftMaskX + cageWidth - 40f, Level8Chunk3State.leftMaskY - 40f, cageThick, cageHeight + cageThick), isSweeping = false)) // Right
+                    // Left Mask Cage (Open on left side, facing left wall)
+                    platforms.add(Platform(Rectangle(Level8Chunk3State.leftMaskX - 40f, Level8Chunk3State.leftMaskY - 40f, cageWidth, cageThick), PlatformType.NORMAL)) // Bottom
+                    platforms.add(Platform(Rectangle(Level8Chunk3State.leftMaskX - 40f, Level8Chunk3State.leftMaskY + 60f, cageWidth, cageThick), PlatformType.NORMAL)) // Top
+                    platforms.add(Platform(Rectangle(Level8Chunk3State.leftMaskX + cageWidth - 40f, Level8Chunk3State.leftMaskY - 40f, cageThick, cageHeight + cageThick), PlatformType.NORMAL)) // Right
 
-                    // Right Mask Cage (Open on right side, facing right wall) - Now made of Lasers!
-                    lasers.add(Laser(Rectangle(Level8Chunk3State.rightMaskX - 40f, Level8Chunk3State.rightMaskY - 40f, cageWidth, cageThick), isSweeping = false)) // Bottom
-                    lasers.add(Laser(Rectangle(Level8Chunk3State.rightMaskX - 40f, Level8Chunk3State.rightMaskY - 40f, cageThick, cageHeight + cageThick), isSweeping = false)) // Left
+                    // Right Mask Cage (Open on right side, facing right wall)
+                    platforms.add(Platform(Rectangle(Level8Chunk3State.rightMaskX - 40f, Level8Chunk3State.rightMaskY - 40f, cageWidth, cageThick), PlatformType.NORMAL)) // Bottom
+                    platforms.add(Platform(Rectangle(Level8Chunk3State.rightMaskX - 40f, Level8Chunk3State.rightMaskY + 60f, cageWidth, cageThick), PlatformType.NORMAL)) // Top
+                    platforms.add(Platform(Rectangle(Level8Chunk3State.rightMaskX - 40f, Level8Chunk3State.rightMaskY - 40f, cageThick, cageHeight + cageThick), PlatformType.NORMAL)) // Left
                 }
 
             } else if (Level8Chunk3State.phase == 1 || Level8Chunk3State.phase == 2) {
@@ -2387,26 +2389,15 @@ class GameScreen(
                     }
                 }
 
-                // If in Phase 2, track mask collection and cage penetration
+                // If in Phase 2, track mask collection
                 if (Level8Chunk3State.phase == 2) {
-                    // Strict mask hitboxes (center 10x10) to prevent touching from outside
-                    val leftMaskHitbox = Rectangle(Level8Chunk3State.leftMaskX + 10f, Level8Chunk3State.leftMaskY + 10f, 10f, 10f)
-                    val rightMaskHitbox = Rectangle(Level8Chunk3State.rightMaskX + 10f, Level8Chunk3State.rightMaskY + 10f, 10f, 10f)
+                    val leftMaskHitbox = Rectangle(Level8Chunk3State.leftMaskX, Level8Chunk3State.leftMaskY, maskWidth, maskHeight)
+                    val rightMaskHitbox = Rectangle(Level8Chunk3State.rightMaskX, Level8Chunk3State.rightMaskY, maskWidth, maskHeight)
 
-                    // Validate entry side: you can only enter from the side that doesn't have any bar.
-                    fun canCollectLeft(rect: Rectangle): Boolean {
-                        // Left mask cage is open on the left. Must not attain from right/back.
-                        return Intersector.overlaps(rect, leftMaskHitbox) && rect.x < Level8Chunk3State.leftMaskX + 40f
-                    }
-                    fun canCollectRight(rect: Rectangle): Boolean {
-                        // Right mask cage is open on the right. Must not attain from left/back.
-                        return Intersector.overlaps(rect, rightMaskHitbox) && rect.x + rect.width > Level8Chunk3State.rightMaskX - 10f
-                    }
-
-                    if (!Level8Chunk3State.isLeftMaskTaken && (canCollectLeft(playerRect) || (mirrorActive && canCollectLeft(mirrorRect)))) {
+                    if (!Level8Chunk3State.isLeftMaskTaken && (Intersector.overlaps(playerRect, leftMaskHitbox) || Intersector.overlaps(mirrorRect, leftMaskHitbox))) {
                         Level8Chunk3State.isLeftMaskTaken = true
                     }
-                    if (!Level8Chunk3State.isRightMaskTaken && (canCollectRight(playerRect) || (mirrorActive && canCollectRight(mirrorRect)))) {
+                    if (!Level8Chunk3State.isRightMaskTaken && (Intersector.overlaps(playerRect, rightMaskHitbox) || Intersector.overlaps(mirrorRect, rightMaskHitbox))) {
                         Level8Chunk3State.isRightMaskTaken = true
                     }
 
@@ -3512,7 +3503,7 @@ class GameScreen(
                 shapeRenderer.rotate(0f, 0f, 1f, 90f)
                 shapeRenderer.translate(-centerX, -(renderPlayerY + 22f), 0f)
             }
-        } else if (currentLevel == 8 && currentChunk == 3 && (Level8Chunk3State.phase == 1 || Level8Chunk3State.phase == 2) && Level8Chunk3State.wallState != 0) {
+        } else if (currentLevel == 8 && currentChunk == 3 && Level8Chunk3State.phase == 1 && Level8Chunk3State.wallState != 0) {
             if (Level8Chunk3State.wallState == 1) { // Left Wall
                 shapeRenderer.translate(centerX, renderPlayerY + 22f, 0f)
                 shapeRenderer.rotate(0f, 0f, 1f, -90f)
