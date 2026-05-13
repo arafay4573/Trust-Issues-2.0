@@ -18,11 +18,11 @@ update_code = '''
                     if (spawnPlat != null) platforms.add(spawnPlat)
                 }
             } else if (Level9Chunk1State.phase == 1) {
-                // The Android Security Update Box (Center: 640, 250, Size: 400x200)
+                // The Android Security Update Box (Center: 640, 360, Size: 600x300)
                 val boxCenterX = 640f
-                val boxCenterY = 250f
-                val boxWidth = 400f
-                val boxHeight = 200f
+                val boxCenterY = 360f
+                val boxWidth = 600f
+                val boxHeight = 300f
                 val topSurfaceY = boxCenterY + boxHeight / 2f
 
                 Level9Chunk1State.isPlayerOnBox = false
