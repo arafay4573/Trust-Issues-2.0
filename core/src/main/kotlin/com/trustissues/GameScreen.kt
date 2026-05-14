@@ -209,21 +209,6 @@ class GameScreen(
         }
     }
 
-
-    private object Level9Chunk1State {
-        var phase = 0 // 0=Initial, 1=Security Update Box
-        var boxAngle = 0f
-        var boxAngleVel = 0f
-        var isPlayerOnBox = false
-
-        fun reset() {
-            phase = 0
-            boxAngle = 0f
-            boxAngleVel = 0f
-            isPlayerOnBox = false
-        }
-    }
-
     private object Level8Chunk3State {
         var phase = 0 // 0 = Start, 1 = Trap Phase (Frozen, Walls crush), 2 = Win Phase (Inverted, Cages)
         var isFrozen = false // Replaces isPermanentlyPaused
@@ -270,8 +255,7 @@ class GameScreen(
     data class MovingWall(
         val rect: Rectangle,
         var speed: Float,
-        var isActive: Boolean,
-        var label: String? = null
+        var isActive: Boolean
     )
     private val movingWalls = mutableListOf<MovingWall>()
 
@@ -645,49 +629,6 @@ class GameScreen(
     }
 
 
-
-    private fun setupLevel9(chunk: Int) {
-        when (chunk) {
-            1 -> {
-                // Chunk 1: Android Security Update
-                platforms.clear()
-                movingWalls.clear()
-                sharks.clear()
-                lasers.clear()
-                gameButtons.clear()
-                bubbles.clear()
-                gravitySwitches.clear()
-                worldTilt = 0f
-                isControlsInverted = false
-                canJump = true
-                launchVelocityX = 0f
-
-                Level9Chunk1State.reset()
-
-                playerX = 50f
-                playerY = 280f // 280f is standard floor level, spawn platform at 260f
-                lastPlayerX = 50f
-                lastPlayerY = 280f
-                velocityY = 0f
-                reverseGravity = false
-                chunkTime = 0f
-
-                // Initial Spawn Platform (Green)
-                platforms.add(Platform(Rectangle(0f, 260f, 200f, 20f), PlatformType.NORMAL))
-
-                // Dummy obstacles for the first 2 seconds
-                platforms.add(Platform(Rectangle(300f, 260f, 100f, 20f), PlatformType.NORMAL))
-                platforms.add(Platform(Rectangle(500f, 320f, 100f, 20f), PlatformType.NORMAL))
-                platforms.add(Platform(Rectangle(700f, 380f, 100f, 20f), PlatformType.NORMAL))
-                platforms.add(Platform(Rectangle(900f, 320f, 100f, 20f), PlatformType.NORMAL))
-
-                // Mask at far right
-                maskX = 1150f
-                maskY = 300f
-            }
-        }
-    }
-
     private fun setupLevel8(chunk: Int) {
         when (chunk) {
             1 -> {
@@ -815,11 +756,11 @@ class GameScreen(
 
                 // Symmetrical Crumbling Platforms leading up to masks
                 // Right path
-                platforms.add(Platform(Rectangle(840f, 360f, 100f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(1040f, 460f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(840f, 320f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(1040f, 420f, 100f, 20f), PlatformType.CRUMBLING))
                 // Left path
-                platforms.add(Platform(Rectangle(340f, 360f, 100f, 20f), PlatformType.CRUMBLING))
-                platforms.add(Platform(Rectangle(140f, 460f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(340f, 320f, 100f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(140f, 420f, 100f, 20f), PlatformType.CRUMBLING))
                 // Center path
                 platforms.add(Platform(Rectangle(590f, 420f, 100f, 20f), PlatformType.CRUMBLING))
 
@@ -1393,7 +1334,7 @@ class GameScreen(
 
     private fun completeChunk() {
         val nextChunk = currentChunk + 1
-        val isEndOfLevel = nextChunk > 3 || (currentLevel == 7 && nextChunk > 2) || (currentLevel == 8 && nextChunk > 1) || (currentLevel == 9 && nextChunk > 1)
+        val isEndOfLevel = nextChunk > 3 || (currentLevel == 7 && nextChunk > 2) || (currentLevel == 8 && nextChunk > 1)
 
         val prefs = Gdx.app.getPreferences("TrustIssues")
         val savedMaxChunk = prefs.getInteger("level_${currentLevel}_maxChunk", 1)
@@ -1408,7 +1349,7 @@ class GameScreen(
                 prefs.putInteger("unlockedLevel", nextLevel).flush()
                 prefs.putInteger("level_${nextLevel}_maxChunk", 1).flush()
             }
-            game.screen = if (nextLevel > 9) LevelSelectScreen(game) else GameScreen(game, nextLevel, 1)
+            game.screen = if (nextLevel > 8) LevelSelectScreen(game) else GameScreen(game, nextLevel, 1)
         } else {
             game.screen = GameScreen(game, currentLevel, nextChunk)
         }
@@ -2347,15 +2288,13 @@ class GameScreen(
                     val cageWidth = 100f
                     val cageHeight = 100f
 
-                    // Left Mask Cage (Open on left side, facing left wall)
-                    platforms.add(Platform(Rectangle(Level8Chunk3State.leftMaskX - 40f, Level8Chunk3State.leftMaskY - 40f, cageWidth, cageThick), PlatformType.NORMAL)) // Bottom
-                    platforms.add(Platform(Rectangle(Level8Chunk3State.leftMaskX - 40f, Level8Chunk3State.leftMaskY + 60f, cageWidth, cageThick), PlatformType.NORMAL)) // Top
-                    platforms.add(Platform(Rectangle(Level8Chunk3State.leftMaskX + cageWidth - 40f, Level8Chunk3State.leftMaskY - 40f, cageThick, cageHeight + cageThick), PlatformType.NORMAL)) // Right
+                    // Left Mask Cage (Open on left side and top, facing left wall) - Now made of Lasers!
+                    lasers.add(Laser(Rectangle(Level8Chunk3State.leftMaskX - 40f, Level8Chunk3State.leftMaskY - 40f, cageWidth, cageThick), isSweeping = false)) // Bottom
+                    lasers.add(Laser(Rectangle(Level8Chunk3State.leftMaskX + cageWidth - 40f, Level8Chunk3State.leftMaskY - 40f, cageThick, cageHeight + cageThick), isSweeping = false)) // Right
 
-                    // Right Mask Cage (Open on right side, facing right wall)
-                    platforms.add(Platform(Rectangle(Level8Chunk3State.rightMaskX - 40f, Level8Chunk3State.rightMaskY - 40f, cageWidth, cageThick), PlatformType.NORMAL)) // Bottom
-                    platforms.add(Platform(Rectangle(Level8Chunk3State.rightMaskX - 40f, Level8Chunk3State.rightMaskY + 60f, cageWidth, cageThick), PlatformType.NORMAL)) // Top
-                    platforms.add(Platform(Rectangle(Level8Chunk3State.rightMaskX - 40f, Level8Chunk3State.rightMaskY - 40f, cageThick, cageHeight + cageThick), PlatformType.NORMAL)) // Left
+                    // Right Mask Cage (Open on right side and top, facing right wall) - Now made of Lasers!
+                    lasers.add(Laser(Rectangle(Level8Chunk3State.rightMaskX - 40f, Level8Chunk3State.rightMaskY - 40f, cageWidth, cageThick), isSweeping = false)) // Bottom
+                    lasers.add(Laser(Rectangle(Level8Chunk3State.rightMaskX - 40f, Level8Chunk3State.rightMaskY - 40f, cageThick, cageHeight + cageThick), isSweeping = false)) // Left
                 }
 
             } else if (Level8Chunk3State.phase == 1 || Level8Chunk3State.phase == 2) {
@@ -2379,13 +2318,24 @@ class GameScreen(
 
                 // If in Phase 2, track mask collection
                 if (Level8Chunk3State.phase == 2) {
-                    val leftMaskHitbox = Rectangle(Level8Chunk3State.leftMaskX, Level8Chunk3State.leftMaskY, maskWidth, maskHeight)
-                    val rightMaskHitbox = Rectangle(Level8Chunk3State.rightMaskX, Level8Chunk3State.rightMaskY, maskWidth, maskHeight)
+                    // Strict mask hitboxes (center 10x10) to prevent touching from outside
+                    val leftMaskHitbox = Rectangle(Level8Chunk3State.leftMaskX + 10f, Level8Chunk3State.leftMaskY + 10f, 10f, 10f)
+                    val rightMaskHitbox = Rectangle(Level8Chunk3State.rightMaskX + 10f, Level8Chunk3State.rightMaskY + 10f, 10f, 10f)
 
-                    if (!Level8Chunk3State.isLeftMaskTaken && (Intersector.overlaps(playerRect, leftMaskHitbox) || Intersector.overlaps(mirrorRect, leftMaskHitbox))) {
+                    // Validate entry side: you can only enter from the side that doesn't have any bar.
+                    fun canCollectLeft(rect: Rectangle): Boolean {
+                        // Left mask cage is open on the left. Must not attain from right/back.
+                        return Intersector.overlaps(rect, leftMaskHitbox) && rect.x < Level8Chunk3State.leftMaskX + 40f
+                    }
+                    fun canCollectRight(rect: Rectangle): Boolean {
+                        // Right mask cage is open on the right. Must not attain from left/back.
+                        return Intersector.overlaps(rect, rightMaskHitbox) && rect.x + rect.width > Level8Chunk3State.rightMaskX - 10f
+                    }
+
+                    if (!Level8Chunk3State.isLeftMaskTaken && (canCollectLeft(playerRect) || (mirrorActive && canCollectLeft(mirrorRect)))) {
                         Level8Chunk3State.isLeftMaskTaken = true
                     }
-                    if (!Level8Chunk3State.isRightMaskTaken && (Intersector.overlaps(playerRect, rightMaskHitbox) || Intersector.overlaps(mirrorRect, rightMaskHitbox))) {
+                    if (!Level8Chunk3State.isRightMaskTaken && (canCollectRight(playerRect) || (mirrorActive && canCollectRight(mirrorRect)))) {
                         Level8Chunk3State.isRightMaskTaken = true
                     }
 
@@ -2398,75 +2348,6 @@ class GameScreen(
             // Abyss Death
             if (playerY < 0f) {
                 die("Dropped like a stone.")
-            }
-        }
-
-
-        // --- LEVEL 9 CHUNK 1 LOGIC ---
-        if (currentLevel == 9 && currentChunk == 1 && !isDead && !isLevelComplete) {
-            chunkTime += delta
-
-            if (Level9Chunk1State.phase == 0) {
-                if (chunkTime >= 2.0f) {
-                    Level9Chunk1State.phase = 1
-
-                    // Clear dummy obstacles, leave the spawn platform
-                    val spawnPlat = platforms.firstOrNull { it.rect.x == 0f }
-                    platforms.clear()
-                    if (spawnPlat != null) platforms.add(spawnPlat)
-                }
-            } else if (Level9Chunk1State.phase == 1) {
-                // The Android Security Update Box (Center: 640, 360, Size: 600x300)
-                val boxCenterX = 640f
-                val boxCenterY = 360f
-                val boxWidth = 600f
-                val boxHeight = 300f
-                val topSurfaceY = boxCenterY + boxHeight / 2f
-
-                Level9Chunk1State.isPlayerOnBox = false
-
-                // Check if player is above the box bounds
-                if (playerX + playerWidth > boxCenterX - boxWidth / 2f && playerX < boxCenterX + boxWidth / 2f) {
-                    // Calculate the Y coordinate of the box's top surface at the player's X
-                    val relativeX = (playerX + playerWidth / 2f) - boxCenterX
-                    val angleRad = Math.toRadians(Level9Chunk1State.boxAngle.toDouble())
-                    // Surface Y equation: y = tan(angle) * x + topSurfaceY
-                    val currentSurfaceY = (Math.tan(angleRad) * relativeX).toFloat() + topSurfaceY
-
-                    // If player is falling onto it or walking on it
-                    if (playerY <= currentSurfaceY && lastPlayerY >= currentSurfaceY - 20f && velocityY <= 0f) {
-                        Level9Chunk1State.isPlayerOnBox = true
-                        playerY = currentSurfaceY
-                        velocityY = 0f
-                        canJump = true // Allow jump
-
-                        // Apply torque based on player distance from center
-                        val torque = relativeX * -0.5f // Negative because right side (positive X) tilts angle negative (clockwise)
-                        Level9Chunk1State.boxAngleVel += torque * delta
-
-                        // Apply sliding due to slope
-                        val slideForce = Math.sin(angleRad).toFloat() * -400f * delta
-                        playerX += slideForce
-                    }
-                }
-
-                // Add some damping/gravity to the box itself
-                Level9Chunk1State.boxAngleVel *= 0.95f // Friction
-                Level9Chunk1State.boxAngle += Level9Chunk1State.boxAngleVel * delta
-
-                // Limit the angle so it doesn't spin uncontrollably
-                Level9Chunk1State.boxAngle = MathUtils.clamp(Level9Chunk1State.boxAngle, -80f, 80f)
-
-                // Win Condition
-                maskRect.set(maskX, maskY, maskWidth, maskHeight)
-                if (Intersector.overlaps(playerRect, maskRect)) {
-                    win()
-                }
-            }
-
-            // Abyss Death
-            if (playerY < 0f) {
-                die("The update crashed your system.")
             }
         }
 
@@ -3448,7 +3329,7 @@ class GameScreen(
                 shapeRenderer.rotate(0f, 0f, 1f, 90f)
                 shapeRenderer.translate(-centerX, -(renderPlayerY + 22f), 0f)
             }
-        } else if (currentLevel == 8 && currentChunk == 3 && Level8Chunk3State.phase == 1 && Level8Chunk3State.wallState != 0) {
+        } else if (currentLevel == 8 && currentChunk == 3 && (Level8Chunk3State.phase == 1 || Level8Chunk3State.phase == 2) && Level8Chunk3State.wallState != 0) {
             if (Level8Chunk3State.wallState == 1) { // Left Wall
                 shapeRenderer.translate(centerX, renderPlayerY + 22f, 0f)
                 shapeRenderer.rotate(0f, 0f, 1f, -90f)
@@ -3538,63 +3419,6 @@ class GameScreen(
             }
         }
 
-
-        if (currentLevel == 9 && currentChunk == 1 && Level9Chunk1State.phase == 1) {
-            val boxCenterX = 640f + renderOffset
-            val boxCenterY = 360f
-            val boxWidth = 600f
-            val boxHeight = 300f
-
-            val shapeOldTransform = shapeRenderer.transformMatrix.cpy()
-            shapeRenderer.translate(boxCenterX, boxCenterY, 0f)
-            shapeRenderer.rotate(0f, 0f, 1f, Level9Chunk1State.boxAngle)
-            shapeRenderer.translate(-boxCenterX, -boxCenterY, 0f)
-
-            // Box Body
-            shapeRenderer.color = Color(0.85f, 0.85f, 0.85f, 1f) // Classic Windows Grey
-            shapeRenderer.rect(boxCenterX - boxWidth/2f, boxCenterY - boxHeight/2f, boxWidth, boxHeight)
-
-            // Box Inner Border (Dark Grey)
-            shapeRenderer.color = Color.DARK_GRAY
-            shapeRenderer.rectLine(boxCenterX - boxWidth/2f, boxCenterY - boxHeight/2f, boxCenterX + boxWidth/2f, boxCenterY - boxHeight/2f, 2f)
-            shapeRenderer.rectLine(boxCenterX + boxWidth/2f, boxCenterY - boxHeight/2f, boxCenterX + boxWidth/2f, boxCenterY + boxHeight/2f, 2f)
-            shapeRenderer.color = Color.WHITE
-            shapeRenderer.rectLine(boxCenterX - boxWidth/2f, boxCenterY - boxHeight/2f, boxCenterX - boxWidth/2f, boxCenterY + boxHeight/2f, 2f)
-            shapeRenderer.rectLine(boxCenterX - boxWidth/2f, boxCenterY + boxHeight/2f, boxCenterX + boxWidth/2f, boxCenterY + boxHeight/2f, 2f)
-
-            // Blue Title Bar
-            val titleBarHeight = 35f
-            shapeRenderer.color = Color(0.0f, 0.3f, 0.8f, 1f) // Classic XP Blue
-            shapeRenderer.rect(boxCenterX - boxWidth/2f + 2f, boxCenterY + boxHeight/2f - titleBarHeight, boxWidth - 4f, titleBarHeight - 2f)
-
-            // Red Close Button
-            val closeBtnSize = 25f
-            val closeBtnX = boxCenterX + boxWidth/2f - closeBtnSize - 5f
-            val closeBtnY = boxCenterY + boxHeight/2f - closeBtnSize - 5f
-            shapeRenderer.color = Color(0.9f, 0.2f, 0.1f, 1f)
-            shapeRenderer.rect(closeBtnX, closeBtnY, closeBtnSize, closeBtnSize)
-
-            // White X in close button
-            shapeRenderer.color = Color.WHITE
-            shapeRenderer.rectLine(closeBtnX + 5f, closeBtnY + 5f, closeBtnX + closeBtnSize - 5f, closeBtnY + closeBtnSize - 5f, 3f)
-            shapeRenderer.rectLine(closeBtnX + 5f, closeBtnY + closeBtnSize - 5f, closeBtnX + closeBtnSize - 5f, closeBtnY + 5f, 3f)
-
-            // Visual Empty Progress Bar Inside Box
-            val progBarWidth = 500f
-            val progBarHeight = 25f
-            val progBarX = boxCenterX - progBarWidth/2f
-            val progBarY = boxCenterY - 80f
-
-            // Progress Bar Outer Bevel (Dark Grey)
-            shapeRenderer.color = Color(0.6f, 0.6f, 0.6f, 1f)
-            shapeRenderer.rect(progBarX, progBarY, progBarWidth, progBarHeight)
-            // Progress Bar Inner Empty (White)
-            shapeRenderer.color = Color.WHITE
-            shapeRenderer.rect(progBarX + 2f, progBarY + 2f, progBarWidth - 4f, progBarHeight - 4f)
-
-            shapeRenderer.transformMatrix = shapeOldTransform
-        }
-
         // Draw The Shrinking Void Overlay (Level 7 Chunk 3)
         if (currentLevel == 7 && currentChunk == 3) {
             shapeRenderer.color = Color.BLACK
@@ -3614,89 +3438,6 @@ class GameScreen(
         // --- 2. TEXTURES (SpriteBatch) ---
         game.batch.projectionMatrix = gameViewport.camera.combined
         game.batch.begin()
-
-
-        if (currentLevel == 9 && currentChunk == 1) {
-            if (Level9Chunk1State.phase == 1) {
-                buttonFont?.let { font ->
-                    val boxCenterX = 640f + renderOffset
-                    val boxCenterY = 360f
-                    val boxWidth = 600f
-                    val boxHeight = 300f
-
-                    val oldTransform = game.batch.transformMatrix.cpy()
-                    val mat = com.badlogic.gdx.math.Matrix4()
-                    mat.setToTranslation(boxCenterX, boxCenterY, 0f)
-                    mat.rotate(0f, 0f, 1f, Level9Chunk1State.boxAngle)
-                    mat.translate(-boxCenterX, -boxCenterY, 0f)
-
-
-
-                    game.batch.transformMatrix = mat
-                    game.batch.begin()
-
-                    // Save original scale
-                    val boxScaleX = font.data.scaleX
-                    val boxScaleY = font.data.scaleY
-
-                    // Title Bar Text (Small and Crisp)
-                    font.data.setScale(boxScaleX * 0.8f, boxScaleY * 0.8f)
-                    font.color = Color.WHITE
-                    // Align left on title bar
-                    font.draw(game.batch, "Android Security Update", boxCenterX - boxWidth/2f + 10f, boxCenterY + boxHeight/2f - 8f)
-
-                    // Body Text
-                    font.color = Color.BLACK
-                    font.draw(game.batch, "A critical update is required to continue.", boxCenterX - boxWidth/2f + 20f, boxCenterY + 80f)
-                    font.draw(game.batch, "Your system might restart multiple times.", boxCenterX - boxWidth/2f + 20f, boxCenterY + 40f)
-
-                    // Progress Text (Above progress bar)
-                    font.data.setScale(boxScaleX * 0.7f, boxScaleY * 0.7f)
-                    font.draw(game.batch, "Installing Update... 0%", boxCenterX - boxWidth/2f + 20f, boxCenterY - 45f)
-
-                    // Time remaining text
-                    font.draw(game.batch, "Estimated time remaining: Calculating...", boxCenterX - boxWidth/2f + 20f, boxCenterY - 95f)
-
-                    // Restore original scale
-                    font.data.setScale(boxScaleX, boxScaleY)
-
-                    game.batch.end()
-                    game.batch.transformMatrix = oldTransform
-                    game.batch.begin()
-
-
-
-                    // Save original scale
-                    val origScaleX = font.data.scaleX
-                    val origScaleY = font.data.scaleY
-
-                    // Title Bar Text (Small and Crisp)
-                    font.data.setScale(origScaleX * 0.8f, origScaleY * 0.8f)
-                    font.color = Color.WHITE
-                    // Align left on title bar
-                    font.draw(game.batch, "Android Security Update", boxCenterX - boxWidth/2f + 10f, boxCenterY + boxHeight/2f - 8f)
-
-                    // Body Text
-                    font.color = Color.BLACK
-                    font.draw(game.batch, "A critical update is required to continue.", boxCenterX - boxWidth/2f + 20f, boxCenterY + 80f)
-                    font.draw(game.batch, "Your system might restart multiple times.", boxCenterX - boxWidth/2f + 20f, boxCenterY + 40f)
-
-                    // Progress Text (Above progress bar)
-                    font.data.setScale(origScaleX * 0.7f, origScaleY * 0.7f)
-                    font.draw(game.batch, "Installing Update... 0%", boxCenterX - boxWidth/2f + 20f, boxCenterY - 45f)
-
-                    // Time remaining text
-                    font.draw(game.batch, "Estimated time remaining: Calculating...", boxCenterX - boxWidth/2f + 20f, boxCenterY - 95f)
-
-                    // Restore original scale
-                    font.data.setScale(origScaleX, origScaleY)
-
-                    game.batch.end()
-                    game.batch.transformMatrix = oldTransform
-                    game.batch.begin()
-                }
-            }
-        }
 
         // Draw Mask using Texture
         maskTexture?.let { tex ->
