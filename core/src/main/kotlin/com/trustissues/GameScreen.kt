@@ -811,18 +811,6 @@ class GameScreen(
             maskY = 250f
             maskRect.set(maskX, maskY, maskWidth, maskHeight)
 
-            // Laser box around the mask
-            lasers.add(Laser(Rectangle(30f, 230f, 60f, 10f))) // Bottom
-            lasers.add(Laser(Rectangle(30f, 290f, 60f, 10f))) // Top
-            lasers.add(Laser(Rectangle(30f, 230f, 10f, 70f))) // Left
-            lasers.add(Laser(Rectangle(80f, 230f, 10f, 70f))) // Right
-
-            // The cross button above the mask
-            // We use GameButton. Drawing it differently in draw() loop if needed, but the logic fits.
-            val btnWidth = 30f
-            val btnHeight = 30f
-            gameButtons.add(GameButton(Rectangle(50f + maskWidth / 2f - btnWidth / 2f, 400f, btnWidth, btnHeight), false))
-
             // Fake obstacles leading left (opposite to the previous rightward path)
             platforms.add(Platform(Rectangle(700f, 450f, 100f, 20f), PlatformType.NORMAL))
             platforms.add(Platform(Rectangle(450f, 400f, 100f, 20f), PlatformType.NORMAL))
@@ -2330,6 +2318,17 @@ class GameScreen(
                     // Clear fake obstacles
                     platforms.removeAll { it.rect.x < 900f }
 
+                    // Laser box around the mask appears now
+                    lasers.add(Laser(Rectangle(30f, 230f, 60f, 10f))) // Bottom
+                    lasers.add(Laser(Rectangle(30f, 290f, 60f, 10f))) // Top
+                    lasers.add(Laser(Rectangle(30f, 230f, 10f, 70f))) // Left
+                    lasers.add(Laser(Rectangle(80f, 230f, 10f, 70f))) // Right
+
+                    // The cross button above the mask appears now
+                    val btnWidth = 30f
+                    val btnHeight = 30f
+                    gameButtons.add(GameButton(Rectangle(50f + maskWidth / 2f - btnWidth / 2f, 400f, btnWidth, btnHeight), false))
+
                     // Turn starting platform BLUE
                     platforms.forEach {
                         if (it.rect.x == 950f && it.rect.y == 500f) {
@@ -2401,8 +2400,8 @@ class GameScreen(
                     Level9Chunk1State.boxAngularVelocity = 0f
                 }
 
-                // Update Progress Timer (7 seconds to reach 100%)
-                Level9Chunk1State.updateProgress += (1f / 7.0f) * delta
+                // Update Progress Timer (5 seconds to reach 100%)
+                Level9Chunk1State.updateProgress += (1f / 5.0f) * delta
                 if (Level9Chunk1State.updateProgress >= 1f) {
                     Level9Chunk1State.updateProgress = 1f
                     die(listOf(
