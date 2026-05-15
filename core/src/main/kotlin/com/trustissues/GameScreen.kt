@@ -2335,42 +2335,29 @@ class GameScreen(
                 val boxLeftX = boxCenterX - boxWidth / 2
                 val boxRightX = boxCenterX + boxWidth / 2
 
+                val offset = (playerX + playerWidth / 2) - boxCenterX
+                val slopeOffset = offset
+                val radians = Math.toRadians(Level9Chunk1State.boxAngle.toDouble())
+                val heightOffset = slopeOffset * Math.tan(radians)
+                val expectedY = boxTopY + heightOffset.toFloat()
+
                 // Check if player is standing on the box
-                // Player must be ON TOP of it to stand on it.
-                val isOnBox = playerX + playerWidth > boxLeftX && playerX < boxRightX && playerY >= boxTopY - 150f
+                // Player must be ON TOP of it and physically touching it to stand on it.
+                val withinXBounds = playerX + playerWidth > boxLeftX && playerX < boxRightX
+                // Tolerance for being "on" the box is small so it doesn't trigger while far above
+                val isTouchingY = playerY - expectedY < 20f && playerY - expectedY >= -20f && velocityY <= 0
+
+                val isOnBox = withinXBounds && isTouchingY
 
                 if (isOnBox) {
+                    // Snap player to the tilted top
+                    playerY = expectedY
+                    velocityY = 0f
+                    canJump = true
+
                     // Apply rotation to box based on player position relative to center
-                    val offset = (playerX + playerWidth / 2) - boxCenterX
                     // Max offset is 300. We scale angular velocity by offset
                     Level9Chunk1State.boxAngularVelocity += offset * 0.025f * delta
-
-                    // Box tilting physics
-                    Level9Chunk1State.boxAngle -= Level9Chunk1State.boxAngularVelocity
-                    Level9Chunk1State.boxAngularVelocity *= 0.95f // Damping
-
-                    // Clamp angle
-                    if (Level9Chunk1State.boxAngle > 45f) {
-                        Level9Chunk1State.boxAngle = 45f
-                        Level9Chunk1State.boxAngularVelocity = 0f
-                    } else if (Level9Chunk1State.boxAngle < -45f) {
-                        Level9Chunk1State.boxAngle = -45f
-                        Level9Chunk1State.boxAngularVelocity = 0f
-                    }
-
-                    // Trigonometry to adjust player Y to walk on the slope
-                    // The box is rotated around its center. We calculate the expected Y for the surface.
-                    val slopeOffset = offset
-                    val radians = Math.toRadians(-Level9Chunk1State.boxAngle.toDouble())
-                    val heightOffset = slopeOffset * Math.tan(radians)
-
-                    // Snap player to the tilted top
-                    val expectedY = boxTopY + heightOffset.toFloat()
-                    if (playerY - expectedY < 50f && velocityY <= 0) {
-                        playerY = expectedY
-                        velocityY = 0f
-                        canJump = true
-                    }
 
                     // Slip mechanics: if angle is steep, push player down the slope
                     if (Math.abs(Level9Chunk1State.boxAngle) > 25f) {
@@ -2383,8 +2370,21 @@ class GameScreen(
                     Level9Chunk1State.boxAngle *= 0.98f
                 }
 
-                // Update Progress Timer (4 seconds to reach 100%)
-                Level9Chunk1State.updateProgress += (1f / 4.0f) * delta
+                // Box tilting physics always apply so momentum carries over and it returns smoothly
+                Level9Chunk1State.boxAngle -= Level9Chunk1State.boxAngularVelocity
+                Level9Chunk1State.boxAngularVelocity *= 0.95f // Damping
+
+                // Clamp angle
+                if (Level9Chunk1State.boxAngle > 45f) {
+                    Level9Chunk1State.boxAngle = 45f
+                    Level9Chunk1State.boxAngularVelocity = 0f
+                } else if (Level9Chunk1State.boxAngle < -45f) {
+                    Level9Chunk1State.boxAngle = -45f
+                    Level9Chunk1State.boxAngularVelocity = 0f
+                }
+
+                // Update Progress Timer (7 seconds to reach 100%)
+                Level9Chunk1State.updateProgress += (1f / 7.0f) * delta
                 if (Level9Chunk1State.updateProgress >= 1f) {
                     Level9Chunk1State.updateProgress = 1f
                     die(listOf(
@@ -3503,9 +3503,9 @@ class GameScreen(
             shapeRenderer.circle(boxWidth/2 - r, boxHeight/2 - r, r)
 
             // Progress bar background (light grey)
-            val pbWidth = 460f
+            val pbWidth = 480f
             val pbHeight = 8f
-            val pbX = -pbWidth / 2f
+            val pbX = -240f
             val pbY = -20f
             shapeRenderer.color = Color(0.8f, 0.8f, 0.8f, 1f)
             shapeRenderer.rect(pbX, pbY, pbWidth, pbHeight)
@@ -3742,16 +3742,16 @@ class GameScreen(
 
             // Title
             buttonFont?.color = Color.BLACK
-            buttonFont?.data?.setScale(1.5f)
-            buttonFont?.draw(game.batch, "Android system update", -230f, 80f)
+            buttonFont?.data?.setScale(1.2f)
+            buttonFont?.draw(game.batch, "Android system update", -240f, 80f)
 
             // Subtitle
             buttonFont?.color = Color.DARK_GRAY
-            buttonFont?.data?.setScale(0.8f)
-            buttonFont?.draw(game.batch, "Processing the update package...", -230f, 20f)
+            buttonFont?.data?.setScale(0.7f)
+            buttonFont?.draw(game.batch, "Processing the update package...", -240f, 20f)
 
             // Percentage
-            buttonFont?.draw(game.batch, "${(Level9Chunk1State.updateProgress * 100).toInt()}%", 180f, -40f)
+            buttonFont?.draw(game.batch, "${(Level9Chunk1State.updateProgress * 100).toInt()}%", 195f, -40f)
 
             buttonFont?.data?.setScale(1f) // Reset scale
             game.batch.transformMatrix = oldMatrix
