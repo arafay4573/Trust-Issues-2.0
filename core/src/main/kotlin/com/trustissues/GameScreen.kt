@@ -235,14 +235,16 @@ class GameScreen(
     }
 
     private object Level9Chunk1State {
-        var phase = 0 // 0 = start, 1 = blackout & seesaw
+        var phase = 0 // 0 = start, 1 = glitch, 2 = blackout & seesaw
         var boxAngle = 0f
         var boxAngularVelocity = 0f
+        var glitchTimer = 0f
 
         fun reset() {
             phase = 0
             boxAngle = 0f
             boxAngularVelocity = 0f
+            glitchTimer = 0f
         }
     }
 
@@ -2288,23 +2290,36 @@ class GameScreen(
 
         // --- LEVEL 9 CHUNK 1 LOGIC (The Android Security Update) ---
         if (currentLevel == 9 && currentChunk == 1 && !isDead && !isLevelComplete) {
+            // Mask win condition (if they somehow reach it in 2 seconds)
+            if (Intersector.overlaps(playerRect, maskRect)) {
+                win()
+            }
+
             if (Level9Chunk1State.phase == 0 && chunkTime >= 2.0f) {
-                // Blackout transition
+                // Glitch transition
                 Level9Chunk1State.phase = 1
+                Level9Chunk1State.glitchTimer = 1.5f // Glitch for 1.5 seconds
+            }
 
-                // Clear fake obstacles (all platforms except the starting one)
-                // The starting platform is at x=100
-                platforms.removeAll { it.rect.x > 300f }
+            if (Level9Chunk1State.phase == 1) {
+                Level9Chunk1State.glitchTimer -= delta
+                if (Level9Chunk1State.glitchTimer <= 0f) {
+                    // Transition to blackout & seesaw
+                    Level9Chunk1State.phase = 2
 
-                // Turn starting platform BLUE
-                platforms.forEach {
-                    if (it.rect.x == 100f && it.rect.y == 200f) {
-                        it.type = PlatformType.BLUE
+                    // Clear fake obstacles
+                    platforms.removeAll { it.rect.x > 300f }
+
+                    // Turn starting platform BLUE
+                    platforms.forEach {
+                        if (it.rect.x == 100f && it.rect.y == 200f) {
+                            it.type = PlatformType.BLUE
+                        }
                     }
                 }
             }
 
-            if (Level9Chunk1State.phase == 1) {
+            if (Level9Chunk1State.phase == 2) {
                 // Seesaw dimensions: 600x300, center at 640, 360
                 val boxWidth = 600f
                 val boxHeight = 300f
@@ -3416,8 +3431,22 @@ class GameScreen(
         }
 
 
-        // Level 9 Chunk 1 Blackout & Seesaw Box
+        // Level 9 Chunk 1 Glitch Effect
         if (currentLevel == 9 && currentChunk == 1 && Level9Chunk1State.phase == 1) {
+            // Draw random glitch rectangles over everything
+            val glitchCount = (Math.random() * 20).toInt() + 10
+            for (i in 0..glitchCount) {
+                shapeRenderer.color = if (Math.random() > 0.5) Color.WHITE else Color.BLACK
+                val gw = (Math.random() * 200).toFloat()
+                val gh = (Math.random() * 50).toFloat()
+                val gx = (Math.random() * 1280).toFloat()
+                val gy = (Math.random() * 720).toFloat()
+                shapeRenderer.rect(gx + renderOffset, gy, gw, gh)
+            }
+        }
+
+        // Level 9 Chunk 1 Blackout & Seesaw Box
+        if (currentLevel == 9 && currentChunk == 1 && Level9Chunk1State.phase == 2) {
             // Draw Blackout over everything else drawn so far
             shapeRenderer.color = Color.BLACK
             shapeRenderer.rect(-5000f, -5000f, 10000f, 10000f) // Cover everything
@@ -3665,7 +3694,7 @@ class GameScreen(
 
 
         // Level 9 Chunk 1 Box Text
-        if (currentLevel == 9 && currentChunk == 1 && Level9Chunk1State.phase == 1) {
+        if (currentLevel == 9 && currentChunk == 1 && Level9Chunk1State.phase == 2) {
             val oldMatrix = game.batch.transformMatrix.cpy()
             val textMatrix = com.badlogic.gdx.math.Matrix4()
             textMatrix.setToTranslation(640f + renderOffset, 360f, 0f)
