@@ -2325,9 +2325,9 @@ class GameScreen(
                     lasers.add(Laser(Rectangle(80f, 230f, 10f, 70f))) // Right
 
                     // The cross button above the mask appears now
-                    val btnWidth = 30f
-                    val btnHeight = 30f
-                    gameButtons.add(GameButton(Rectangle(50f + maskWidth / 2f - btnWidth / 2f, 400f, btnWidth, btnHeight), false))
+                    val btnWidth = 60f
+                    val btnHeight = 60f
+                    gameButtons.add(GameButton(Rectangle(50f + maskWidth / 2f - btnWidth / 2f, 350f, btnWidth, btnHeight), false))
 
                     // Turn starting platform BLUE
                     platforms.forEach {
@@ -2339,9 +2339,9 @@ class GameScreen(
             }
 
             if (Level9Chunk1State.phase == 2) {
-                // Seesaw dimensions: 600x300, center at 640, 360
-                val boxWidth = 600f
-                val boxHeight = 300f
+                // Seesaw dimensions: 700x350, center at 640, 360
+                val boxWidth = 700f
+                val boxHeight = 350f
                 val boxCenterX = 640f
                 val boxCenterY = 360f
                 val boxTopY = boxCenterY + boxHeight / 2
@@ -2415,9 +2415,9 @@ class GameScreen(
 
                 // Cross button logic to open laser cage
                 for (btn in gameButtons) {
+                    // Check if player is intersecting or if they've already pressed it
                     if (!btn.isPressed && Intersector.overlaps(playerRect, btn.rect)) {
-                        btn.isPressed = true
-                        // Vanish lasers
+                        btn.isPressed = true // visual feedback and permanent state
                         lasers.forEach { it.rect.x = -5000f }
                     }
                 }
@@ -3527,8 +3527,8 @@ class GameScreen(
             }
 
             // Draw Seesaw Box
-            val boxWidth = 600f
-            val boxHeight = 300f
+            val boxWidth = 700f
+            val boxHeight = 350f
             val boxCenterX = 640f
             val boxCenterY = 360f
 
@@ -3551,10 +3551,10 @@ class GameScreen(
             shapeRenderer.circle(boxWidth/2 - r, boxHeight/2 - r, r)
 
             // Progress bar background (light grey)
-            val pbWidth = 480f
+            val pbWidth = 580f
             val pbHeight = 8f
-            val pbX = -240f
-            val pbY = -20f
+            val pbX = -290f
+            val pbY = -30f
             shapeRenderer.color = Color(0.8f, 0.8f, 0.8f, 1f)
             shapeRenderer.rect(pbX, pbY, pbWidth, pbHeight)
 
@@ -3790,16 +3790,16 @@ class GameScreen(
 
             // Title
             buttonFont?.color = Color.BLACK
-            buttonFont?.data?.setScale(0.9f)
-            buttonFont?.draw(game.batch, "Android system update", -240f, 80f)
+            buttonFont?.data?.setScale(1.2f)
+            buttonFont?.draw(game.batch, "Android system update", -290f, 80f)
 
             // Subtitle
             buttonFont?.color = Color.DARK_GRAY
-            buttonFont?.data?.setScale(0.5f)
-            buttonFont?.draw(game.batch, "Processing the update package...", -240f, 20f)
+            buttonFont?.data?.setScale(0.7f)
+            buttonFont?.draw(game.batch, "Processing the update package...", -290f, 10f)
 
             // Percentage
-            buttonFont?.draw(game.batch, "${(Level9Chunk1State.updateProgress * 100).toInt()}%", 200f, -40f)
+            buttonFont?.draw(game.batch, "${(Level9Chunk1State.updateProgress * 100).toInt()}%", 230f, -50f)
 
             buttonFont?.data?.setScale(1f) // Reset scale
             game.batch.transformMatrix = oldMatrix
