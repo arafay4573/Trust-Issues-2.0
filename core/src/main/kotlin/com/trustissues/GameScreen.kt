@@ -2338,14 +2338,18 @@ class GameScreen(
                 val offset = (playerX + playerWidth / 2) - boxCenterX
                 val slopeOffset = offset
                 val radians = Math.toRadians(Level9Chunk1State.boxAngle.toDouble())
-                val heightOffset = slopeOffset * Math.tan(radians)
-                val expectedY = boxTopY + heightOffset.toFloat()
+
+                // Real distance from center to top edge when rotated is slightly higher than just taking tan()
+                // expectedY = boxCenterY + (boxHeight / 2) / cos(angle) + offset * tan(angle)
+                // However, the edges of a rotating rectangle move in an arc.
+                // A simpler, very close approximation without embedding is:
+                val expectedY = boxCenterY + (boxHeight / 2f) / Math.cos(radians).toFloat() + (slopeOffset * Math.tan(radians)).toFloat()
 
                 // Check if player is standing on the box
                 // Player must be ON TOP of it and physically touching it to stand on it.
                 val withinXBounds = playerX + playerWidth > boxLeftX && playerX < boxRightX
-                // Tolerance for being "on" the box is small so it doesn't trigger while far above
-                val isTouchingY = playerY - expectedY < 20f && playerY - expectedY >= -20f && velocityY <= 0
+                // Tolerance for being "on" the box increased to 40f so fast falls don't clip through it
+                val isTouchingY = playerY - expectedY < 40f && playerY - expectedY >= -20f && velocityY <= 0
 
                 val isOnBox = withinXBounds && isTouchingY
 
@@ -3742,16 +3746,16 @@ class GameScreen(
 
             // Title
             buttonFont?.color = Color.BLACK
-            buttonFont?.data?.setScale(1.2f)
+            buttonFont?.data?.setScale(0.9f)
             buttonFont?.draw(game.batch, "Android system update", -240f, 80f)
 
             // Subtitle
             buttonFont?.color = Color.DARK_GRAY
-            buttonFont?.data?.setScale(0.7f)
+            buttonFont?.data?.setScale(0.5f)
             buttonFont?.draw(game.batch, "Processing the update package...", -240f, 20f)
 
             // Percentage
-            buttonFont?.draw(game.batch, "${(Level9Chunk1State.updateProgress * 100).toInt()}%", 195f, -40f)
+            buttonFont?.draw(game.batch, "${(Level9Chunk1State.updateProgress * 100).toInt()}%", 200f, -40f)
 
             buttonFont?.data?.setScale(1f) // Reset scale
             game.batch.transformMatrix = oldMatrix
