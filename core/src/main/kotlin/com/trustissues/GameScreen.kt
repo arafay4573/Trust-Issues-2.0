@@ -240,6 +240,7 @@ class GameScreen(
         var boxAngularVelocity = 0f
         var glitchTimer = 0f
         var updateProgress = 0f
+        var isOnBox = false
 
         fun reset() {
             phase = 0
@@ -247,6 +248,7 @@ class GameScreen(
             boxAngularVelocity = 0f
             glitchTimer = 0f
             updateProgress = 0f
+            isOnBox = false
         }
     }
 
@@ -808,6 +810,18 @@ class GameScreen(
             maskX = 50f
             maskY = 250f
             maskRect.set(maskX, maskY, maskWidth, maskHeight)
+
+            // Laser box around the mask
+            lasers.add(Laser(Rectangle(30f, 230f, 60f, 10f))) // Bottom
+            lasers.add(Laser(Rectangle(30f, 290f, 60f, 10f))) // Top
+            lasers.add(Laser(Rectangle(30f, 230f, 10f, 70f))) // Left
+            lasers.add(Laser(Rectangle(80f, 230f, 10f, 70f))) // Right
+
+            // The cross button above the mask
+            // We use GameButton. Drawing it differently in draw() loop if needed, but the logic fits.
+            val btnWidth = 30f
+            val btnHeight = 30f
+            gameButtons.add(GameButton(Rectangle(50f + maskWidth / 2f - btnWidth / 2f, 400f, btnWidth, btnHeight), false))
 
             // Fake obstacles leading left (opposite to the previous rightward path)
             platforms.add(Platform(Rectangle(700f, 450f, 100f, 20f), PlatformType.NORMAL))
@@ -2351,9 +2365,9 @@ class GameScreen(
                 // Tolerance for being "on" the box increased to 40f so fast falls don't clip through it
                 val isTouchingY = playerY - expectedY < 40f && playerY - expectedY >= -20f && velocityY <= 0
 
-                val isOnBox = withinXBounds && isTouchingY
+                Level9Chunk1State.isOnBox = withinXBounds && isTouchingY
 
-                if (isOnBox) {
+                if (Level9Chunk1State.isOnBox) {
                     // Snap player to the tilted top
                     playerY = expectedY
                     velocityY = 0f
@@ -2398,6 +2412,15 @@ class GameScreen(
                         "Should have cleared your cache.",
                         "Looks like this update bricked you."
                     ).random())
+                }
+
+                // Cross button logic to open laser cage
+                for (btn in gameButtons) {
+                    if (!btn.isPressed && Intersector.overlaps(playerRect, btn.rect)) {
+                        btn.isPressed = true
+                        // Vanish lasers
+                        lasers.forEach { it.rect.x = -5000f }
+                    }
                 }
 
                 // Abyss death (since it's an exempt level, floor clamp is disabled)
@@ -2869,6 +2892,7 @@ class GameScreen(
         canJump = false // Reset per frame
         if (currentLevel == 6 && currentChunk == 3) canJump = true
         if (currentLevel == 7 && currentChunk == 3) canJump = true
+        if (currentLevel == 9 && currentChunk == 1 && Level9Chunk1State.isOnBox) canJump = true
         if (!reverseGravity && playerY <= floorY + 1f && !isExemptLevel) canJump = true
 
         // --- CRITICAL FIX: Remove destroyed platforms so player falls! ---
@@ -3442,6 +3466,15 @@ class GameScreen(
             if (currentLevel == 7 && currentChunk == 2) {
                 // Keep the visual representation as a 40x10 line centered above the shark's Y+90
                 shapeRenderer.rect(btn.rect.x + 40f + renderOffset, btn.rect.y + 10f, 40f, 10f)
+            } else if (currentLevel == 9 && currentChunk == 1) {
+                if (!btn.isPressed) {
+                    shapeRenderer.color = Color(0f, 0.47f, 0.95f, 1f) // Android blue
+                    val cx = btn.rect.x + btn.rect.width / 2 + renderOffset
+                    val cy = btn.rect.y + btn.rect.height / 2
+                    val half = btn.rect.width / 2
+                    shapeRenderer.rectLine(cx - half, cy - half, cx + half, cy + half, 6f)
+                    shapeRenderer.rectLine(cx - half, cy + half, cx + half, cy - half, 6f)
+                }
             } else {
                 shapeRenderer.rect(btn.rect.x + renderOffset, btn.rect.y, btn.rect.width, btn.rect.height)
             }
