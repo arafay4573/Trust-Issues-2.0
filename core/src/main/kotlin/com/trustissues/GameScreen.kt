@@ -3466,14 +3466,7 @@ class GameScreen(
                 // Keep the visual representation as a 40x10 line centered above the shark's Y+90
                 shapeRenderer.rect(btn.rect.x + 40f + renderOffset, btn.rect.y + 10f, 40f, 10f)
             } else if (currentLevel == 9 && currentChunk == 1) {
-                if (!btn.isPressed) {
-                    shapeRenderer.color = Color(0f, 0.47f, 0.95f, 1f) // Android blue
-                    val cx = btn.rect.x + btn.rect.width / 2 + renderOffset
-                    val cy = btn.rect.y + btn.rect.height / 2
-                    val half = btn.rect.width / 2
-                    shapeRenderer.rectLine(cx - half, cy - half, cx + half, cy + half, 6f)
-                    shapeRenderer.rectLine(cx - half, cy + half, cx + half, cy - half, 6f)
-                }
+                // Skip drawing it here since the blackout will cover it. We'll draw it below.
             } else {
                 shapeRenderer.rect(btn.rect.x + renderOffset, btn.rect.y, btn.rect.width, btn.rect.height)
             }
@@ -3482,6 +3475,7 @@ class GameScreen(
         // Draw Lasers (Transparent Red)
         shapeRenderer.color = Color(1f, 0.1f, 0.1f, 0.8f)
         for (laser in lasers) {
+             if (currentLevel == 9 && currentChunk == 1 && Level9Chunk1State.phase < 2) continue
              shapeRenderer.rect(laser.rect.x + renderOffset, laser.rect.y, laser.rect.width, laser.rect.height)
         }
 
@@ -3511,6 +3505,24 @@ class GameScreen(
             platforms.forEach {
                 if (it.type == PlatformType.BLUE) {
                     shapeRenderer.rect(it.rect.x + renderOffset, it.rect.y, it.rect.width, it.rect.height)
+                }
+            }
+
+            // Re-draw Lasers because the blackout covered them
+            shapeRenderer.color = Color(1f, 0.1f, 0.1f, 0.8f)
+            for (laser in lasers) {
+                 shapeRenderer.rect(laser.rect.x + renderOffset, laser.rect.y, laser.rect.width, laser.rect.height)
+            }
+
+            // Re-draw Cross Button because the blackout covered it
+            for (btn in gameButtons) {
+                if (!btn.isPressed) {
+                    shapeRenderer.color = Color(0f, 0.47f, 0.95f, 1f) // Android blue
+                    val cx = btn.rect.x + btn.rect.width / 2 + renderOffset
+                    val cy = btn.rect.y + btn.rect.height / 2
+                    val half = btn.rect.width / 2
+                    shapeRenderer.rectLine(cx - half, cy - half, cx + half, cy + half, 6f)
+                    shapeRenderer.rectLine(cx - half, cy + half, cx + half, cy - half, 6f)
                 }
             }
 
