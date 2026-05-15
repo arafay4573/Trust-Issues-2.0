@@ -234,6 +234,18 @@ class GameScreen(
         }
     }
 
+    private object Level9Chunk1State {
+        var phase = 0 // 0 = start, 1 = blackout & seesaw
+        var boxAngle = 0f
+        var boxAngularVelocity = 0f
+
+        fun reset() {
+            phase = 0
+            boxAngle = 0f
+            boxAngularVelocity = 0f
+        }
+    }
+
     private object Level7Chunk3State {
         var voidLeft = 0f
         var voidRight = 1280f
@@ -389,6 +401,8 @@ class GameScreen(
             setupLevel7(chunk)
         } else if (currentLevel == 8) {
             setupLevel8(chunk)
+        } else if (currentLevel == 9) {
+            setupLevel9(chunk)
         }
 
         maskRect.set(maskX, maskY, maskWidth, maskHeight)
@@ -776,6 +790,31 @@ class GameScreen(
             }
         }
     }
+
+    private fun setupLevel9(chunk: Int) {
+        if (chunk == 1) {
+            Level9Chunk1State.reset()
+
+            // Initial spawn platform (green initially)
+            platforms.add(Platform(Rectangle(100f, 200f, 200f, 20f), PlatformType.NORMAL))
+
+            // Mask on the other side
+            maskX = 1100f
+            maskY = 400f
+            maskRect.set(maskX, maskY, maskWidth, maskHeight)
+
+            // Fake obstacles towards the mask
+            platforms.add(Platform(Rectangle(400f, 300f, 100f, 20f), PlatformType.NORMAL))
+            platforms.add(Platform(Rectangle(600f, 400f, 100f, 20f), PlatformType.NORMAL))
+            platforms.add(Platform(Rectangle(800f, 500f, 100f, 20f), PlatformType.NORMAL))
+
+            // Player spawn
+            playerX = 150f
+            playerY = 220f
+            playerRect.set(playerX, playerY, playerWidth, playerHeight)
+        }
+    }
+
 
     private fun setupLevel7(chunk: Int) {
         when (chunk) {
@@ -2057,7 +2096,7 @@ class GameScreen(
         if (isWalking) walkTime += delta * 15f else walkTime = 0f
 
         // Physics
-        val isExemptLevel = (currentLevel == 4 && (currentChunk == 2 || currentChunk == 3)) || currentLevel == 3 || currentLevel == 5 || currentLevel == 6 || currentLevel == 7 || (currentLevel == 8 && currentChunk == 2) || (currentLevel == 8 && currentChunk == 3)
+        val isExemptLevel = (currentLevel == 4 && (currentChunk == 2 || currentChunk == 3)) || currentLevel == 3 || currentLevel == 5 || currentLevel == 6 || currentLevel == 7 || (currentLevel == 8 && currentChunk == 2) || (currentLevel == 8 && currentChunk == 3) || (currentLevel == 9 && currentChunk == 1)
 
         val currentGravity = if (currentLevel == 5 && (currentChunk == 2 || currentChunk == 3)) -1800f else if (currentLevel == 6 && currentChunk == 1 && isPortalLoopActive) -3200f * 3f else -3200f
 
@@ -2243,6 +2282,90 @@ class GameScreen(
             // Abyss / Sky Death (shouldn't happen with the box, but just in case)
             if (playerY < 0f || playerY > 720f) {
                 die("Escaped the box?")
+            }
+        }
+
+
+        // --- LEVEL 9 CHUNK 1 LOGIC (The Android Security Update) ---
+        if (currentLevel == 9 && currentChunk == 1 && !isDead && !isLevelComplete) {
+            if (Level9Chunk1State.phase == 0 && chunkTime >= 2.0f) {
+                // Blackout transition
+                Level9Chunk1State.phase = 1
+
+                // Clear fake obstacles (all platforms except the starting one)
+                // The starting platform is at x=100
+                platforms.removeAll { it.rect.x > 300f }
+
+                // Turn starting platform BLUE
+                platforms.forEach {
+                    if (it.rect.x == 100f && it.rect.y == 200f) {
+                        it.type = PlatformType.BLUE
+                    }
+                }
+            }
+
+            if (Level9Chunk1State.phase == 1) {
+                // Seesaw dimensions: 600x300, center at 640, 360
+                val boxWidth = 600f
+                val boxHeight = 300f
+                val boxCenterX = 640f
+                val boxCenterY = 360f
+                val boxTopY = boxCenterY + boxHeight / 2
+                val boxLeftX = boxCenterX - boxWidth / 2
+                val boxRightX = boxCenterX + boxWidth / 2
+
+                // Check if player is standing on the box
+                val isOnBox = playerX + playerWidth > boxLeftX && playerX < boxRightX && playerY >= boxTopY - 100f && playerY <= boxTopY + 300f
+
+                if (isOnBox) {
+                    // Apply rotation to box based on player position relative to center
+                    val offset = (playerX + playerWidth / 2) - boxCenterX
+                    // Max offset is 300. We scale angular velocity by offset
+                    Level9Chunk1State.boxAngularVelocity += offset * 0.005f * delta
+
+                    // Box tilting physics
+                    Level9Chunk1State.boxAngle -= Level9Chunk1State.boxAngularVelocity
+                    Level9Chunk1State.boxAngularVelocity *= 0.95f // Damping
+
+                    // Clamp angle
+                    if (Level9Chunk1State.boxAngle > 45f) {
+                        Level9Chunk1State.boxAngle = 45f
+                        Level9Chunk1State.boxAngularVelocity = 0f
+                    } else if (Level9Chunk1State.boxAngle < -45f) {
+                        Level9Chunk1State.boxAngle = -45f
+                        Level9Chunk1State.boxAngularVelocity = 0f
+                    }
+
+                    // Trigonometry to adjust player Y to walk on the slope
+                    // The slope is -boxAngle (positive angle means right side is higher)
+                    // We need to calculate the Y of the top of the box at player's X
+                    val slopeOffset = offset
+                    val radians = Math.toRadians(Level9Chunk1State.boxAngle.toDouble())
+                    val heightOffset = slopeOffset * Math.tan(radians)
+
+                    // Snap player to the tilted top
+                    val expectedY = boxTopY + heightOffset.toFloat()
+                    if (playerY - expectedY < 10f && velocityY <= 0) {
+                        playerY = expectedY
+                        velocityY = 0f
+                        canJump = true
+                    }
+
+                    // Slip mechanics: if angle is steep, push player down the slope
+                    if (Math.abs(Level9Chunk1State.boxAngle) > 25f) {
+                        // Slide down
+                        val slideForce = Level9Chunk1State.boxAngle * 2.0f * delta
+                        playerX += slideForce
+                    }
+                } else {
+                    // If not on box, box slowly returns to 0
+                    Level9Chunk1State.boxAngle *= 0.98f
+                }
+
+                // Abyss death (since it's an exempt level, floor clamp is disabled)
+                if (playerY < -50f) {
+                    die("You couldn't balance the system.")
+                }
             }
         }
 
@@ -3254,6 +3377,7 @@ class GameScreen(
             if (isPlatformVisible && isVisible(plat.rect.x, plat.rect.y)) {
                 shapeRenderer.color = when(plat.type) {
                     PlatformType.DEADLY_RED -> Color.RED
+                    PlatformType.BLUE -> Color.BLUE
                     else -> if (plat.state == PlatformState.CRUMBLING) Color.RED else Color.GREEN
                 }
                 shapeRenderer.rect(plat.rect.x + renderOffset, plat.rect.y, plat.rect.width, plat.rect.height)
@@ -3289,6 +3413,42 @@ class GameScreen(
         shapeRenderer.color = Color(1f, 0.1f, 0.1f, 0.8f)
         for (laser in lasers) {
              shapeRenderer.rect(laser.rect.x + renderOffset, laser.rect.y, laser.rect.width, laser.rect.height)
+        }
+
+
+        // Level 9 Chunk 1 Blackout & Seesaw Box
+        if (currentLevel == 9 && currentChunk == 1 && Level9Chunk1State.phase == 1) {
+            // Draw Blackout over everything else drawn so far
+            shapeRenderer.color = Color.BLACK
+            shapeRenderer.rect(-5000f, -5000f, 10000f, 10000f) // Cover everything
+
+            // Re-draw BLUE platform
+            shapeRenderer.color = Color.BLUE
+            platforms.forEach {
+                if (it.type == PlatformType.BLUE) {
+                    shapeRenderer.rect(it.rect.x + renderOffset, it.rect.y, it.rect.width, it.rect.height)
+                }
+            }
+
+            // Draw Seesaw Box
+            val boxWidth = 600f
+            val boxHeight = 300f
+            val boxCenterX = 640f
+            val boxCenterY = 360f
+
+            val boxTransform = shapeRenderer.transformMatrix.cpy()
+            shapeRenderer.translate(boxCenterX + renderOffset, boxCenterY, 0f)
+            shapeRenderer.rotate(0f, 0f, 1f, Level9Chunk1State.boxAngle)
+
+            // Outline
+            shapeRenderer.color = Color.WHITE
+            shapeRenderer.rect(-boxWidth/2 - 5f, -boxHeight/2 - 5f, boxWidth + 10f, boxHeight + 10f)
+
+            // Black fill
+            shapeRenderer.color = Color.BLACK
+            shapeRenderer.rect(-boxWidth/2, -boxHeight/2, boxWidth, boxHeight)
+
+            shapeRenderer.transformMatrix = boxTransform
         }
 
         // Draw Player (Procedural Shapes)
@@ -3501,6 +3661,24 @@ class GameScreen(
                     game.batch.draw(tex, plat.rect.x + renderOffset, plat.rect.y, width, height, 0, 0, tex.width, tex.height, false, false)
                 }
             }
+        }
+
+
+        // Level 9 Chunk 1 Box Text
+        if (currentLevel == 9 && currentChunk == 1 && Level9Chunk1State.phase == 1) {
+            val oldMatrix = game.batch.transformMatrix.cpy()
+            val textMatrix = com.badlogic.gdx.math.Matrix4()
+            textMatrix.setToTranslation(640f + renderOffset, 360f, 0f)
+            textMatrix.rotate(0f, 0f, 1f, Level9Chunk1State.boxAngle)
+
+            game.batch.transformMatrix = textMatrix
+            buttonFont?.color = Color.GREEN
+            buttonFont?.data?.setScale(3f) // Ensure the font is large enough
+            // Since we translated to the center, we draw the text offset from center
+            // Approximate centering
+            buttonFont?.draw(game.batch, "Android Security Update", -250f, 20f)
+            buttonFont?.data?.setScale(1f) // Reset scale
+            game.batch.transformMatrix = oldMatrix
         }
 
         game.batch.end()
