@@ -796,6 +796,7 @@ class GameScreen(
     private fun setupLevel9(chunk: Int) {
         if (chunk == 1) {
             Level9Chunk1State.reset()
+            chunkTime = 0f
 
             // Initial spawn platform (green initially)
             platforms.add(Platform(Rectangle(100f, 200f, 200f, 20f), PlatformType.NORMAL))
@@ -2290,6 +2291,8 @@ class GameScreen(
 
         // --- LEVEL 9 CHUNK 1 LOGIC (The Android Security Update) ---
         if (currentLevel == 9 && currentChunk == 1 && !isDead && !isLevelComplete) {
+            chunkTime += delta
+
             // Mask win condition (if they somehow reach it in 2 seconds)
             if (Intersector.overlaps(playerRect, maskRect)) {
                 win()
