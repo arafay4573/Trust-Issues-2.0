@@ -239,12 +239,14 @@ class GameScreen(
         var boxAngle = 0f
         var boxAngularVelocity = 0f
         var glitchTimer = 0f
+        var updateProgress = 0f
 
         fun reset() {
             phase = 0
             boxAngle = 0f
             boxAngularVelocity = 0f
             glitchTimer = 0f
+            updateProgress = 0f
         }
     }
 
@@ -799,21 +801,22 @@ class GameScreen(
             chunkTime = 0f
 
             // Initial spawn platform (green initially)
-            platforms.add(Platform(Rectangle(100f, 200f, 200f, 20f), PlatformType.NORMAL))
+            // Spawn high and to the right so they can drop/jump onto the box in the middle
+            platforms.add(Platform(Rectangle(950f, 500f, 200f, 20f), PlatformType.NORMAL))
 
-            // Mask on the other side
-            maskX = 1100f
-            maskY = 400f
+            // Mask on the far left side, lower, requiring a dive
+            maskX = 50f
+            maskY = 250f
             maskRect.set(maskX, maskY, maskWidth, maskHeight)
 
-            // Fake obstacles towards the mask
-            platforms.add(Platform(Rectangle(400f, 300f, 100f, 20f), PlatformType.NORMAL))
-            platforms.add(Platform(Rectangle(600f, 400f, 100f, 20f), PlatformType.NORMAL))
-            platforms.add(Platform(Rectangle(800f, 500f, 100f, 20f), PlatformType.NORMAL))
+            // Fake obstacles leading left (opposite to the previous rightward path)
+            platforms.add(Platform(Rectangle(700f, 450f, 100f, 20f), PlatformType.NORMAL))
+            platforms.add(Platform(Rectangle(450f, 400f, 100f, 20f), PlatformType.NORMAL))
+            platforms.add(Platform(Rectangle(200f, 350f, 100f, 20f), PlatformType.NORMAL))
 
             // Player spawn
-            playerX = 150f
-            playerY = 220f
+            playerX = 1000f
+            playerY = 520f
             playerRect.set(playerX, playerY, playerWidth, playerHeight)
         }
     }
@@ -2311,11 +2314,11 @@ class GameScreen(
                     Level9Chunk1State.phase = 2
 
                     // Clear fake obstacles
-                    platforms.removeAll { it.rect.x > 300f }
+                    platforms.removeAll { it.rect.x < 900f }
 
                     // Turn starting platform BLUE
                     platforms.forEach {
-                        if (it.rect.x == 100f && it.rect.y == 200f) {
+                        if (it.rect.x == 950f && it.rect.y == 500f) {
                             it.type = PlatformType.BLUE
                         }
                     }
@@ -2333,13 +2336,14 @@ class GameScreen(
                 val boxRightX = boxCenterX + boxWidth / 2
 
                 // Check if player is standing on the box
-                val isOnBox = playerX + playerWidth > boxLeftX && playerX < boxRightX && playerY >= boxTopY - 100f && playerY <= boxTopY + 300f
+                // Player must be ON TOP of it to stand on it.
+                val isOnBox = playerX + playerWidth > boxLeftX && playerX < boxRightX && playerY >= boxTopY - 150f
 
                 if (isOnBox) {
                     // Apply rotation to box based on player position relative to center
                     val offset = (playerX + playerWidth / 2) - boxCenterX
                     // Max offset is 300. We scale angular velocity by offset
-                    Level9Chunk1State.boxAngularVelocity += offset * 0.005f * delta
+                    Level9Chunk1State.boxAngularVelocity += offset * 0.025f * delta
 
                     // Box tilting physics
                     Level9Chunk1State.boxAngle -= Level9Chunk1State.boxAngularVelocity
@@ -2355,15 +2359,14 @@ class GameScreen(
                     }
 
                     // Trigonometry to adjust player Y to walk on the slope
-                    // The slope is -boxAngle (positive angle means right side is higher)
-                    // We need to calculate the Y of the top of the box at player's X
+                    // The box is rotated around its center. We calculate the expected Y for the surface.
                     val slopeOffset = offset
-                    val radians = Math.toRadians(Level9Chunk1State.boxAngle.toDouble())
+                    val radians = Math.toRadians(-Level9Chunk1State.boxAngle.toDouble())
                     val heightOffset = slopeOffset * Math.tan(radians)
 
                     // Snap player to the tilted top
                     val expectedY = boxTopY + heightOffset.toFloat()
-                    if (playerY - expectedY < 10f && velocityY <= 0) {
+                    if (playerY - expectedY < 50f && velocityY <= 0) {
                         playerY = expectedY
                         velocityY = 0f
                         canJump = true
@@ -2372,12 +2375,25 @@ class GameScreen(
                     // Slip mechanics: if angle is steep, push player down the slope
                     if (Math.abs(Level9Chunk1State.boxAngle) > 25f) {
                         // Slide down
-                        val slideForce = Level9Chunk1State.boxAngle * 2.0f * delta
+                        val slideForce = Level9Chunk1State.boxAngle * -5.0f * delta
                         playerX += slideForce
                     }
                 } else {
                     // If not on box, box slowly returns to 0
                     Level9Chunk1State.boxAngle *= 0.98f
+                }
+
+                // Update Progress Timer (4 seconds to reach 100%)
+                Level9Chunk1State.updateProgress += (1f / 4.0f) * delta
+                if (Level9Chunk1State.updateProgress >= 1f) {
+                    Level9Chunk1State.updateProgress = 1f
+                    die(listOf(
+                        "Update installed successfully. You were patched out.",
+                        "System 1, Trust Issues 0.",
+                        "You ran out of battery before it finished.",
+                        "Should have cleared your cache.",
+                        "Looks like this update bricked you."
+                    ).random())
                 }
 
                 // Abyss death (since it's an exempt level, floor clamp is disabled)
@@ -3472,13 +3488,32 @@ class GameScreen(
             shapeRenderer.translate(boxCenterX + renderOffset, boxCenterY, 0f)
             shapeRenderer.rotate(0f, 0f, 1f, Level9Chunk1State.boxAngle)
 
-            // Outline
-            shapeRenderer.color = Color.WHITE
-            shapeRenderer.rect(-boxWidth/2 - 5f, -boxHeight/2 - 5f, boxWidth + 10f, boxHeight + 10f)
+            // Background (Light UI grey) with rounded look approximation (circles at corners)
+            val bgColor = Color(0.85f, 0.88f, 0.91f, 1f) // very light blueish grey
+            shapeRenderer.color = bgColor
 
-            // Black fill
-            shapeRenderer.color = Color.BLACK
-            shapeRenderer.rect(-boxWidth/2, -boxHeight/2, boxWidth, boxHeight)
+            val r = 40f
+            // Main rects
+            shapeRenderer.rect(-boxWidth/2 + r, -boxHeight/2, boxWidth - 2*r, boxHeight)
+            shapeRenderer.rect(-boxWidth/2, -boxHeight/2 + r, boxWidth, boxHeight - 2*r)
+            // Corners
+            shapeRenderer.circle(-boxWidth/2 + r, -boxHeight/2 + r, r)
+            shapeRenderer.circle(boxWidth/2 - r, -boxHeight/2 + r, r)
+            shapeRenderer.circle(-boxWidth/2 + r, boxHeight/2 - r, r)
+            shapeRenderer.circle(boxWidth/2 - r, boxHeight/2 - r, r)
+
+            // Progress bar background (light grey)
+            val pbWidth = 460f
+            val pbHeight = 8f
+            val pbX = -pbWidth / 2f
+            val pbY = -20f
+            shapeRenderer.color = Color(0.8f, 0.8f, 0.8f, 1f)
+            shapeRenderer.rect(pbX, pbY, pbWidth, pbHeight)
+
+            // Progress bar fill (blue)
+            val fillWidth = pbWidth * Level9Chunk1State.updateProgress
+            shapeRenderer.color = Color(0f, 0.47f, 0.95f, 1f) // Android blue
+            shapeRenderer.rect(pbX, pbY, fillWidth, pbHeight)
 
             shapeRenderer.transformMatrix = boxTransform
         }
@@ -3704,11 +3739,20 @@ class GameScreen(
             textMatrix.rotate(0f, 0f, 1f, Level9Chunk1State.boxAngle)
 
             game.batch.transformMatrix = textMatrix
-            buttonFont?.color = Color.GREEN
-            buttonFont?.data?.setScale(3f) // Ensure the font is large enough
-            // Since we translated to the center, we draw the text offset from center
-            // Approximate centering
-            buttonFont?.draw(game.batch, "Android Security Update", -250f, 20f)
+
+            // Title
+            buttonFont?.color = Color.BLACK
+            buttonFont?.data?.setScale(1.5f)
+            buttonFont?.draw(game.batch, "Android system update", -230f, 80f)
+
+            // Subtitle
+            buttonFont?.color = Color.DARK_GRAY
+            buttonFont?.data?.setScale(0.8f)
+            buttonFont?.draw(game.batch, "Processing the update package...", -230f, 20f)
+
+            // Percentage
+            buttonFont?.draw(game.batch, "${(Level9Chunk1State.updateProgress * 100).toInt()}%", 180f, -40f)
+
             buttonFont?.data?.setScale(1f) // Reset scale
             game.batch.transformMatrix = oldMatrix
         }
