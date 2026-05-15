@@ -63,7 +63,7 @@ class LevelSelectScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
         // Levels Logic
         val unlockedLevel = Gdx.app.getPreferences("TrustIssues").getInteger("unlockedLevel", 1)
 
-        for (i in 1..10) {
+        for (i in 1..9) {
             val btn = createLevelButton(i, i <= unlockedLevel)
             rootTable.add(btn).size(120f, 120f).pad(15f)
             if (i % 5 == 0) rootTable.row()
