@@ -2325,10 +2325,10 @@ class GameScreen(
                     lasers.add(Laser(Rectangle(80f, 230f, 10f, 70f))) // Right
 
                     // The cross button above the mask appears now
-                    // Smaller physical hitbox but placed slightly higher so player hits it while falling
-                    val btnWidth = 30f
-                    val btnHeight = 30f
-                    gameButtons.add(GameButton(Rectangle(50f + maskWidth / 2f - btnWidth / 2f, 400f, btnWidth, btnHeight), false))
+                    // Massive physical hitbox so player cannot skip it via delta-time frame drops
+                    val btnWidth = 60f
+                    val btnHeight = 400f
+                    gameButtons.add(GameButton(Rectangle(50f + maskWidth / 2f - btnWidth / 2f, 300f, btnWidth, btnHeight), false))
 
                     // Turn starting platform BLUE
                     platforms.forEach {
@@ -3519,8 +3519,9 @@ class GameScreen(
             for (btn in gameButtons) {
                 if (!btn.isPressed) {
                     shapeRenderer.color = Color(0f, 0.47f, 0.95f, 1f) // Android blue
-                    val cx = btn.rect.x + btn.rect.width / 2 + renderOffset
-                    val cy = btn.rect.y + btn.rect.height / 2
+                    // Draw it at Y=400 explicitly, regardless of the giant logical hitbox
+                    val cx = 60f + renderOffset // Mask is at 50, width 20, center is 60
+                    val cy = 400f
                     // Make the cross much smaller ("like a bar cross where u cross it to close the windows")
                     val half = 15f
                     shapeRenderer.rectLine(cx - half, cy - half, cx + half, cy + half, 4f)
