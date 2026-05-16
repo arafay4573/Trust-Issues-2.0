@@ -862,7 +862,8 @@ class GameScreen(
             platforms.add(Platform(Rectangle(400f, 150f, 20f, 20f), PlatformType.NORMAL)) // Kept solid to stand on
 
             // Mask sits far right over fake Try Again button (visual only setup, logic handled in update)
-            maskX = 1000f
+            // Shifted left to match the text
+            maskX = 850f
             maskY = 500f
             maskRect.set(maskX, maskY, maskWidth, maskHeight)
 
@@ -2512,10 +2513,13 @@ class GameScreen(
             }
 
             // Fake Mask / Dialogue Death
-            // Hitbox for the fake mask and popup area
-            val fakeMaskRect = Rectangle(1000f, 400f, 200f, 200f)
-            if (Intersector.overlaps(playerRect, fakeMaskRect)) {
-                die(listOf("Your connection is unstable, and so is your gameplay.", "Ping: 999ms. Brain: 0ms.", "Searching for a network... Still looking for your skill.", "Connection Timed Out.").random())
+            // ONLY check collision if the signal is dropped (<= 0)
+            if (Level9Chunk2State.signalStrength <= 0) {
+                // Hitbox for the fake mask and popup area (shifted left)
+                val fakeMaskRect = Rectangle(800f, 400f, 250f, 200f)
+                if (Intersector.overlaps(playerRect, fakeMaskRect)) {
+                    die(listOf("Your connection is unstable, and so is your gameplay.", "Ping: 999ms. Brain: 0ms.", "Searching for a network... Still looking for your skill.", "Connection Timed Out.").random())
+                }
             }
 
             // True Win Condition (Base Dot)
@@ -3651,11 +3655,11 @@ class GameScreen(
                         shapeRenderer.rectLine(x1, y1, x2, y2, arcThickness)
                     }
 
-                    // CRITICAL FIX: Align physical collision hitbox to match the visual arc exactly
-                    // The arc's bounding box can be approximated by a rectangle spanning its width and thickness.
-                    val arcWidth = 2f * radius * Math.sin(Math.toRadians(30.0)).toFloat() // sweep is +/- 30 deg from center
+                    // Use a strict, narrow rectangular physical hitbox located exactly at the visual peak of the arc.
+                    // This prevents walking on "thin air" outside the core solid body of the curve.
+                    val peakWidth = radius * 0.4f
                     val arcTopY = cy + radius + arcThickness / 2f
-                    plat.rect.set(cx - arcWidth / 2f - renderOffset, arcTopY - arcThickness, arcWidth, arcThickness)
+                    plat.rect.set(640f - peakWidth / 2f, arcTopY - arcThickness, peakWidth, arcThickness)
 
                 } else if (plat.rect.x == 400f && plat.rect.y == 150f) {
                     // Draw the Base Dot
@@ -3891,7 +3895,13 @@ class GameScreen(
 
         // Draw Mask using Texture
         maskTexture?.let { tex ->
-            val hideMask = (currentLevel == 3 && currentChunk == 3 && !isLightsOn)
+            var hideMask = (currentLevel == 3 && currentChunk == 3 && !isLightsOn)
+
+            // Level 9 Chunk 2: Fake Mask ONLY visible when signalStrength <= 0
+            if (currentLevel == 9 && currentChunk == 2 && Level9Chunk2State.signalStrength > 0) {
+                hideMask = true
+            }
+
             if (!hideMask && isVisible(maskX, maskY)) {
                 game.batch.draw(tex, maskX + renderOffset, maskY + renderOffsetY, 32f, 32f)
             }
@@ -3955,14 +3965,16 @@ class GameScreen(
 
 
         // Level 9 Chunk 2 UI Text
-        if (currentLevel == 9 && currentChunk == 2) {
+        // Text should ONLY appear when there are no bars left
+        if (currentLevel == 9 && currentChunk == 2 && Level9Chunk2State.signalStrength <= 0) {
             buttonFont?.color = Color.WHITE
-            buttonFont?.data?.setScale(1.2f)
-            buttonFont?.draw(game.batch, "No Internet Connection", 900f + renderOffset, 550f)
-
             buttonFont?.data?.setScale(0.8f)
+            // Shift left so it fits entirely on the screen
+            buttonFont?.draw(game.batch, "No Internet Connection", 800f + renderOffset, 550f)
+
+            buttonFont?.data?.setScale(0.6f)
             buttonFont?.color = Color(0f, 0.47f, 0.95f, 1f) // Android Blue
-            buttonFont?.draw(game.batch, "[Try Again]", 1000f + renderOffset, 480f)
+            buttonFont?.draw(game.batch, "[Try Again]", 860f + renderOffset, 480f)
             buttonFont?.data?.setScale(1f)
         }
 
