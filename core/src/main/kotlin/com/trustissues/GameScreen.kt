@@ -2326,9 +2326,13 @@ class GameScreen(
 
                     // The cross button above the mask appears now
                     // Massive physical hitbox so player cannot skip it via delta-time frame drops
+                    // Higher placement so it can be hit while jumping towards the mask
                     val btnWidth = 60f
-                    val btnHeight = 400f
-                    gameButtons.add(GameButton(Rectangle(50f + maskWidth / 2f - btnWidth / 2f, 300f, btnWidth, btnHeight), false))
+                    val btnHeight = 150f
+                    gameButtons.add(GameButton(Rectangle(50f + maskWidth / 2f - btnWidth / 2f, 400f, btnWidth, btnHeight), false) {
+                        // Action executed immediately upon collision detection in the main button loop
+                        lasers.forEach { it.rect.x = -5000f }
+                    })
 
                     // Turn starting platform BLUE
                     platforms.forEach {
@@ -2412,15 +2416,6 @@ class GameScreen(
                         "Should have cleared your cache.",
                         "Looks like this update bricked you."
                     ).random())
-                }
-
-                // Cross button logic to open laser cage
-                for (btn in gameButtons) {
-                    // Check if player is intersecting or if they've already pressed it
-                    if (!btn.isPressed && Intersector.overlaps(playerRect, btn.rect)) {
-                        btn.isPressed = true // visual feedback and permanent state
-                        lasers.forEach { it.rect.x = -5000f }
-                    }
                 }
 
                 // Abyss death (since it's an exempt level, floor clamp is disabled)
@@ -3519,9 +3514,9 @@ class GameScreen(
             for (btn in gameButtons) {
                 if (!btn.isPressed) {
                     shapeRenderer.color = Color(0f, 0.47f, 0.95f, 1f) // Android blue
-                    // Draw it at Y=400 explicitly, regardless of the giant logical hitbox
+                    // Draw it slightly higher at Y=480 explicitly, regardless of the giant logical hitbox
                     val cx = 60f + renderOffset // Mask is at 50, width 20, center is 60
-                    val cy = 400f
+                    val cy = 480f
                     // Make the cross much smaller ("like a bar cross where u cross it to close the windows")
                     val half = 15f
                     shapeRenderer.rectLine(cx - half, cy - half, cx + half, cy + half, 4f)
