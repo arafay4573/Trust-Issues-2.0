@@ -252,6 +252,27 @@ class GameScreen(
         }
     }
 
+    private object Level9Chunk2State {
+        var signalStrength = 4
+        var dropTimer = 0f
+        var resetTimer = 0f
+
+        val bar1 = Platform(Rectangle(500f, 300f, 50f, 20f), PlatformType.NORMAL) // Smallest
+        val bar2 = Platform(Rectangle(600f, 400f, 60f, 20f), PlatformType.NORMAL)
+        val bar3 = Platform(Rectangle(700f, 500f, 80f, 20f), PlatformType.NORMAL)
+        val bar4 = Platform(Rectangle(800f, 600f, 100f, 20f), PlatformType.NORMAL) // Largest
+
+        fun reset() {
+            signalStrength = 4
+            dropTimer = 0f
+            resetTimer = 0f
+            bar1.type = PlatformType.NORMAL
+            bar2.type = PlatformType.NORMAL
+            bar3.type = PlatformType.NORMAL
+            bar4.type = PlatformType.NORMAL
+        }
+    }
+
     private object Level7Chunk3State {
         var voidLeft = 0f
         var voidRight = 1280f
@@ -820,6 +841,34 @@ class GameScreen(
             playerX = 1000f
             playerY = 520f
             playerRect.set(playerX, playerY, playerWidth, playerHeight)
+        } else if (chunk == 2) {
+            Level9Chunk2State.reset()
+            chunkTime = 0f
+
+            // Left Spawn Platform
+            platforms.add(Platform(Rectangle(100f, 200f, 150f, 20f), PlatformType.NORMAL))
+            playerX = 150f
+            playerY = 220f
+            velocityY = 0f
+            playerRect.set(playerX, playerY, playerWidth, playerHeight)
+
+            // 4 Curved WiFi Bars
+            platforms.add(Level9Chunk2State.bar1)
+            platforms.add(Level9Chunk2State.bar2)
+            platforms.add(Level9Chunk2State.bar3)
+            platforms.add(Level9Chunk2State.bar4)
+
+            // Base Dot (True Win)
+            platforms.add(Platform(Rectangle(400f, 150f, 20f, 20f), PlatformType.NORMAL)) // Kept solid to stand on
+
+            // Mask sits far right over fake Try Again button (visual only setup, logic handled in update)
+            maskX = 1000f
+            maskY = 500f
+            maskRect.set(maskX, maskY, maskWidth, maskHeight)
+
+            // Symmetrical Squeezing Walls
+            movingWalls.add(MovingWall(Rectangle(-500f, 0f, 500f, 720f), 35f, true))
+            movingWalls.add(MovingWall(Rectangle(1280f, 0f, 500f, 720f), -35f, true))
         }
     }
 
@@ -1381,7 +1430,7 @@ class GameScreen(
 
     private fun completeChunk() {
         val nextChunk = currentChunk + 1
-        val isEndOfLevel = nextChunk > 3 || (currentLevel == 7 && nextChunk > 2) || (currentLevel == 8 && nextChunk > 1) || (currentLevel == 9 && nextChunk > 1)
+        val isEndOfLevel = nextChunk > 3 || (currentLevel == 7 && nextChunk > 2) || (currentLevel == 8 && nextChunk > 1) || (currentLevel == 9 && nextChunk > 2)
 
         val prefs = Gdx.app.getPreferences("TrustIssues")
         val savedMaxChunk = prefs.getInteger("level_${currentLevel}_maxChunk", 1)
@@ -2425,6 +2474,63 @@ class GameScreen(
             }
         }
 
+        // --- LEVEL 9 CHUNK 2 LOGIC (The Dropping Signal) ---
+        if (currentLevel == 9 && currentChunk == 2 && !isDead && !isLevelComplete) {
+            chunkTime += delta
+
+            // The Network Drop Loop
+            if (Level9Chunk2State.signalStrength > 0) {
+                Level9Chunk2State.dropTimer += delta
+                if (Level9Chunk2State.dropTimer >= 1.5f) {
+                    Level9Chunk2State.dropTimer = 0f
+                    Level9Chunk2State.signalStrength--
+
+                    // Apply visual/physical drops
+                    if (Level9Chunk2State.signalStrength == 3) {
+                        platforms.remove(Level9Chunk2State.bar4)
+                    } else if (Level9Chunk2State.signalStrength == 2) {
+                        platforms.remove(Level9Chunk2State.bar3)
+                    } else if (Level9Chunk2State.signalStrength == 1) {
+                        platforms.remove(Level9Chunk2State.bar2)
+                    } else if (Level9Chunk2State.signalStrength <= 0) {
+                        platforms.remove(Level9Chunk2State.bar1)
+                        Level9Chunk2State.resetTimer = 1.0f // Reset delay
+                    }
+                }
+            } else {
+                // Signal is 0, wait for reset
+                Level9Chunk2State.resetTimer -= delta
+                if (Level9Chunk2State.resetTimer <= 0f) {
+                    // Restore signal
+                    Level9Chunk2State.signalStrength = 4
+                    Level9Chunk2State.dropTimer = 0f
+                    platforms.add(Level9Chunk2State.bar1)
+                    platforms.add(Level9Chunk2State.bar2)
+                    platforms.add(Level9Chunk2State.bar3)
+                    platforms.add(Level9Chunk2State.bar4)
+                }
+            }
+
+            // Fake Mask / Dialogue Death
+            // Hitbox for the fake mask and popup area
+            val fakeMaskRect = Rectangle(1000f, 400f, 200f, 200f)
+            if (Intersector.overlaps(playerRect, fakeMaskRect)) {
+                die(listOf("Your connection is unstable, and so is your gameplay.", "Ping: 999ms. Brain: 0ms.", "Searching for a network... Still looking for your skill.", "Connection Timed Out.").random())
+            }
+
+            // True Win Condition (Base Dot)
+            val baseDotRect = Rectangle(400f, 150f, 20f, 20f)
+            if (Intersector.overlaps(playerRect, baseDotRect)) {
+                win()
+            }
+
+            // Abyss Death
+            if (playerY < -50f) {
+                die(listOf("Your connection is unstable, and so is your gameplay.", "Ping: 999ms. Brain: 0ms.", "Searching for a network... Still looking for your skill.").random())
+            }
+        }
+
+
         // --- LEVEL 8 CHUNK 3 LOGIC (The High-Ping Paradox) ---
         if (currentLevel == 8 && currentChunk == 3 && !isDead && !isLevelComplete) {
             chunkTime += delta
@@ -3430,6 +3536,13 @@ class GameScreen(
             // Skip the deadly trap shark drawing as platform
             if (plat.type == PlatformType.DEADLY_RED && plat.rect.width == 120.4f) continue
 
+            // Skip drawing the WiFi bars as standard rectangles in Chunk 2 (they are drawn as arcs below)
+            if (currentLevel == 9 && currentChunk == 2) {
+                if (plat == Level9Chunk2State.bar1 || plat == Level9Chunk2State.bar2 ||
+                    plat == Level9Chunk2State.bar3 || plat == Level9Chunk2State.bar4 ||
+                    (plat.rect.x == 400f && plat.rect.y == 150f)) continue
+            }
+
             val isPlatformVisible = (currentLevel != 3 || currentChunk != 3) || isLightsOn || plat.state == PlatformState.CRUMBLING
             if (isPlatformVisible && isVisible(plat.rect.x, plat.rect.y)) {
                 shapeRenderer.color = when(plat.type) {
@@ -3489,6 +3602,70 @@ class GameScreen(
                 shapeRenderer.rect(gx + renderOffset, gy, gw, gh)
             }
         }
+
+        // Draw WiFi Bars (Level 9 Chunk 2) using ShapeRenderer
+        if (currentLevel == 9 && currentChunk == 2) {
+            shapeRenderer.color = Color.WHITE
+            val cx = 640f + renderOffset
+            val cy = -100f // The focal center far below
+
+            for (plat in platforms) {
+                // Determine which bar we are drawing to set the correct radius and color
+                var isBar = false
+                var radius = 0f
+                var arcThickness = 30f
+                var isRed = false
+
+                if (plat == Level9Chunk2State.bar1) {
+                    isBar = true; radius = 400f
+                    if (Level9Chunk2State.signalStrength == 1 && Level9Chunk2State.dropTimer > 1.0f) isRed = true
+                }
+                else if (plat == Level9Chunk2State.bar2) {
+                    isBar = true; radius = 500f
+                    if (Level9Chunk2State.signalStrength == 2 && Level9Chunk2State.dropTimer > 1.0f) isRed = true
+                }
+                else if (plat == Level9Chunk2State.bar3) {
+                    isBar = true; radius = 600f
+                    if (Level9Chunk2State.signalStrength == 3 && Level9Chunk2State.dropTimer > 1.0f) isRed = true // Flash before drop
+                }
+                else if (plat == Level9Chunk2State.bar4) {
+                    isBar = true; radius = 700f
+                    if (Level9Chunk2State.signalStrength == 4 && Level9Chunk2State.dropTimer > 1.0f) isRed = true // Flash before drop
+                }
+
+                if (isBar) {
+                    shapeRenderer.color = if (isRed) Color.RED else Color.WHITE
+                    // Draw arc using a thick line approximation
+                    val segments = 20
+                    val startAngle = 60f
+                    val sweepAngle = 60f // Total angle is 60 (from 60 to 120, centered at 90)
+                    for (i in 0 until segments) {
+                        val a1 = startAngle + (i.toFloat() / segments) * sweepAngle
+                        val a2 = startAngle + ((i + 1).toFloat() / segments) * sweepAngle
+                        val r1 = Math.toRadians(a1.toDouble())
+                        val r2 = Math.toRadians(a2.toDouble())
+                        val x1 = cx + (radius * Math.cos(r1)).toFloat()
+                        val y1 = cy + (radius * Math.sin(r1)).toFloat()
+                        val x2 = cx + (radius * Math.cos(r2)).toFloat()
+                        val y2 = cy + (radius * Math.sin(r2)).toFloat()
+                        shapeRenderer.rectLine(x1, y1, x2, y2, arcThickness)
+                    }
+
+                    // CRITICAL FIX: Align physical collision hitbox to match the visual arc exactly
+                    // The arc's bounding box can be approximated by a rectangle spanning its width and thickness.
+                    val arcWidth = 2f * radius * Math.sin(Math.toRadians(30.0)).toFloat() // sweep is +/- 30 deg from center
+                    val arcTopY = cy + radius + arcThickness / 2f
+                    plat.rect.set(cx - arcWidth / 2f - renderOffset, arcTopY - arcThickness, arcWidth, arcThickness)
+
+                } else if (plat.rect.x == 400f && plat.rect.y == 150f) {
+                    // Draw the Base Dot
+                    shapeRenderer.color = Color.WHITE
+                    // Align the dot visually to match its 400f, 150f physical setup location
+                    shapeRenderer.circle(plat.rect.x + plat.rect.width / 2f + renderOffset, plat.rect.y + plat.rect.height / 2f, 15f)
+                }
+            }
+        }
+
 
         // Level 9 Chunk 1 Blackout & Seesaw Box
         if (currentLevel == 9 && currentChunk == 1 && Level9Chunk1State.phase == 2) {
@@ -3776,6 +3953,18 @@ class GameScreen(
             }
         }
 
+
+        // Level 9 Chunk 2 UI Text
+        if (currentLevel == 9 && currentChunk == 2) {
+            buttonFont?.color = Color.WHITE
+            buttonFont?.data?.setScale(1.2f)
+            buttonFont?.draw(game.batch, "No Internet Connection", 900f + renderOffset, 550f)
+
+            buttonFont?.data?.setScale(0.8f)
+            buttonFont?.color = Color(0f, 0.47f, 0.95f, 1f) // Android Blue
+            buttonFont?.draw(game.batch, "[Try Again]", 1000f + renderOffset, 480f)
+            buttonFont?.data?.setScale(1f)
+        }
 
         // Level 9 Chunk 1 Box Text
         if (currentLevel == 9 && currentChunk == 1 && Level9Chunk1State.phase == 2) {
