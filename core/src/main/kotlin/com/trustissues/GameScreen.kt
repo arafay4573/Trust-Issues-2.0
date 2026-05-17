@@ -3458,7 +3458,7 @@ class GameScreen(
         }
 
         messageLabel?.setText(roast)
-        messageLabel?.color = Color.RED
+        messageLabel?.color = Color.WHITE
         messageLabel?.isVisible = true
         messageLabel?.pack()
         messageLabel?.setPosition(1280f / 2 - messageLabel!!.width / 2, 500f)
@@ -3946,10 +3946,10 @@ class GameScreen(
 
             if (isRedPhase) {
                 buttonFont?.color = Color.RED
-                buttonFont?.draw(game.batch, "[DISCONNECTED]", 50f + renderOffset, 650f)
+                buttonFont?.draw(game.batch, "[DISCONNECTED]", 200f + renderOffset, 650f)
             } else {
                 buttonFont?.color = Color.WHITE
-                buttonFont?.draw(game.batch, "[CONNECTED]", 50f + renderOffset, 650f)
+                buttonFont?.draw(game.batch, "[CONNECTED]", 200f + renderOffset, 650f)
             }
 
             // Fake Goal UI Text
