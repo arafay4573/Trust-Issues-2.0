@@ -3459,7 +3459,7 @@ class GameScreen(
 
         messageLabel?.setText(roast)
         if (currentLevel == 9 && currentChunk == 2) {
-            messageLabel?.color = Color.WHITE
+            messageLabel?.color = Color(0.2f, 0.4f, 0.8f, 1f) // Mid-blue
         } else {
             messageLabel?.color = Color.RED
         }
