@@ -2477,7 +2477,7 @@ class GameScreen(
             }
 
             val cx = 640f
-            val cy = 100f // The focal center of the WiFi icon
+            val cy = 50f // The focal center of the WiFi icon
             val isRedPhase = Level9Chunk2State.wifiColorPhase == 1
 
             // The True Goal is the dot of the WiFi icon
@@ -2503,9 +2503,9 @@ class GameScreen(
                 }
             }
 
-            // Check collision with the 3 arcs
-            val radii = arrayOf(250f, 450f, 650f)
-            val arcThickness = 50f
+            // Check collision with the 4 arcs
+            val radii = arrayOf(155f, 295f, 435f, 575f)
+            val arcThickness = 120f
 
             if (!touchingWifi && isInArcAngle) {
                 for (r in radii) {
@@ -3615,7 +3615,7 @@ class GameScreen(
         // Draw WiFi Bars (Level 9 Chunk 2) using ShapeRenderer
         if (currentLevel == 9 && currentChunk == 2) {
             val cx = 640f + renderOffset
-            val cy = 100f // The focal center of the WiFi icon
+            val cy = 50f // The focal center of the WiFi icon
             val isRedPhase = Level9Chunk2State.wifiColorPhase == 1
 
             shapeRenderer.color = if (isRedPhase) Color.RED else Color.WHITE
@@ -3623,9 +3623,9 @@ class GameScreen(
             // Draw Base Dot
             shapeRenderer.circle(Level9Chunk2State.baseDotRect.x + Level9Chunk2State.baseDotRect.width / 2f + renderOffset, Level9Chunk2State.baseDotRect.y + Level9Chunk2State.baseDotRect.height / 2f, 25f)
 
-            // Draw 3 curved illusion bars.
-            val radii = arrayOf(250f, 450f, 650f)
-            val arcThickness = 50f
+            // Draw 4 curved illusion bars.
+            val radii = arrayOf(155f, 295f, 435f, 575f)
+            val arcThickness = 120f
 
             for (r in radii) {
                 // Draw arc using a thick line approximation
