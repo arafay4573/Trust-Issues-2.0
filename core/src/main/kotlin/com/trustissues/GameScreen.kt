@@ -855,7 +855,10 @@ class GameScreen(
 
             // True Win condition is tracked by Level9Chunk2State.baseDotRect at (640, 150)
 
-            // Symmetrical Squeezing Walls are removed.
+            // Symmetrical Crushing Walls (Moderate/slow speed 20f)
+            movingWalls.add(MovingWall(Rectangle(-500f, 0f, 500f, 720f), 20f, true))
+            movingWalls.add(MovingWall(Rectangle(1280f, 0f, 500f, 720f), -20f, true))
+
             // Fake Goal UI handled in draw() and overlaps in update()
         }
     }
@@ -2474,11 +2477,11 @@ class GameScreen(
             }
 
             val cx = 640f
-            val cy = 200f // The focal center of the WiFi icon
+            val cy = 100f // The focal center of the WiFi icon
             val isRedPhase = Level9Chunk2State.wifiColorPhase == 1
 
             // The True Goal is the dot of the WiFi icon
-            Level9Chunk2State.baseDotRect.set(cx - 15f, cy - 15f, 30f, 30f)
+            Level9Chunk2State.baseDotRect.set(cx - 25f, cy - 25f, 50f, 50f)
 
             // Calculate distance to the center for collision with arcs
             val dx = playerX + playerWidth / 2f - cx
@@ -2501,8 +2504,8 @@ class GameScreen(
             }
 
             // Check collision with the 3 arcs
-            val radii = arrayOf(150f, 250f, 350f)
-            val arcThickness = 30f
+            val radii = arrayOf(250f, 450f, 650f)
+            val arcThickness = 50f
 
             if (!touchingWifi && isInArcAngle) {
                 for (r in radii) {
@@ -2517,6 +2520,14 @@ class GameScreen(
             }
 
             // The Invisible Trigger path logic is removed.
+
+            // Check crushing walls collision for instant death
+            for (wall in movingWalls) {
+                if (Intersector.overlaps(playerRect, wall.rect)) {
+                    die("You were crushed by the firewall.")
+                    break
+                }
+            }
 
             // Fake Mask / Dialogue Death handled globally now.
 
@@ -3604,17 +3615,17 @@ class GameScreen(
         // Draw WiFi Bars (Level 9 Chunk 2) using ShapeRenderer
         if (currentLevel == 9 && currentChunk == 2) {
             val cx = 640f + renderOffset
-            val cy = 200f // The focal center of the WiFi icon
+            val cy = 100f // The focal center of the WiFi icon
             val isRedPhase = Level9Chunk2State.wifiColorPhase == 1
 
             shapeRenderer.color = if (isRedPhase) Color.RED else Color.WHITE
 
             // Draw Base Dot
-            shapeRenderer.circle(Level9Chunk2State.baseDotRect.x + Level9Chunk2State.baseDotRect.width / 2f + renderOffset, Level9Chunk2State.baseDotRect.y + Level9Chunk2State.baseDotRect.height / 2f, 15f)
+            shapeRenderer.circle(Level9Chunk2State.baseDotRect.x + Level9Chunk2State.baseDotRect.width / 2f + renderOffset, Level9Chunk2State.baseDotRect.y + Level9Chunk2State.baseDotRect.height / 2f, 25f)
 
             // Draw 3 curved illusion bars.
-            val radii = arrayOf(150f, 250f, 350f)
-            val arcThickness = 30f
+            val radii = arrayOf(250f, 450f, 650f)
+            val arcThickness = 50f
 
             for (r in radii) {
                 // Draw arc using a thick line approximation
