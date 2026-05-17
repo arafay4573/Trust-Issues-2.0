@@ -2529,11 +2529,24 @@ class GameScreen(
                 }
             }
 
+            // Check collision with the [DISCONNECTED] UI text
+            if (isRedPhase) {
+                val disconnectedTextRect = Rectangle(120f, 630f, 200f, 30f)
+                if (Intersector.overlaps(playerRect, disconnectedTextRect)) {
+                    die("You touched the disconnect sign.")
+                }
+            }
+
             // Fake Mask / Dialogue Death handled globally now.
 
             // Abyss Death
             if (playerY < -50f) {
                 die(listOf("You fell out of range.", "No signal down there.").random())
+            }
+
+            // Sky Death
+            if (playerY > 720f) {
+                die("You flew too close to the cloud.")
             }
         }
 
