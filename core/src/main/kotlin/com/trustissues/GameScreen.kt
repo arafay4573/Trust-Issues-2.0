@@ -855,10 +855,7 @@ class GameScreen(
 
             // True Win condition is tracked by Level9Chunk2State.baseDotRect at (640, 150)
 
-            // Symmetrical Squeezing Walls (Speed 40f)
-            movingWalls.add(MovingWall(Rectangle(-500f, 0f, 500f, 720f), 40f, true))
-            movingWalls.add(MovingWall(Rectangle(1280f, 0f, 500f, 720f), -40f, true))
-
+            // Symmetrical Squeezing Walls are removed.
             // Fake Goal UI handled in draw() and overlaps in update()
         }
     }
@@ -2469,68 +2466,63 @@ class GameScreen(
         if (currentLevel == 9 && currentChunk == 2 && !isDead && !isLevelComplete) {
             chunkTime += delta
 
-            // WiFi Illusion Colors Loop (1 second cycle)
+            // WiFi Illusion Colors Loop (1.5 second cycle)
             Level9Chunk2State.wifiColorCycleTimer += delta
-            if (Level9Chunk2State.wifiColorCycleTimer >= 1.0f) {
+            if (Level9Chunk2State.wifiColorCycleTimer >= 1.5f) {
                 Level9Chunk2State.wifiColorCycleTimer = 0f
                 Level9Chunk2State.wifiColorPhase = if (Level9Chunk2State.wifiColorPhase == 0) 1 else 0
             }
 
-            // The Invisible Trigger at x=100f, y=450f
-            val triggerRect = Rectangle(100f, 450f, 50f, 20f)
-            if (!Level9Chunk2State.isEthernetConnected && Intersector.overlaps(playerRect, triggerRect) && velocityY <= 0) {
-                // Player landed on the trigger
-                playerY = 470f // 450 + 20
-                velocityY = 0f
-                canJump = true
-                Level9Chunk2State.isEthernetConnected = true
+            val cx = 640f
+            val cy = 200f // The focal center of the WiFi icon
+            val isRedPhase = Level9Chunk2State.wifiColorPhase == 1
 
-                // Spawn the trigger platform permanently so standard collision takes over
-                platforms.add(Platform(Rectangle(100f, 450f, 50f, 20f), PlatformType.BLUE))
+            // The True Goal is the dot of the WiFi icon
+            Level9Chunk2State.baseDotRect.set(cx - 15f, cy - 15f, 30f, 30f)
 
-                // Spawn the path of 5 tiny blue dots across the ceiling
-                val dotYs = 650f
-                platforms.add(Platform(Rectangle(200f, dotYs, 20f, 20f), PlatformType.BLUE))
-                platforms.add(Platform(Rectangle(400f, dotYs, 20f, 20f), PlatformType.BLUE))
-                platforms.add(Platform(Rectangle(600f, dotYs, 20f, 20f), PlatformType.BLUE))
-                platforms.add(Platform(Rectangle(800f, dotYs, 20f, 20f), PlatformType.BLUE))
-                platforms.add(Platform(Rectangle(1000f, dotYs, 20f, 20f), PlatformType.BLUE))
-            } else if (!Level9Chunk2State.isEthernetConnected && playerRect.overlaps(triggerRect) && velocityY > 0) {
-                 // allow jumping up through it
-            } else if (!Level9Chunk2State.isEthernetConnected && playerX + playerWidth > 100f && playerX < 150f && playerY >= 450f) {
-                 // Soft land if we fell perfectly on it
-                 if(playerY - 470f < 20f && velocityY <= 0) {
-                    playerY = 470f
-                    velocityY = 0f
-                    canJump = true
-                    Level9Chunk2State.isEthernetConnected = true
+            // Calculate distance to the center for collision with arcs
+            val dx = playerX + playerWidth / 2f - cx
+            val dy = playerY + playerHeight / 2f - cy
+            val dist = Math.sqrt((dx * dx + dy * dy).toDouble()).toFloat()
 
-                    // Spawn the trigger platform permanently
-                    platforms.add(Platform(Rectangle(100f, 450f, 50f, 20f), PlatformType.BLUE))
+            // The angle, where 90 is straight up, covering 45 to 135 degrees.
+            val angle = Math.toDegrees(Math.atan2(dy.toDouble(), dx.toDouble())).toFloat()
+            val isInArcAngle = angle >= 45f && angle <= 135f
 
-                    val dotYs = 650f
-                    platforms.add(Platform(Rectangle(200f, dotYs, 20f, 20f), PlatformType.BLUE))
-                    platforms.add(Platform(Rectangle(400f, dotYs, 20f, 20f), PlatformType.BLUE))
-                    platforms.add(Platform(Rectangle(600f, dotYs, 20f, 20f), PlatformType.BLUE))
-                    platforms.add(Platform(Rectangle(800f, dotYs, 20f, 20f), PlatformType.BLUE))
-                    platforms.add(Platform(Rectangle(1000f, dotYs, 20f, 20f), PlatformType.BLUE))
-                 }
-            }
+            var touchingWifi = false
 
-            // Fake Mask / Dialogue Death (Right Wall)
-            val fakeMaskRect = Rectangle(1000f, 300f, 280f, 200f)
-            if (Intersector.overlaps(playerRect, fakeMaskRect)) {
-                die(listOf("You tried to connect to a broken signal. Classic.", "The internet is an illusion, and so is your gaming skill.", "Look up! The answer isn't always right in front of you.").random())
-            }
-
-            // True Win Condition (Base Dot)
             if (Intersector.overlaps(playerRect, Level9Chunk2State.baseDotRect)) {
-                win()
+                touchingWifi = true
+                if (isRedPhase) {
+                    die("Disconnected. You touched the red dot.")
+                } else {
+                    win()
+                }
             }
+
+            // Check collision with the 3 arcs
+            val radii = arrayOf(150f, 250f, 350f)
+            val arcThickness = 30f
+
+            if (!touchingWifi && isInArcAngle) {
+                for (r in radii) {
+                    if (dist >= r - arcThickness / 2f && dist <= r + arcThickness / 2f) {
+                        touchingWifi = true
+                        if (isRedPhase) {
+                            die("Disconnected. You hit the firewall.")
+                        }
+                        break
+                    }
+                }
+            }
+
+            // The Invisible Trigger path logic is removed.
+
+            // Fake Mask / Dialogue Death handled globally now.
 
             // Abyss Death
             if (playerY < -50f) {
-                die(listOf("You tried to connect to a broken signal. Classic.", "The internet is an illusion, and so is your gaming skill.", "Look up! The answer isn't always right in front of you.").random())
+                die(listOf("You fell out of range.", "No signal down there.").random())
             }
         }
 
@@ -3420,6 +3412,10 @@ class GameScreen(
             // Default win condition ignored (handled exclusively in update loop where mask overlapping kills and shark overlapping wins)
         } else if (currentLevel == 8 && currentChunk == 3) {
             // Ignore default
+        } else if (currentLevel == 9 && currentChunk == 2) {
+            if (!isDead && Intersector.overlaps(playerRect, maskRect)) {
+                die(listOf("You tried to connect to a broken signal. Classic.", "The internet is an illusion, and so is your gaming skill.", "Look up! The answer isn't always right in front of you.").random())
+            }
         } else if (currentLevel != 4 || currentChunk != 3) {
             if (!isDead && Intersector.overlaps(playerRect, maskRect)) win()
         }
@@ -3608,24 +3604,23 @@ class GameScreen(
         // Draw WiFi Bars (Level 9 Chunk 2) using ShapeRenderer
         if (currentLevel == 9 && currentChunk == 2) {
             val cx = 640f + renderOffset
-            val cy = -100f // The focal center far below
-
-            // Draw Base Dot
-            shapeRenderer.color = Color.WHITE
-            shapeRenderer.circle(Level9Chunk2State.baseDotRect.x + Level9Chunk2State.baseDotRect.width / 2f + renderOffset, Level9Chunk2State.baseDotRect.y + Level9Chunk2State.baseDotRect.height / 2f, 15f)
-
-            // Draw 4 curved illusion bars.
-            // They have NO collision bounds logic.
-            val radii = arrayOf(400f, 500f, 600f, 700f)
-            val arcThickness = 30f
+            val cy = 200f // The focal center of the WiFi icon
             val isRedPhase = Level9Chunk2State.wifiColorPhase == 1
 
+            shapeRenderer.color = if (isRedPhase) Color.RED else Color.WHITE
+
+            // Draw Base Dot
+            shapeRenderer.circle(Level9Chunk2State.baseDotRect.x + Level9Chunk2State.baseDotRect.width / 2f + renderOffset, Level9Chunk2State.baseDotRect.y + Level9Chunk2State.baseDotRect.height / 2f, 15f)
+
+            // Draw 3 curved illusion bars.
+            val radii = arrayOf(150f, 250f, 350f)
+            val arcThickness = 30f
+
             for (r in radii) {
-                shapeRenderer.color = if (isRedPhase) Color.RED else Color.WHITE
                 // Draw arc using a thick line approximation
-                val segments = 20
-                val startAngle = 60f
-                val sweepAngle = 60f // Total angle is 60 (from 60 to 120, centered at 90)
+                val segments = 40
+                val startAngle = 45f
+                val sweepAngle = 90f // Total angle is 90 (from 45 to 135, centered at 90)
                 for (i in 0 until segments) {
                     val a1 = startAngle + (i.toFloat() / segments) * sweepAngle
                     val a2 = startAngle + ((i + 1).toFloat() / segments) * sweepAngle
@@ -3934,14 +3929,16 @@ class GameScreen(
 
         // Level 9 Chunk 2 Specific Texts
         if (currentLevel == 9 && currentChunk == 2) {
-            buttonFont?.color = Color.WHITE
             buttonFont?.data?.setScale(0.8f)
 
-            // Spawn Platform text
-            buttonFont?.draw(game.batch, "[CONNECTED]", 75f + renderOffset, 210f)
+            val isRedPhase = Level9Chunk2State.wifiColorPhase == 1
 
-            if (Level9Chunk2State.isEthernetConnected) {
-                buttonFont?.draw(game.batch, "[ETHERNET_CABLE_CONNECTED]", 100f + renderOffset, 480f)
+            if (isRedPhase) {
+                buttonFont?.color = Color.RED
+                buttonFont?.draw(game.batch, "[DISCONNECTED]", 50f + renderOffset, 650f)
+            } else {
+                buttonFont?.color = Color.WHITE
+                buttonFont?.draw(game.batch, "[CONNECTED]", 50f + renderOffset, 650f)
             }
 
             // Fake Goal UI Text
