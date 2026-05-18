@@ -266,6 +266,21 @@ class GameScreen(
         }
     }
 
+    private object Level9Chunk3State {
+        var isFiredFromCannon = false
+
+        val windowA = Rectangle(100f, 600f, 80f, 80f) // Blue
+        val windowB = Rectangle(400f, 600f, 80f, 80f) // Yellow
+        val windowC = Rectangle(510f, 100f, 80f, 80f) // Green (Entrance to ceiling)
+        val windowD = Rectangle(850f, 300f, 80f, 80f) // Purple (Win portal)
+
+        val maskWindow = Rectangle(1100f, 100f, 100f, 100f) // Target window
+
+        fun reset() {
+            isFiredFromCannon = false
+        }
+    }
+
     private object Level7Chunk3State {
         var voidLeft = 0f
         var voidRight = 1280f
@@ -860,6 +875,33 @@ class GameScreen(
             movingWalls.add(MovingWall(Rectangle(1280f, 0f, 500f, 720f), -20f, true))
 
             // Fake Goal UI handled in draw() and overlaps in update()
+        } else if (chunk == 3) {
+            Level9Chunk3State.reset()
+            chunkTime = 0f
+
+            // Starting Platform
+            platforms.add(Platform(Rectangle(30f, 180f, 60f, 20f), PlatformType.NORMAL))
+
+            // Player spawn
+            playerX = 50f
+            playerY = 200f
+            velocityY = 0f
+            playerRect.set(playerX, playerY, playerWidth, playerHeight)
+
+            // Symmetrical Red Walls closing in at 45f
+            movingWalls.add(MovingWall(Rectangle(-500f, 0f, 500f, 720f), 45f, true))
+            movingWalls.add(MovingWall(Rectangle(1280f, 0f, 500f, 720f), -45f, true))
+
+            // The Cannon Shark
+            sharks.add(Shark(950f, 150f, 950f, 950f, 950f))
+
+            // Moving Sharks patrolling horizontally between x=300f and x=800f at y=300f
+            sharks.add(Shark(300f, 300f, 300f, 300f, 800f))
+            sharks.add(Shark(550f, 300f, 300f, 300f, 800f))
+
+            maskX = 1150f
+            maskY = 150f
+            maskRect.set(maskX, maskY, maskWidth, maskHeight)
         }
     }
 
@@ -1421,7 +1463,7 @@ class GameScreen(
 
     private fun completeChunk() {
         val nextChunk = currentChunk + 1
-        val isEndOfLevel = nextChunk > 3 || (currentLevel == 7 && nextChunk > 2) || (currentLevel == 8 && nextChunk > 1) || (currentLevel == 9 && nextChunk > 2)
+        val isEndOfLevel = nextChunk > 3 || (currentLevel == 7 && nextChunk > 2) || (currentLevel == 8 && nextChunk > 1) || (currentLevel == 9 && nextChunk > 3)
 
         val prefs = Gdx.app.getPreferences("TrustIssues")
         val savedMaxChunk = prefs.getInteger("level_${currentLevel}_maxChunk", 1)
@@ -2144,9 +2186,9 @@ class GameScreen(
         if (isWalking) walkTime += delta * 15f else walkTime = 0f
 
         // Physics
-        val isExemptLevel = (currentLevel == 4 && (currentChunk == 2 || currentChunk == 3)) || currentLevel == 3 || currentLevel == 5 || currentLevel == 6 || currentLevel == 7 || (currentLevel == 8 && currentChunk == 2) || (currentLevel == 8 && currentChunk == 3) || (currentLevel == 9 && currentChunk == 1) || (currentLevel == 9 && currentChunk == 2)
+        val isExemptLevel = (currentLevel == 4 && (currentChunk == 2 || currentChunk == 3)) || currentLevel == 3 || currentLevel == 5 || currentLevel == 6 || currentLevel == 7 || (currentLevel == 8 && currentChunk == 2) || (currentLevel == 8 && currentChunk == 3) || (currentLevel == 9 && currentChunk == 1) || (currentLevel == 9 && currentChunk == 2) || (currentLevel == 9 && currentChunk == 3)
 
-        val currentGravity = if (currentLevel == 5 && (currentChunk == 2 || currentChunk == 3)) -1800f else if (currentLevel == 6 && currentChunk == 1 && isPortalLoopActive) -3200f * 3f else -3200f
+        val currentGravity = if (currentLevel == 9 && currentChunk == 3 && reverseGravity) 3200f else if (currentLevel == 5 && (currentChunk == 2 || currentChunk == 3)) -1800f else if (currentLevel == 6 && currentChunk == 1 && isPortalLoopActive) -3200f * 3f else -3200f
 
         // --- LEVEL 7 CHUNK 2 LOGIC (The Gravity Pendulum) ---
         if (currentLevel == 7 && currentChunk == 2 && !isDead && !isLevelComplete) {
@@ -2550,6 +2592,56 @@ class GameScreen(
             }
         }
 
+        // --- LEVEL 9 CHUNK 3 LOGIC (The Shark Aquarium Error) ---
+        if (currentLevel == 9 && currentChunk == 3 && !isDead && !isLevelComplete) {
+            chunkTime += delta
+
+            if (Level9Chunk3State.isFiredFromCannon) {
+                // Cannon shot physics
+                velocityY = 0f
+                playerX += 1200f * delta // Extremely fast horizontal launch
+
+                if (Intersector.overlaps(playerRect, maskRect)) {
+                    win()
+                }
+
+                // If missed mask and hit wall/abyss, die (handled by standard abyss/wall checks, but we can fast track it)
+                if (playerX > 1300f) die("You missed the mask entirely.")
+            } else {
+                // Symmetrical crushing walls collision
+                for (wall in movingWalls) {
+                    if (Intersector.overlaps(playerRect, wall.rect)) {
+                        die("You got crushed by the firewall.")
+                        break
+                    }
+                }
+
+                // Window A, B, C, D Collisions
+                if (Intersector.overlaps(playerRect, Level9Chunk3State.windowA)) {
+                    // Nothing specific requested for entering A normally?
+                }
+
+                if (Intersector.overlaps(playerRect, Level9Chunk3State.windowC)) {
+                    // Enter C -> Teleport to ceiling
+                    playerX = 550f
+                    playerY = 700f
+                    velocityY = 0f
+                    reverseGravity = false
+                }
+
+                if (Intersector.overlaps(playerRect, Level9Chunk3State.windowD)) {
+                    // Enter D -> Cannon Shark!
+                    playerX = 950f
+                    playerY = 150f
+                    Level9Chunk3State.isFiredFromCannon = true
+                }
+
+                // Abyss Death
+                if (playerY < -50f) {
+                    die("Wrong timing. The shark wasn't there to catch you.")
+                }
+            }
+        }
 
         // --- LEVEL 8 CHUNK 3 LOGIC (The High-Ping Paradox) ---
         if (currentLevel == 8 && currentChunk == 3 && !isDead && !isLevelComplete) {
@@ -2913,13 +3005,13 @@ class GameScreen(
             }
         }
         if (reverseGravity) {
-            gravity = -currentGravity // Flip gravity positive
+            gravity = if (currentLevel == 9 && currentChunk == 3) currentGravity else -currentGravity // Flip gravity positive, unless explicitly inverted in L9C3
             velocityY += gravity * delta
             playerY += velocityY * delta
 
 
             // Ceiling check (bypass for L7C2, L7C3, L8C1, and L5)
-            if (playerY > 720f && currentLevel != 5 && !(currentLevel == 7 && currentChunk == 2) && !(currentLevel == 7 && currentChunk == 3) && !(currentLevel == 8 && currentChunk == 1)) die("Gravity hurts.")
+            if (playerY > 720f && currentLevel != 5 && !(currentLevel == 7 && currentChunk == 2) && !(currentLevel == 7 && currentChunk == 3) && !(currentLevel == 8 && currentChunk == 1) && !(currentLevel == 9 && currentChunk == 3)) die("Gravity hurts.")
         } else {
             gravity = currentGravity
             if (!(currentLevel == 8 && currentChunk == 3 && Level8Chunk3State.isFrozen)) {
@@ -3363,6 +3455,33 @@ class GameScreen(
                 if (Intersector.overlaps(playerRect, sharkRect)) {
                     win() // Touch the shark to win!
                 }
+            } else if (currentLevel == 9 && currentChunk == 3) {
+                // Shark Aquarium Error custom physics
+                // Mouth: Teleport. Back: Bounce.
+                sharkRect.set(shark.x, shark.y, 120f, 60f)
+                if (Intersector.overlaps(playerRect, sharkRect) && !Level9Chunk3State.isFiredFromCannon) {
+                    val mouthRect = if (shark.facingRight) {
+                        Rectangle(shark.x + 80f, shark.y + 10f, 40f, 40f)
+                    } else {
+                        Rectangle(shark.x, shark.y + 10f, 40f, 40f)
+                    }
+
+                    if (Intersector.overlaps(playerRect, mouthRect)) {
+                        // Mouth teleport to Window A (Blue)
+                        playerX = Level9Chunk3State.windowA.x
+                        playerY = Level9Chunk3State.windowA.y
+                        velocityY = 0f
+                    } else if (playerY - velocityY * delta >= shark.y + 60f - 20f && velocityY <= 0) {
+                        // Landed on back - bounce and invert gravity
+                        playerY = shark.y + 60f
+                        velocityY = 1000f // Bounce up
+                        gravity = 3200f // Instantly invert gravity
+                        reverseGravity = true // Lock it
+                    } else {
+                        die("You got eaten by a glitched asset.")
+                    }
+                }
+
             } else {
                 // Safe Shark Logic: Skip collision if shark is at x=600 (Chunk 2 Friendly Shark)
                 // Also skip deadly collision for Level 5 Chunk 2 Safe Sharks
@@ -3591,7 +3710,29 @@ class GameScreen(
         // Draw Moving Walls
         shapeRenderer.color = Color.DARK_GRAY
         for (wall in movingWalls) {
+            if (currentLevel == 9 && currentChunk == 3) {
+                shapeRenderer.color = Color.RED
+            }
             shapeRenderer.rect(wall.rect.x + renderOffset, wall.rect.y, wall.rect.width, wall.rect.height)
+        }
+
+        // Draw Level 9 Chunk 3 Windows
+        if (currentLevel == 9 && currentChunk == 3) {
+            shapeRenderer.color = Color.BLUE
+            shapeRenderer.rect(Level9Chunk3State.windowA.x + renderOffset, Level9Chunk3State.windowA.y, Level9Chunk3State.windowA.width, Level9Chunk3State.windowA.height)
+
+            shapeRenderer.color = Color.YELLOW
+            shapeRenderer.rect(Level9Chunk3State.windowB.x + renderOffset, Level9Chunk3State.windowB.y, Level9Chunk3State.windowB.width, Level9Chunk3State.windowB.height)
+
+            shapeRenderer.color = Color.GREEN
+            shapeRenderer.rect(Level9Chunk3State.windowC.x + renderOffset, Level9Chunk3State.windowC.y, Level9Chunk3State.windowC.width, Level9Chunk3State.windowC.height)
+
+            shapeRenderer.color = Color.PURPLE
+            shapeRenderer.rect(Level9Chunk3State.windowD.x + renderOffset, Level9Chunk3State.windowD.y, Level9Chunk3State.windowD.width, Level9Chunk3State.windowD.height)
+
+            // Isolated Mask Window
+            shapeRenderer.color = Color.WHITE
+            shapeRenderer.rectLine(Level9Chunk3State.maskWindow.x + renderOffset, Level9Chunk3State.maskWindow.y, Level9Chunk3State.maskWindow.x + renderOffset, Level9Chunk3State.maskWindow.y + Level9Chunk3State.maskWindow.height, 4f)
         }
 
         // Draw Game Buttons
