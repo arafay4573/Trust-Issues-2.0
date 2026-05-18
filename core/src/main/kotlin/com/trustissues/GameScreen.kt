@@ -2629,8 +2629,10 @@ class GameScreen(
                 // Symmetrical crushing walls collision
                 for (wall in movingWalls) {
                     if (Intersector.overlaps(playerRect, wall.rect)) {
-                        die("You got crushed by the firewall.")
-                        break
+                        if (!Level9Chunk3State.isHidden) {
+                            die("You got crushed by the firewall.")
+                            break
+                        }
                     }
                 }
 
@@ -3276,8 +3278,10 @@ class GameScreen(
                 wall.rect.x += wall.speed * delta
                 // Check if wall crushes player
                 if (Intersector.overlaps(playerRect, wall.rect)) {
-                    // Level 8 Chunk 1: Tickle, don't crush
-                    if (currentLevel != 8 || currentChunk != 1) {
+                    if (currentLevel == 9 && currentChunk == 3 && Level9Chunk3State.isHidden) {
+                        // Hidden in purple box, immune to walls
+                    } else if (currentLevel != 8 || currentChunk != 1) {
+                        // Level 8 Chunk 1: Tickle, don't crush
                         if (currentLevel == 5 && currentChunk == 2) die("You ain't no Newton")
                         else if (currentLevel == 6 && currentChunk == 1) {
                             die("Did you think the Mask was your friend? Cute.")
