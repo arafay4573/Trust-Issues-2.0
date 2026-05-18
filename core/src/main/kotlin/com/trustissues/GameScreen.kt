@@ -268,6 +268,7 @@ class GameScreen(
 
     private object Level9Chunk3State {
         var isFiredFromCannon = false
+        var isHidden = false
 
         val windowA = Rectangle(100f, 600f, 80f, 80f) // Blue
         val windowB = Rectangle(400f, 600f, 80f, 80f) // Yellow
@@ -278,6 +279,7 @@ class GameScreen(
 
         fun reset() {
             isFiredFromCannon = false
+            isHidden = false
         }
     }
 
@@ -882,6 +884,12 @@ class GameScreen(
             // Starting Platform
             platforms.add(Platform(Rectangle(130f, 180f, 100f, 20f), PlatformType.NORMAL))
 
+            // Staircase to yellow box (windowB at x=400, y=600)
+            platforms.add(Platform(Rectangle(200f, 280f, 60f, 20f), PlatformType.NORMAL))
+            platforms.add(Platform(Rectangle(280f, 380f, 60f, 20f), PlatformType.NORMAL))
+            platforms.add(Platform(Rectangle(350f, 480f, 60f, 20f), PlatformType.NORMAL))
+            platforms.add(Platform(Rectangle(410f, 580f, 60f, 20f), PlatformType.NORMAL)) // Just below yellow box
+
             // Player spawn
             playerX = 150f
             playerY = 200f
@@ -892,7 +900,7 @@ class GameScreen(
             movingWalls.add(MovingWall(Rectangle(-500f, 0f, 500f, 720f), 45f, true))
             movingWalls.add(MovingWall(Rectangle(1280f, 0f, 500f, 720f), -45f, true))
 
-            // The Cannon Shark
+            // The Cannon Shark (Static)
             sharks.add(Shark(950f, 150f, 950f, 950f, 950f))
 
             // Moving Sharks patrolling horizontally between x=300f and x=800f at y=300f
@@ -903,6 +911,10 @@ class GameScreen(
             // Using unique widths to synchronize them in update()
             platforms.add(Platform(Rectangle(300f, 300f, 120.5f, 60f), PlatformType.SAFE_SHARK)) // Safe ferry
             platforms.add(Platform(Rectangle(550f, 300f, 120.6f, 60f), PlatformType.DEADLY_RED)) // Deadly ferry
+
+            // Setup a sweeping laser to force the player to use the purple box
+            // Sweeping from left to right across the purple box (x=850)
+            lasers.add(Laser(Rectangle(0f, 0f, 20f, 720f), isSweeping = true, sweepSpeed = 200f, minX = 0f, maxX = 1280f))
 
             maskX = 1150f
             maskY = 150f
@@ -2622,23 +2634,33 @@ class GameScreen(
                 }
 
                 // Window A, B, C, D Collisions
-                if (Intersector.overlaps(playerRect, Level9Chunk3State.windowA)) {
-                    // Nothing specific requested for entering A normally?
+
+                // Blue Box (Window A) does nothing.
+
+                // Yellow Box (Window B) Teleports to Static Shark and dies
+                if (Intersector.overlaps(playerRect, Level9Chunk3State.windowB)) {
+                    playerX = 950f
+                    playerY = 150f
+                    velocityY = 0f
+                    die("Curiosity killed the cat... and you.")
                 }
 
+                // Purple Box (Window D) hides you
+                if (Intersector.overlaps(playerRect, Level9Chunk3State.windowD)) {
+                    Level9Chunk3State.isHidden = true
+                } else {
+                    Level9Chunk3State.isHidden = false
+                }
+
+                // Keep Window C logic? The user didn't mention Window C (Green). We'll leave it or remove it.
+                // Wait, they didn't mention it, let's leave it alone. Actually, they specifically enumerated yellow, purple, blue boxes.
+                // I will keep C as is.
                 if (Intersector.overlaps(playerRect, Level9Chunk3State.windowC)) {
                     // Enter C -> Teleport to ceiling
                     playerX = 550f
                     playerY = 700f
                     velocityY = 0f
                     reverseGravity = false
-                }
-
-                if (Intersector.overlaps(playerRect, Level9Chunk3State.windowD)) {
-                    // Enter D -> Cannon Shark!
-                    playerX = 950f
-                    playerY = 150f
-                    Level9Chunk3State.isFiredFromCannon = true
                 }
 
                 // Abyss Death
@@ -3226,7 +3248,9 @@ class GameScreen(
                 }
             }
             if (Intersector.overlaps(playerRect, laser.rect)) {
-                if (currentLevel == 5 && currentChunk == 2) {
+                if (currentLevel == 9 && currentChunk == 3 && Level9Chunk3State.isHidden) {
+                    // Hidden inside the purple box, immune to lasers!
+                } else if (currentLevel == 5 && currentChunk == 2) {
                     die("You ain't no Newton")
                 } else {
                     die("Grilled to perfection. Serve with a side of failure.")
@@ -3474,32 +3498,21 @@ class GameScreen(
                     win() // Touch the shark to win!
                 }
             } else if (currentLevel == 9 && currentChunk == 3) {
-                // Shark Aquarium Error custom physics
-                // Mouth: Teleport. Back: Bounce.
                 sharkRect.set(shark.x, shark.y, 120f, 60f)
-                if (Intersector.overlaps(playerRect, sharkRect) && !Level9Chunk3State.isFiredFromCannon) {
-                    val mouthRect = if (shark.facingRight) {
-                        Rectangle(shark.x + 80f, shark.y + 10f, 40f, 40f)
-                    } else {
-                        Rectangle(shark.x, shark.y + 10f, 40f, 40f)
-                    }
-
-                    if (Intersector.overlaps(playerRect, mouthRect)) {
-                        // Mouth teleport to Window A (Blue)
-                        playerX = Level9Chunk3State.windowA.x
-                        playerY = Level9Chunk3State.windowA.y
-                        velocityY = 0f
-                    } else if (playerY - velocityY * delta >= shark.y + 60f - 20f && velocityY <= 0) {
-                        // Landed on back - bounce and invert gravity
-                        playerY = shark.y + 60f
-                        velocityY = 1000f // Bounce up
-                        gravity = 3200f // Instantly invert gravity
-                        reverseGravity = true // Lock it
-                    } else {
-                        die("You got eaten by a glitched asset.")
+                if (Intersector.overlaps(playerRect, sharkRect)) {
+                    if (shark.y == 150f && !Level9Chunk3State.isFiredFromCannon) {
+                        // Cannon shark at y=150f. No longer mouth/back bouncing, or wait, does the prompt say anything about cannon shark?
+                        // "the static shark u below and u die"
+                        die("You got eaten by the static shark.")
+                    } else if (shark.y == 300f && shark.patrolLeft == 300f && shark.speed > 0f) {
+                        // We have two moving sharks. The left one (x usually < right one, we set its platform to SAFE_SHARK)
+                        // Actually, we can identify the deadly shark by checking if its corresponding platform is DEADLY_RED.
+                        // However, we just know the left shark starts at 300f, right at 550f.
+                        // Let's use the platforms to handle collision! SAFE_SHARK already ferries, DEADLY_RED already kills.
+                        // We just need to make sure this block doesn't trigger a default death.
+                        // So for moving sharks, do nothing and let the platforms handle it!
                     }
                 }
-
             } else {
                 // Safe Shark Logic: Skip collision if shark is at x=600 (Chunk 2 Friendly Shark)
                 // Also skip deadly collision for Level 5 Chunk 2 Safe Sharks
@@ -3905,6 +3918,9 @@ class GameScreen(
         }
         if (isDead) shapeRenderer.color = Color.GRAY
 
+        // Hide player if hidden in purple box
+        val isPlayerVisible = !(currentLevel == 9 && currentChunk == 3 && Level9Chunk3State.isHidden)
+
         val renderPlayerX = playerX
         val renderPlayerY = playerY
 
@@ -3916,43 +3932,45 @@ class GameScreen(
         val legOffset = if (isCrouching) 0f else (Math.sin(walkTime.toDouble()).toFloat() * 6f)
 
         val oldTransform = shapeRenderer.transformMatrix.cpy()
-        if (currentLevel == 8 && currentChunk == 1 && Level8Chunk1State.phase == 8 && Level8Chunk1State.wallStickTimer > 0f) {
-            // Rotate the player 90 degrees clockwise so feet are on the right wall
-            shapeRenderer.translate(centerX, renderPlayerY + 22f, 0f)
-            shapeRenderer.rotate(0f, 0f, 1f, 90f)
-            shapeRenderer.translate(-centerX, -(renderPlayerY + 22f), 0f)
-        } else if (currentLevel == 8 && currentChunk == 2) {
-            if (Level8Chunk2State.wallState == 1) { // Left Wall
-                shapeRenderer.translate(centerX, renderPlayerY + 22f, 0f)
-                shapeRenderer.rotate(0f, 0f, 1f, -90f)
-                shapeRenderer.translate(-centerX, -(renderPlayerY + 22f), 0f)
-            } else if (Level8Chunk2State.wallState == 2) { // Ceiling
-                shapeRenderer.translate(centerX, renderPlayerY + 22f, 0f)
-                shapeRenderer.rotate(0f, 0f, 1f, 180f)
-                shapeRenderer.translate(-centerX, -(renderPlayerY + 22f), 0f)
-            } else if (Level8Chunk2State.wallState == 3) { // Right Wall
+        if (isPlayerVisible) {
+            if (currentLevel == 8 && currentChunk == 1 && Level8Chunk1State.phase == 8 && Level8Chunk1State.wallStickTimer > 0f) {
+                // Rotate the player 90 degrees clockwise so feet are on the right wall
                 shapeRenderer.translate(centerX, renderPlayerY + 22f, 0f)
                 shapeRenderer.rotate(0f, 0f, 1f, 90f)
                 shapeRenderer.translate(-centerX, -(renderPlayerY + 22f), 0f)
+            } else if (currentLevel == 8 && currentChunk == 2) {
+                if (Level8Chunk2State.wallState == 1) { // Left Wall
+                    shapeRenderer.translate(centerX, renderPlayerY + 22f, 0f)
+                    shapeRenderer.rotate(0f, 0f, 1f, -90f)
+                    shapeRenderer.translate(-centerX, -(renderPlayerY + 22f), 0f)
+                } else if (Level8Chunk2State.wallState == 2) { // Ceiling
+                    shapeRenderer.translate(centerX, renderPlayerY + 22f, 0f)
+                    shapeRenderer.rotate(0f, 0f, 1f, 180f)
+                    shapeRenderer.translate(-centerX, -(renderPlayerY + 22f), 0f)
+                } else if (Level8Chunk2State.wallState == 3) { // Right Wall
+                    shapeRenderer.translate(centerX, renderPlayerY + 22f, 0f)
+                    shapeRenderer.rotate(0f, 0f, 1f, 90f)
+                    shapeRenderer.translate(-centerX, -(renderPlayerY + 22f), 0f)
+                }
+            } else if (currentLevel == 8 && currentChunk == 3 && (Level8Chunk3State.phase == 1 || Level8Chunk3State.phase == 2) && Level8Chunk3State.wallState != 0) {
+                if (Level8Chunk3State.wallState == 1) { // Left Wall
+                    shapeRenderer.translate(centerX, renderPlayerY + 22f, 0f)
+                    shapeRenderer.rotate(0f, 0f, 1f, -90f)
+                    shapeRenderer.translate(-centerX, -(renderPlayerY + 22f), 0f)
+                } else if (Level8Chunk3State.wallState == 2) { // Right Wall
+                    shapeRenderer.translate(centerX, renderPlayerY + 22f, 0f)
+                    shapeRenderer.rotate(0f, 0f, 1f, 90f)
+                    shapeRenderer.translate(-centerX, -(renderPlayerY + 22f), 0f)
+                }
             }
-        } else if (currentLevel == 8 && currentChunk == 3 && (Level8Chunk3State.phase == 1 || Level8Chunk3State.phase == 2) && Level8Chunk3State.wallState != 0) {
-            if (Level8Chunk3State.wallState == 1) { // Left Wall
-                shapeRenderer.translate(centerX, renderPlayerY + 22f, 0f)
-                shapeRenderer.rotate(0f, 0f, 1f, -90f)
-                shapeRenderer.translate(-centerX, -(renderPlayerY + 22f), 0f)
-            } else if (Level8Chunk3State.wallState == 2) { // Right Wall
-                shapeRenderer.translate(centerX, renderPlayerY + 22f, 0f)
-                shapeRenderer.rotate(0f, 0f, 1f, 90f)
-                shapeRenderer.translate(-centerX, -(renderPlayerY + 22f), 0f)
-            }
+
+            shapeRenderer.circle(centerX, renderPlayerY + headOffset, 6f)
+            shapeRenderer.rectLine(centerX, renderPlayerY + neckOffset, centerX, renderPlayerY + waistOffset, 3f)
+            shapeRenderer.rectLine(centerX, renderPlayerY + waistOffset, centerX - 6f - legOffset, renderPlayerY, 3f)
+            shapeRenderer.rectLine(centerX, renderPlayerY + waistOffset, centerX + 6f + legOffset, renderPlayerY, 3f)
+
+            shapeRenderer.transformMatrix = oldTransform
         }
-
-        shapeRenderer.circle(centerX, renderPlayerY + headOffset, 6f)
-        shapeRenderer.rectLine(centerX, renderPlayerY + neckOffset, centerX, renderPlayerY + waistOffset, 3f)
-        shapeRenderer.rectLine(centerX, renderPlayerY + waistOffset, centerX - 6f - legOffset, renderPlayerY, 3f)
-        shapeRenderer.rectLine(centerX, renderPlayerY + waistOffset, centerX + 6f + legOffset, renderPlayerY, 3f)
-
-        shapeRenderer.transformMatrix = oldTransform
 
         // Draw Echo (Transparent Red) for Level 5
         if ((currentLevel == 5 && (currentChunk == 1 || currentChunk == 3)) && echoActive) {
