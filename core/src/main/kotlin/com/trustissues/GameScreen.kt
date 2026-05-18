@@ -880,10 +880,10 @@ class GameScreen(
             chunkTime = 0f
 
             // Starting Platform
-            platforms.add(Platform(Rectangle(80f, 180f, 100f, 20f), PlatformType.NORMAL))
+            platforms.add(Platform(Rectangle(130f, 180f, 100f, 20f), PlatformType.NORMAL))
 
             // Player spawn
-            playerX = 100f
+            playerX = 150f
             playerY = 200f
             velocityY = 0f
             playerRect.set(playerX, playerY, playerWidth, playerHeight)
@@ -896,8 +896,13 @@ class GameScreen(
             sharks.add(Shark(950f, 150f, 950f, 950f, 950f))
 
             // Moving Sharks patrolling horizontally between x=300f and x=800f at y=300f
-            sharks.add(Shark(300f, 300f, 300f, 300f, 800f))
-            sharks.add(Shark(550f, 300f, 300f, 300f, 800f))
+            sharks.add(Shark(300f, 300f, 300f, 300f, 800f)) // Left shark (White WiFi - Safe)
+            sharks.add(Shark(550f, 300f, 300f, 300f, 800f)) // Right shark (Red WiFi - Deadly)
+
+            // Add corresponding ferry platforms for the sharks
+            // Using unique widths to synchronize them in update()
+            platforms.add(Platform(Rectangle(300f, 300f, 120.5f, 60f), PlatformType.SAFE_SHARK)) // Safe ferry
+            platforms.add(Platform(Rectangle(550f, 300f, 120.6f, 60f), PlatformType.DEADLY_RED)) // Deadly ferry
 
             maskX = 1150f
             maskY = 150f
@@ -3446,6 +3451,19 @@ class GameScreen(
                         plat.rect.x = shark.x
                     }
                 }
+            } else if (currentLevel == 9 && currentChunk == 3) {
+                val movingSharks = sharks.filter { it.y == 300f }
+                if (movingSharks.size >= 2) {
+                    val leftShark = movingSharks[0]
+                    val rightShark = movingSharks[1]
+                    for (plat in platforms) {
+                        if (plat.type == PlatformType.SAFE_SHARK && plat.rect.width == 120.5f) {
+                            plat.rect.x = leftShark.x
+                        } else if (plat.type == PlatformType.DEADLY_RED && plat.rect.width == 120.6f) {
+                            plat.rect.x = rightShark.x
+                        }
+                    }
+                }
             }
 
             // Shark Collision
@@ -3682,7 +3700,7 @@ class GameScreen(
             if (plat.type == PlatformType.INVISIBLE) continue // Do not draw invisible platforms
             if (plat.type == PlatformType.SAFE_SHARK) continue // Drawn in SpriteBatch
             // Skip the deadly trap shark drawing as platform
-            if (plat.type == PlatformType.DEADLY_RED && plat.rect.width == 120.4f) continue
+            if (plat.type == PlatformType.DEADLY_RED && (plat.rect.width == 120.4f || plat.rect.width == 120.6f)) continue
 
             val isPlatformVisible = (currentLevel != 3 || currentChunk != 3) || isLightsOn || plat.state == PlatformState.CRUMBLING
 
@@ -4020,6 +4038,51 @@ class GameScreen(
             shapeRenderer.rect(Level7Chunk3State.voidLeft + renderOffset, Level7Chunk3State.voidTop, Level7Chunk3State.voidRight - Level7Chunk3State.voidLeft, 4000f)
         }
 
+        if (currentLevel == 9 && currentChunk == 3) {
+            val movingSharks = sharks.filter { it.y == 300f }
+            if (movingSharks.size >= 2) {
+                val leftShark = movingSharks[0]
+                val rightShark = movingSharks[1]
+
+                // Function to draw small WiFi signals above a shark
+                fun drawSharkWifi(sharkX: Float, sharkY: Float, isRed: Boolean) {
+                    shapeRenderer.color = if (isRed) Color.RED else Color.WHITE
+                    val cx = sharkX + 60f + renderOffset // Center of shark width 120f
+                    val cy = sharkY + 80f // Base dot position above shark
+
+                    // Draw Base Dot
+                    shapeRenderer.circle(cx, cy, 5f)
+
+                    val radii = arrayOf(15f, 30f, 45f)
+                    val arcThickness = 5f
+
+                    for (r in radii) {
+                        val segments = 10
+                        val startAngle = 45f
+                        val sweepAngle = 90f
+                        for (i in 0 until segments) {
+                            val a1 = startAngle + (i.toFloat() / segments) * sweepAngle
+                            val a2 = startAngle + ((i + 1).toFloat() / segments) * sweepAngle
+                            val r1 = Math.toRadians(a1.toDouble())
+                            val r2 = Math.toRadians(a2.toDouble())
+                            val x1 = cx + (r * Math.cos(r1)).toFloat()
+                            val y1 = cy + (r * Math.sin(r1)).toFloat()
+                            val x2 = cx + (r * Math.cos(r2)).toFloat()
+                            val y2 = cy + (r * Math.sin(r2)).toFloat()
+                            shapeRenderer.rectLine(x1, y1, x2, y2, arcThickness)
+                        }
+                    }
+                }
+
+                if (isVisible(leftShark.x, leftShark.y)) {
+                    drawSharkWifi(leftShark.x, leftShark.y, isRed = false)
+                }
+                if (isVisible(rightShark.x, rightShark.y)) {
+                    drawSharkWifi(rightShark.x, rightShark.y, isRed = true)
+                }
+            }
+        }
+
         shapeRenderer.end()
         Gdx.gl.glDisable(com.badlogic.gdx.graphics.GL20.GL_BLEND)
 
@@ -4089,7 +4152,7 @@ class GameScreen(
 
             // 2. Draw Safe Sharks (Platforms)
             for (plat in platforms) {
-                if ((plat.type == PlatformType.SAFE_SHARK || (plat.type == PlatformType.DEADLY_RED && plat.rect.width == 120.4f)) && isVisible(plat.rect.x, plat.rect.y)) {
+                if ((plat.type == PlatformType.SAFE_SHARK || (plat.type == PlatformType.DEADLY_RED && (plat.rect.width == 120.4f || plat.rect.width == 120.6f))) && isVisible(plat.rect.x, plat.rect.y)) {
                     game.batch.draw(tex, plat.rect.x + renderOffset, plat.rect.y, width, height, 0, 0, tex.width, tex.height, false, false)
                 }
             }
