@@ -912,9 +912,10 @@ class GameScreen(
             platforms.add(Platform(Rectangle(300f, 300f, 120.5f, 60f), PlatformType.SAFE_SHARK)) // Safe ferry
             platforms.add(Platform(Rectangle(550f, 300f, 120.6f, 60f), PlatformType.DEADLY_RED)) // Deadly ferry
 
-            // Setup a sweeping laser to force the player to use the purple box
-            // Sweeping from left to right across the purple box (x=850)
-            lasers.add(Laser(Rectangle(0f, 0f, 20f, 720f), isSweeping = true, sweepSpeed = 200f, minX = 0f, maxX = 1280f))
+            // Setup symmetrical sweeping lasers to force the player to use the purple box
+            // One sweeping from left to right, one from right to left, crossing each other
+            lasers.add(Laser(Rectangle(0f, 0f, 20f, 720f), isSweeping = true, sweepSpeed = 40f, minX = 0f, maxX = 1280f))
+            lasers.add(Laser(Rectangle(1280f, 0f, 20f, 720f), isSweeping = true, sweepSpeed = -40f, minX = 0f, maxX = 1280f))
 
             maskX = 1150f
             maskY = 150f
