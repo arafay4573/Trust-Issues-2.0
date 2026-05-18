@@ -2646,9 +2646,19 @@ class GameScreen(
                     die("Curiosity killed the cat... and you.")
                 }
 
-                // Purple Box (Window D) hides you
+                // Purple Box (Window D) hides you as long as you don't move
                 if (Intersector.overlaps(playerRect, Level9Chunk3State.windowD)) {
-                    Level9Chunk3State.isHidden = true
+                    val activelyHolding = isLeftPressed || isRightPressed || isJumpPressed
+                    if (activelyHolding) {
+                        // If they move, they lose the hidden property and fall out
+                        Level9Chunk3State.isHidden = false
+                    } else {
+                        Level9Chunk3State.isHidden = true
+                        // Lock them in the box safely so they don't fall out due to gravity
+                        playerY = Level9Chunk3State.windowD.y + 10f
+                        velocityY = 0f
+                        canJump = true // Allow them to jump out later
+                    }
                 } else {
                     Level9Chunk3State.isHidden = false
                 }
