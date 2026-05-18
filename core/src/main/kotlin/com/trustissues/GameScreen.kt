@@ -880,10 +880,10 @@ class GameScreen(
             chunkTime = 0f
 
             // Starting Platform
-            platforms.add(Platform(Rectangle(30f, 180f, 60f, 20f), PlatformType.NORMAL))
+            platforms.add(Platform(Rectangle(80f, 180f, 100f, 20f), PlatformType.NORMAL))
 
             // Player spawn
-            playerX = 50f
+            playerX = 100f
             playerY = 200f
             velocityY = 0f
             playerRect.set(playerX, playerY, playerWidth, playerHeight)
