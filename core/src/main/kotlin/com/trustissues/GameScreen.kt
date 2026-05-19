@@ -25,6 +25,26 @@ import com.badlogic.gdx.utils.Align
 import com.badlogic.gdx.utils.ScreenUtils
 import com.badlogic.gdx.utils.viewport.FitViewport
 
+object RoastRegistry {
+    private val genericRoasts = arrayOf(
+        "Bro thought he had rizz, got cooked by a wall.",
+        "Is your brain lagging or are you just from Ohio?",
+        "Bro's gameplay is not demure, not mindful.",
+        "Negative aura gameplay. Uninstalling...",
+        "Skibidi level choking right there.",
+        "Chat, look at this absolute clown."
+    )
+
+    fun getRandomRoast(level: Int, originalRoasts: Array<String>): String {
+        // 50% chance to give a classic original roast, 50% chance to give a modern slang roast
+        return if (Math.random() < 0.5 && originalRoasts.isNotEmpty()) {
+            originalRoasts.random()
+        } else {
+            genericRoasts.random()
+        }
+    }
+}
+
 class GameScreen(
     private val game: TrustIssuesGame,
     private val currentLevel: Int = 1,
@@ -3616,29 +3636,33 @@ class GameScreen(
     private fun die(customMessage: String? = null) {
         if (isDead) return
         isDead = true
-        var roast = customMessage ?: deathRoasts.random()
+
+        // Define original arrays per scope
+        var originalLevelRoasts = if (customMessage != null) arrayOf(customMessage) else deathRoasts.toTypedArray()
 
         if (currentLevel == 8 && currentChunk == 3) {
-            roast = customMessage ?: listOf("Upgrade your internet, poverty boy.", "You're lagging in real life too, apparently.", "I'm not frozen, you're just slow.").random()
+            originalLevelRoasts = if (customMessage != null) arrayOf(customMessage) else arrayOf("Upgrade your internet, poverty boy.", "You're lagging in real life too, apparently.", "I'm not frozen, you're just slow.")
         }
 
         if (currentLevel == 6 && currentChunk == 2) {
-            roast = customMessage ?: listOf("Look at you... you've become the very thing you feared.", "Identity crisis much?", "You're just a ghost in your own game now.").random()
+            originalLevelRoasts = if (customMessage != null) arrayOf(customMessage) else arrayOf("Look at you... you've become the very thing you feared.", "Identity crisis much?", "You're just a ghost in your own game now.")
         }
 
         if (currentLevel == 6 && currentChunk == 3) {
-            roast = customMessage ?: listOf("You chose... poorly.", "Squished like a pancake.", "Cloudy with a chance of meat-eating predators!", "Grilled to perfection. Serve with a side of impatience.", "You have the survival instincts of a lemming.", "A wall? Really?", "I've seen potatoes with better reaction times.").random()
+            originalLevelRoasts = if (customMessage != null) arrayOf(customMessage) else arrayOf("You chose... poorly.", "Squished like a pancake.", "Cloudy with a chance of meat-eating predators!", "Grilled to perfection. Serve with a side of impatience.", "You have the survival instincts of a lemming.", "A wall? Really?", "I've seen potatoes with better reaction times.")
         }
 
         if (currentLevel == 7 && currentChunk == 1) {
-            roast = customMessage ?: listOf("Can't even keep your balance? Pathetic.", "The world is literally leaning in your favor and you still failed.", "Newton is rolling in his grave watching you slide.").random()
+            originalLevelRoasts = if (customMessage != null) arrayOf(customMessage) else arrayOf("Can't even keep your balance? Pathetic.", "The world is literally leaning in your favor and you still failed.", "Newton is rolling in his grave watching you slide.")
         }
 
         if (currentLevel == 7 && currentChunk == 2) {
-            roast = customMessage ?: listOf("Newton is laughing at your lack of coordination.", "You're falling for the same tricks... literally.").random()
+            originalLevelRoasts = if (customMessage != null) arrayOf(customMessage) else arrayOf("Newton is laughing at your lack of coordination.", "You're falling for the same tricks... literally.")
         }
 
-        messageLabel?.setText(roast)
+        val finalRoast = RoastRegistry.getRandomRoast(currentLevel, originalLevelRoasts)
+
+        messageLabel?.setText(finalRoast)
         if (currentLevel == 9 && currentChunk == 2) {
             messageLabel?.color = Color(0.2f, 0.4f, 0.8f, 1f) // Mid-blue
         } else {
