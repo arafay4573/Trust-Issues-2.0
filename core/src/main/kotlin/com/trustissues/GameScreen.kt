@@ -913,7 +913,7 @@ class GameScreen(
             platforms.add(Platform(Rectangle(550f, 300f, 120.6f, 60f), PlatformType.DEADLY_RED)) // Deadly ferry
 
             // Safe platform right of purple box (windowD) to stand on before jumping to mask
-            platforms.add(Platform(Rectangle(950f, 300f, 150f, 20f), PlatformType.NORMAL))
+            platforms.add(Platform(Rectangle(900f, 240f, 150f, 20f), PlatformType.NORMAL))
 
             // Setup symmetrical sweeping lasers to force the player to use the purple box
             // One sweeping from left to right, one from right to left, crossing each other
