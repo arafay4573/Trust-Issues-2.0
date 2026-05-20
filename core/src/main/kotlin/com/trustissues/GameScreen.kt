@@ -286,6 +286,58 @@ class GameScreen(
         }
     }
 
+    private object Level10State {
+        var currentScreen = 1
+        var gateTimer = 5.0f
+        var isGateOpen = false
+        var isLevel10Tilted = false
+        var playerFacingRight = true
+
+        val windowAlpha = Rectangle(300f, 450f, 80f, 80f) // Blue
+        val windowBeta = Rectangle(600f, 200f, 80f, 80f) // Yellow
+        val windowGamma = Rectangle(850f, 500f, 80f, 80f) // Pink
+        val pressurePlate = Rectangle(1150f, 150f, 60f, 10f)
+
+        var compilerX = -100f
+        val compilerRect = Rectangle(-100f, 0f, 150f, 720f)
+        var laserTimer = 0f
+        var isLaserLethal = true
+
+        var isCrashActive = false
+        val crashWindowRect = Rectangle(440f, 300f, 400f, 200f)
+        var crashBoxAngle = 0f
+        var isOnCrashBox = false
+        val forceCloseBtnRect = Rectangle(460f, 320f, 150f, 50f)
+        val waitBtnRect = Rectangle(660f, 320f, 150f, 50f)
+
+        fun resetScreen1() {
+            gateTimer = 5.0f
+            isGateOpen = false
+        }
+
+        fun resetScreen3() {
+            compilerX = -100f
+            compilerRect.x = -100f
+            laserTimer = 0f
+            isLaserLethal = true
+        }
+
+        fun resetScreen4() {
+            isCrashActive = false
+            crashWindowRect.set(440f, 300f, 400f, 200f)
+            crashBoxAngle = 0f
+            isOnCrashBox = false
+        }
+
+        fun resetAll() {
+            currentScreen = 1
+            isLevel10Tilted = false
+            resetScreen1()
+            resetScreen3()
+            resetScreen4()
+        }
+    }
+
     private object Level9Chunk3State {
         var isFiredFromCannon = false
         var isHidden = false
@@ -354,7 +406,9 @@ class GameScreen(
         // Level 4 specific
         "Grilled to perfection. Serve with a side of failure.",
         "You have the spatial awareness of a broken Roomba.",
-        "Squished like a bug. And just as insignificant."
+        "Squished like a bug. And just as insignificant.",
+        "SYSTEM_GLITCH",
+        "FAKE_MASK"
     )
     private val winRoasts = listOf(
         "Don't relax.", "That was bait.", "One step closer to regret.", "Still breathing? Weird."
@@ -396,6 +450,118 @@ class GameScreen(
 
         // Init Bubbles
         for (i in 0 until 10) spawnBubble(MathUtils.random(720f))
+    }
+
+
+    private fun setupLevel10(screen: Int) {
+        sharks.clear()
+        platforms.clear()
+        gravitySwitches.clear()
+        lasers.clear()
+        movingWalls.clear()
+        gameButtons.clear()
+
+        isDead = false
+        isLevelComplete = false
+        stateTimer = 0f
+        allowScreenWrap = false
+        reverseGravity = false
+        gravity = baseGravity
+
+        isPaused = false
+        pauseGroup?.isVisible = false
+
+        if (screen == 1) {
+            Level10State.resetScreen1()
+
+            // Spawn Location
+            playerX = 20f
+            playerY = 150f
+            velocityY = 0f
+
+            // Start ledge
+            platforms.add(Platform(Rectangle(0f, 130f, 150f, 20f), PlatformType.NORMAL))
+
+            // The Hazards
+            // Floating platforms
+            platforms.add(Platform(Rectangle(300f, 250f, 60f, 20f), PlatformType.NORMAL)) // Platform 1 (Flips gravity up via switch)
+            gravitySwitches.add(GravitySwitch(Rectangle(300f, 250f, 60f, 40f), true))
+
+            platforms.add(Platform(Rectangle(600f, 550f, 150f, 20f), PlatformType.NORMAL)) // Platform 2 (Attached to ceiling)
+            gravitySwitches.add(GravitySwitch(Rectangle(600f, 300f, 150f, 250f), false)) // Roughly the space below Platform 2
+
+            platforms.add(Platform(Rectangle(900f, 200f, 60f, 20f), PlatformType.NORMAL)) // Platform 3
+
+            // Right bank
+            platforms.add(Platform(Rectangle(1100f, 130f, 180f, 20f), PlatformType.NORMAL))
+
+            // Symmetrical Red Wall sits inactive at x = -50f
+            movingWalls.add(MovingWall(Rectangle(-500f, 0f, 450f, 720f), 0f, true))
+
+        } else if (screen == 2) {
+            playerX = 20f
+            playerY = 150f
+            velocityY = 0f
+
+            // The camera angle resets to perfectly flat
+            Level10State.isLevel10Tilted = false
+
+            // Left bank
+            platforms.add(Platform(Rectangle(0f, 130f, 200f, 20f), PlatformType.NORMAL))
+
+            // Right bank safe landing zone
+            platforms.add(Platform(Rectangle(1000f, 130f, 280f, 20f), PlatformType.NORMAL))
+
+            // Socially Anxious Shark
+            sharks.add(Shark(600f, 350f, 0f, 600f, 600f, facingRight = false))
+            val sharkPlat = Platform(Rectangle(600f, 350f, 120.3f, 10f), PlatformType.SAFE_SHARK)
+            platforms.add(sharkPlat)
+
+        } else if (screen == 3) {
+            playerX = 20f
+            playerY = 150f
+            velocityY = 0f
+
+            Level10State.resetScreen3()
+
+            // Left Bank
+            platforms.add(Platform(Rectangle(0f, 130f, 150f, 20f), PlatformType.NORMAL))
+
+            // Staircase of 6 Crumbling Platforms diagonally upward
+            val startX = 200f
+            val startY = 150f
+            val endX = 1000f
+            val endY = 450f
+
+            val stepX = (endX - startX) / 5f
+            val stepY = (endY - startY) / 5f
+
+            for (i in 0 until 6) {
+                platforms.add(Platform(Rectangle(startX + i * stepX, startY + i * stepY, 80f, 20f), PlatformType.CRUMBLING))
+            }
+
+            // The Level 9 Laser at x=640f (vertically spanning to block the way)
+            lasers.add(Laser(Rectangle(640f, 0f, 20f, 720f), isSweeping = false))
+
+            // Right Bank
+            platforms.add(Platform(Rectangle(1100f, 450f, 180f, 20f), PlatformType.NORMAL))
+
+        } else if (screen == 4) {
+            playerX = 20f
+            playerY = 150f
+            velocityY = 0f
+
+            Level10State.resetScreen4()
+
+            // Spawn the genuine OxygenMask
+            maskX = 640f
+            maskY = 250f
+
+            platforms.add(Platform(Rectangle(0f, 130f, 1280f, 20f), PlatformType.NORMAL))
+        }
+
+        // Bounding box reset to avoid stale hits
+        playerRect.set(playerX, playerY, playerWidth, playerHeight)
     }
 
     private fun setupChunk(chunk: Int) {
@@ -1766,10 +1932,153 @@ class GameScreen(
                 // So we SHOULD restart.
                 val wasDead = isDead
                 Gdx.app.postRunnable {
-                    if (wasDead) setupChunk(currentChunk) else completeChunk()
+                    if (wasDead) {
+                        if (currentLevel == 10) setupLevel10(Level10State.currentScreen) else setupChunk(currentChunk)
+                    } else completeChunk()
                 }
             }
             return
+        }
+
+        // --- LEVEL 10 NO CAP TIER LOGIC ---
+        if (currentLevel == 10 && !isDead && !isLevelComplete) {
+            when (Level10State.currentScreen) {
+                1 -> {
+                    // The First Step Betrayal: Tilt viewport on X-velocity or jump
+                    if (!Level10State.isLevel10Tilted && (Math.abs(velocityY) > 0f || isLeftPressed || isRightPressed || isJumpPressed)) {
+                        Level10State.isLevel10Tilted = true
+                    }
+
+                    // The Stand-Still Gate
+                    if (Intersector.overlaps(playerRect, Level10State.pressurePlate)) {
+                        // The moment touched, Red Wall wakes up
+                        if (movingWalls.isNotEmpty() && movingWalls[0].speed == 0f) {
+                            movingWalls[0].speed = 40f
+                        }
+
+                        if (velocityY == 0f && !isLeftPressed && !isRightPressed && !isJumpPressed) {
+                            Level10State.gateTimer -= delta
+                            if (Level10State.gateTimer <= 0f) {
+                                Level10State.isGateOpen = true
+                            }
+                        } else {
+                            Level10State.gateTimer = 5.0f
+                        }
+                    } else {
+                        Level10State.gateTimer = 5.0f
+                    }
+                }
+                2 -> {
+                    // The Look Vector Check
+                    if (sharks.isNotEmpty() && sharks[0].x != -9999f) {
+                        val shark = sharks[0]
+                        val sharkIsRight = shark.x > playerX
+                        val facingShark = (isRightPressed && sharkIsRight) || (isLeftPressed && !sharkIsRight) || (!isLeftPressed && !isRightPressed && Level10State.playerFacingRight == sharkIsRight)
+                        if (facingShark) {
+                            shark.x = -9999f
+                            for (plat in platforms) {
+                                if (plat.type == PlatformType.SAFE_SHARK) {
+                                    plat.rect.x = -9999f
+                                }
+                            }
+                        }
+                    }
+
+                    // Window teleports
+                    if (Intersector.overlaps(playerRect, Level10State.windowAlpha)) {
+                        playerX = 600f
+                        playerY = 700f
+                        velocityY = 0f
+                    }
+                    if (Intersector.overlaps(playerRect, Level10State.windowBeta)) {
+                        playerX = 1100f
+                        playerY = 200f
+                        velocityY = 0f
+                    }
+                    if (Intersector.overlaps(playerRect, Level10State.windowGamma)) {
+                        playerX = 500f
+                        playerY = -100f
+                        velocityY = 0f
+                    }
+                }
+                3 -> {
+                    // The Compiler Engine
+                    Level10State.compilerX += 35f * delta
+                    Level10State.compilerRect.x = Level10State.compilerX
+
+                    if (Intersector.overlaps(playerRect, Level10State.compilerRect)) {
+                        die("SYSTEM_GLITCH")
+                    }
+
+                    // The Level Deletion
+                    for (plat in platforms) {
+                        if (plat.rect.x + plat.rect.width < Level10State.compilerX) {
+                            plat.rect.x = -9999f // Disable collision
+                            plat.state = PlatformState.DESTROYED
+                        }
+                    }
+
+                    // The Level 9 Laser Toggle
+                    Level10State.laserTimer += delta
+                    if (Level10State.laserTimer >= 0.8f) {
+                        Level10State.laserTimer = 0f
+                        Level10State.isLaserLethal = !Level10State.isLaserLethal
+                    }
+                }
+                4 -> {
+                    // The False Hope Trigger
+                    if (!Level10State.isCrashActive && playerX > 440f) {
+                        Level10State.isCrashActive = true
+                    }
+
+                    if (Level10State.isCrashActive) {
+                        // The Finger-Tap Death Logic
+                        if (Gdx.input.justTouched()) {
+                            val touchVec = gameViewport.unproject(com.badlogic.gdx.math.Vector2(Gdx.input.x.toFloat(), Gdx.input.y.toFloat()))
+                            if (Level10State.forceCloseBtnRect.contains(touchVec) || Level10State.waitBtnRect.contains(touchVec)) {
+                                die("FAKE_MASK")
+                            }
+                        }
+
+                        // Physics on the Box
+                        val boxCenterX = Level10State.crashWindowRect.x + Level10State.crashWindowRect.width / 2f
+                        val boxCenterY = Level10State.crashWindowRect.y + Level10State.crashWindowRect.height / 2f
+                        val boxHeight = Level10State.crashWindowRect.height
+                        val boxLeftX = Level10State.crashWindowRect.x
+                        val boxRightX = boxLeftX + Level10State.crashWindowRect.width
+
+                        // Calculate tilt if player is standing on it
+                        if (Level10State.isOnCrashBox) {
+                            val offsetFromCenter = (playerX + playerWidth / 2f) - boxCenterX
+                            val maxTilt = 20f
+                            val tiltFactor = offsetFromCenter / (Level10State.crashWindowRect.width / 2f)
+                            val targetAngle = tiltFactor * -maxTilt
+                            Level10State.crashBoxAngle += (targetAngle - Level10State.crashBoxAngle) * 5f * delta
+                        } else {
+                            Level10State.crashBoxAngle += (0f - Level10State.crashBoxAngle) * 2f * delta
+                        }
+
+                        val offset = (playerX + playerWidth / 2f) - boxCenterX
+                        val radians = Math.toRadians(Level10State.crashBoxAngle.toDouble())
+                        val expectedY = boxCenterY + (boxHeight / 2f) / Math.cos(radians).toFloat() + (offset * Math.tan(radians)).toFloat()
+
+                        val withinXBounds = playerX + playerWidth > boxLeftX && playerX < boxRightX
+                        val isTouchingY = playerY - expectedY < 40f && playerY - expectedY >= -20f && velocityY <= 0
+
+                        Level10State.isOnCrashBox = withinXBounds && isTouchingY
+
+                        if (Level10State.isOnCrashBox) {
+                            playerY = expectedY
+                            velocityY = 0f
+                            canJump = true
+                        }
+                    }
+
+                    if (Intersector.overlaps(playerRect, maskRect)) {
+                        win()
+                    }
+                }
+            }
         }
 
         // --- LEVEL 6 CHUNK 3 LOGIC (The Paradox) ---
@@ -2191,8 +2500,14 @@ class GameScreen(
         } else {
             // Standard Movement (unless frozen)
             if (!(currentLevel == 8 && currentChunk == 3 && Level8Chunk3State.isFrozen)) {
-                if (leftInput) { playerX -= moveSpeed * delta; isWalking = true }
-                if (rightInput) { playerX += moveSpeed * delta; isWalking = true }
+                if (leftInput) {
+                    playerX -= moveSpeed * delta; isWalking = true
+                    if (currentLevel == 10) Level10State.playerFacingRight = false
+                }
+                if (rightInput) {
+                    playerX += moveSpeed * delta; isWalking = true
+                    if (currentLevel == 10) Level10State.playerFacingRight = true
+                }
             }
         }
 
@@ -2220,6 +2535,31 @@ class GameScreen(
         if (allowScreenWrap) {
              if (playerX < -40f) playerX = 1280f
              else if (playerX > 1320f) playerX = 0f
+        } else if (currentLevel == 10) {
+            if (Level10State.currentScreen == 1 && !Level10State.isGateOpen && playerX > 1175f - playerWidth) {
+                playerX = 1175f - playerWidth
+            }
+
+            // Transitions
+            if (playerX > 1280f && Level10State.currentScreen < 4) {
+                Level10State.currentScreen++
+                playerX = 20f
+                // Reset current screen's dynamic elements
+                setupLevel10(Level10State.currentScreen)
+            } else if (playerX < 0f && Level10State.currentScreen > 1) {
+                if (Level10State.currentScreen == 3) {
+                    die("SYSTEM_GLITCH")
+                } else if (Level10State.currentScreen == 4) {
+                    die("There is no escape.") // Backtrack protection: Screen 3 is deleted
+                } else {
+                    Level10State.currentScreen--
+                    playerX = 1260f - playerWidth
+                    // Restore active traps of previous screen
+                    setupLevel10(Level10State.currentScreen)
+                }
+            } else if ((playerX < 0f && Level10State.currentScreen == 1) || (playerX > 1280f - playerWidth && Level10State.currentScreen == 4)) {
+                die("There is no escape.")
+            }
         } else {
             if (playerX < 0f || playerX > 1280f - playerWidth) die("There is no escape.")
         }
@@ -3184,7 +3524,7 @@ class GameScreen(
             if (plat.state == PlatformState.DESTROYED) continue
 
             // 1. Trigger Crumble on Touch (Level 2, 3, 4, 5, 8)
-            if ((currentLevel == 2 || currentLevel == 3 || currentLevel == 4 || currentLevel == 5 || currentLevel == 6 || currentLevel == 7 || currentLevel == 8) && plat.type == PlatformType.CRUMBLING) {
+            if ((currentLevel == 2 || currentLevel == 3 || currentLevel == 4 || currentLevel == 5 || currentLevel == 6 || currentLevel == 7 || currentLevel == 8 || currentLevel == 10) && plat.type == PlatformType.CRUMBLING) {
                 // Determine if Player or Echo overlaps (Level 5)
                 val isTouchedByPlayer = playerRect.overlaps(plat.rect)
                 val isTouchedByEcho = (currentLevel == 5 && currentChunk == 1 && echoActive && echoRect.overlaps(plat.rect))
@@ -3286,6 +3626,8 @@ class GameScreen(
             if (Intersector.overlaps(playerRect, laser.rect)) {
                 if (currentLevel == 9 && currentChunk == 3 && Level9Chunk3State.isHidden) {
                     // Hidden inside the purple box, immune to lasers!
+                } else if (currentLevel == 10 && Level10State.currentScreen == 3 && !Level10State.isLaserLethal) {
+                    // Immune to laser when it's safe (white)
                 } else if (currentLevel == 5 && currentChunk == 2) {
                     die("You ain't no Newton")
                 } else {
@@ -3637,8 +3979,20 @@ class GameScreen(
         if (isDead) return
         isDead = true
 
+        if (currentLevel == 10) {
+            Level10State.resetAll()
+        }
+
         // Define original arrays per scope
         var originalLevelRoasts = if (customMessage != null) arrayOf(customMessage) else deathRoasts.toTypedArray()
+
+        if (customMessage == "SYSTEM_GLITCH") {
+            originalLevelRoasts = arrayOf("SYSTEM_GLITCH")
+        }
+
+        if (customMessage == "FAKE_MASK") {
+            originalLevelRoasts = arrayOf("You fell for the oldest trick in the book.", "Touch grass, not the screen.", "That wasn't a real button.")
+        }
 
         if (currentLevel == 8 && currentChunk == 3) {
             originalLevelRoasts = if (customMessage != null) arrayOf(customMessage) else arrayOf("Upgrade your internet, poverty boy.", "You're lagging in real life too, apparently.", "I'm not frozen, you're just slow.")
@@ -3825,6 +4179,10 @@ class GameScreen(
         shapeRenderer.color = Color(1f, 0.1f, 0.1f, 0.8f)
         for (laser in lasers) {
              if (currentLevel == 9 && currentChunk == 1 && Level9Chunk1State.phase < 2) continue
+
+             if (currentLevel == 10 && Level10State.currentScreen == 3) {
+                 shapeRenderer.color = if (Level10State.isLaserLethal) Color(1f, 0.1f, 0.1f, 0.8f) else Color.WHITE
+             }
              shapeRenderer.rect(laser.rect.x + renderOffset, laser.rect.y, laser.rect.width, laser.rect.height)
         }
 
