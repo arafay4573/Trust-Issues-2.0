@@ -70,8 +70,8 @@ class LevelSelectScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
         }
 
         // Boss Level
-        val bossBtn = createLevelButton(11, 11 <= unlockedLevel, isBoss = true)
-        rootTable.add(bossBtn).colspan(5).size(150f, 150f).padTop(30f)
+        val bossBtn = createLevelButton(10, 10 <= unlockedLevel, isBoss = true)
+        rootTable.add(bossBtn).colspan(5).size(200f, 200f).padTop(30f)
 
         stage.addActor(rootTable)
 
@@ -152,13 +152,20 @@ class LevelSelectScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
 
     private fun createLevelButton(level: Int, unlocked: Boolean, isBoss: Boolean = false): TextButton {
         val styleName = if (unlocked) "default" else "locked"
-        val text = if (isBoss) "BOSS" else "$level"
+        val text = if (isBoss) "NO CAP\nTIER" else "$level"
         val btn = TextButton(text, skin, styleName)
 
         if (unlocked) {
             btn.addListener(object : ClickListener() {
                 override fun clicked(event: InputEvent?, x: Float, y: Float) {
-                     showChunkSelection(level)
+                     if (level == 10) {
+                        Gdx.app.postRunnable {
+                            game.screen = GameScreen(game, 10, 1)
+                            dispose()
+                        }
+                     } else {
+                         showChunkSelection(level)
+                     }
                 }
             })
         }
