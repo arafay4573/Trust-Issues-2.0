@@ -446,7 +446,7 @@ class GameScreen(
         Gdx.input.inputProcessor = uiStage
         createUi()
 
-        setupChunk(currentChunk)
+        if (currentLevel == 10) setupLevel10(Level10State.currentScreen) else setupChunk(currentChunk)
 
         // Init Bubbles
         for (i in 0 until 10) spawnBubble(MathUtils.random(720f))
