@@ -288,15 +288,16 @@ class GameScreen(
 
     private object Level10State {
         var currentScreen = 1
-        var gateTimer = 5.0f
+        var gateTimer = 4.0f
         var isGateOpen = false
-        var isLevel10Tilted = false
+        var hasTriggeredLine = false
+        var displayStayStillMessage = false
         var playerFacingRight = true
 
         val windowAlpha = Rectangle(300f, 450f, 80f, 80f) // Blue
         val windowBeta = Rectangle(600f, 200f, 80f, 80f) // Yellow
         val windowGamma = Rectangle(850f, 500f, 80f, 80f) // Pink
-        val pressurePlate = Rectangle(1150f, 150f, 60f, 10f)
+        val pressurePlate = Rectangle(1000f, 150f, 40f, 10f)
 
         var compilerX = -100f
         val compilerRect = Rectangle(-100f, 0f, 150f, 720f)
@@ -311,8 +312,10 @@ class GameScreen(
         val waitBtnRect = Rectangle(660f, 320f, 150f, 50f)
 
         fun resetScreen1() {
-            gateTimer = 5.0f
+            gateTimer = 4.0f
             isGateOpen = false
+            hasTriggeredLine = false
+            displayStayStillMessage = false
         }
 
         fun resetScreen3() {
@@ -331,7 +334,6 @@ class GameScreen(
 
         fun resetAll() {
             currentScreen = 1
-            isLevel10Tilted = false
             resetScreen1()
             resetScreen3()
             resetScreen4()
@@ -479,24 +481,24 @@ class GameScreen(
             playerY = 150f
             velocityY = 0f
 
-            // Start ledge
+            // Start platform
             platforms.add(Platform(Rectangle(0f, 130f, 150f, 20f), PlatformType.NORMAL))
 
-            // The Hazards
-            // Floating platforms
-            platforms.add(Platform(Rectangle(300f, 250f, 60f, 20f), PlatformType.NORMAL)) // Platform 1 (Flips gravity up via switch)
-            gravitySwitches.add(GravitySwitch(Rectangle(300f, 250f, 60f, 40f), true))
+            // Second platform (jumps to antigravity)
+            platforms.add(Platform(Rectangle(200f, 130f, 150f, 20f), PlatformType.NORMAL))
+            gravitySwitches.add(GravitySwitch(Rectangle(200f, 150f, 150f, 100f), true)) // Activates on jump
 
-            platforms.add(Platform(Rectangle(600f, 550f, 150f, 20f), PlatformType.NORMAL)) // Platform 2 (Attached to ceiling)
-            gravitySwitches.add(GravitySwitch(Rectangle(600f, 300f, 150f, 250f), false)) // Roughly the space below Platform 2
+            // Ceiling platform on the right to catch
+            platforms.add(Platform(Rectangle(450f, 550f, 200f, 20f), PlatformType.NORMAL))
 
-            platforms.add(Platform(Rectangle(900f, 200f, 60f, 20f), PlatformType.NORMAL)) // Platform 3
+            // Switch slightly off to the right to restore gravity
+            gravitySwitches.add(GravitySwitch(Rectangle(650f, 100f, 50f, 500f), false))
 
-            // Right bank
-            platforms.add(Platform(Rectangle(1100f, 130f, 180f, 20f), PlatformType.NORMAL))
+            // Lengthy base platform to the right wall
+            platforms.add(Platform(Rectangle(700f, 130f, 580f, 20f), PlatformType.NORMAL))
 
-            // Symmetrical Red Wall sits inactive at x = -50f
-            movingWalls.add(MovingWall(Rectangle(-500f, 0f, 450f, 720f), 0f, true))
+            // The Laser starts at left wall, moves very fast towards player, but inactive initially (speed 0)
+            lasers.add(Laser(Rectangle(0f, 0f, 20f, 720f), isSweeping = true, sweepSpeed = 0f, minX = 0f, maxX = 1280f))
 
         } else if (screen == 2) {
             playerX = 20f
@@ -504,7 +506,7 @@ class GameScreen(
             velocityY = 0f
 
             // The camera angle resets to perfectly flat
-            Level10State.isLevel10Tilted = false
+
 
             // Left bank
             platforms.add(Platform(Rectangle(0f, 130f, 200f, 20f), PlatformType.NORMAL))
@@ -1944,28 +1946,53 @@ class GameScreen(
         if (currentLevel == 10 && !isDead && !isLevelComplete) {
             when (Level10State.currentScreen) {
                 1 -> {
-                    // The First Step Betrayal: Tilt viewport on X-velocity or jump
-                    if (!Level10State.isLevel10Tilted && (Math.abs(velocityY) > 0f || isLeftPressed || isRightPressed || isJumpPressed)) {
-                        Level10State.isLevel10Tilted = true
+                    // Tilt Mechanics
+                    if (isRightPressed) {
+                        worldTilt += 48f * delta
+                    } else if (isLeftPressed) {
+                        worldTilt -= 48f * delta
                     }
+                    if (worldTilt > 20f) worldTilt = 20f
+                    if (worldTilt < -20f) worldTilt = -20f
 
-                    // The Stand-Still Gate
+                    val slideForce = 800f * MathUtils.sinDeg(worldTilt)
+                    playerX += slideForce * delta
+
+                    // The Golden Line Gate
                     if (Intersector.overlaps(playerRect, Level10State.pressurePlate)) {
-                        // The moment touched, Red Wall wakes up
-                        if (movingWalls.isNotEmpty() && movingWalls[0].speed == 0f) {
-                            movingWalls[0].speed = 40f
+                        if (!Level10State.hasTriggeredLine) {
+                            Level10State.hasTriggeredLine = true
+                            Level10State.displayStayStillMessage = true
+                            // Wake up the laser
+                            if (lasers.isNotEmpty()) {
+                                lasers[0].sweepSpeed = 250f
+                            }
                         }
 
-                        if (velocityY == 0f && !isLeftPressed && !isRightPressed && !isJumpPressed) {
+                        // Fail condition: moving during the 4 seconds
+                        if (Level10State.gateTimer > 0f && (Math.abs(velocityY) > 0f || isLeftPressed || isRightPressed || isJumpPressed)) {
+                            // If they touch controls while the timer is counting down, they fail.
+                            // To immediately punish them as described: "if u touch ur screen ..any controls the gate doesnt open and ua re crushed by the laser coming towards u"
+                            // Setting the timer high ensures it never opens, effectively crushing them.
+                            Level10State.gateTimer = 99f
+                            Level10State.displayStayStillMessage = false
+                        }
+
+                        if (Level10State.gateTimer <= 4.0f && Level10State.gateTimer > 0f) {
                             Level10State.gateTimer -= delta
                             if (Level10State.gateTimer <= 0f) {
                                 Level10State.isGateOpen = true
+                                Level10State.displayStayStillMessage = false
+                                // Optionally stop or disable the laser?
+                                if (lasers.isNotEmpty()) {
+                                    lasers[0].rect.x = -9999f
+                                }
                             }
-                        } else {
-                            Level10State.gateTimer = 5.0f
                         }
-                    } else {
-                        Level10State.gateTimer = 5.0f
+                    } else if (Level10State.hasTriggeredLine && Level10State.gateTimer > 0f && Level10State.gateTimer <= 4.0f) {
+                        // Left the plate early
+                        Level10State.gateTimer = 99f
+                        Level10State.displayStayStillMessage = false
                     }
                 }
                 2 -> {
@@ -4514,6 +4541,14 @@ class GameScreen(
 
             // Level 9 Chunk 2 Fake Mask (always visible for deception)
             // It is drawn at maskX, maskY normally.
+
+            if (currentLevel == 10 && Level10State.currentScreen == 1) {
+                hideMask = true
+            }
+
+            if (currentLevel == 10 && Level10State.currentScreen == 1) {
+                hideMask = true
+            }
 
             if (!hideMask && isVisible(maskX, maskY)) {
                 game.batch.draw(tex, maskX + renderOffset, maskY + renderOffsetY, 32f, 32f)
