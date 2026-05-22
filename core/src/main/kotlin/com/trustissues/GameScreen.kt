@@ -2000,9 +2000,9 @@ class GameScreen(
                             messageLabel?.pack()
                             messageLabel?.setPosition(1280f / 2 - messageLabel!!.width / 2, 500f)
 
-                            // Wake up the laser with 225f speed (increased by 25f)
+                            // Wake up the laser with 250f speed
                             if (lasers.isNotEmpty()) {
-                                lasers[0].sweepSpeed = 225f
+                                lasers[0].sweepSpeed = 250f
                             }
                         }
 
