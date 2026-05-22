@@ -610,7 +610,8 @@ class GameScreen(
 
         if (levelLabel != null) {
             if (currentLevel == 10) {
-                levelLabel!!.isVisible = false
+                levelLabel!!.isVisible = true
+                levelLabel!!.setText("Level NO CAP TIER")
             } else {
                 levelLabel!!.isVisible = true
                 levelLabel!!.setText("Level $currentLevel-$chunk")
@@ -1783,7 +1784,8 @@ class GameScreen(
         levelLabel = Label("Level $currentLevel-$currentChunk", hudStyle)
         levelLabel!!.setPosition(20f, 720f - 50f)
         if (currentLevel == 10) {
-            levelLabel!!.isVisible = false
+            levelLabel!!.isVisible = true
+            levelLabel!!.setText("Level NO CAP TIER")
         }
         uiStage.addActor(levelLabel!!)
 
@@ -1839,21 +1841,27 @@ class GameScreen(
             override fun touchDown(event: InputEvent?, x: Float, y: Float, pointer: Int, button: Int): Boolean {
                 isJumpPressed = true
                 if (!isPaused && !isDead && !isLevelComplete) {
-                    val currentJumpStrength = if (currentLevel == 5 && (currentChunk == 2 || currentChunk == 3)) 500f else jumpStrength
-                    // "tap the jump button again and again to fly ofk like flappy bird"
-                    if ((currentLevel == 5 && (currentChunk == 1 || currentChunk == 2 || currentChunk == 3)) ||
-                        (currentLevel == 6 && currentChunk == 3) ||
-                        (currentLevel == 7 && (currentChunk == 1 || currentChunk == 2))) {
-                        if (reverseGravity) {
-                            velocityY = -currentJumpStrength
-                        } else {
-                            velocityY = currentJumpStrength
-                        }
+                    if (currentLevel == 10 && reverseGravity && playerY > 500f) {
+                        // Instant gravity activation for Level 10
+                        reverseGravity = false
+                        velocityY = -500f
                     } else {
-                        if (reverseGravity) {
-                            if (canJump) velocityY = -currentJumpStrength
+                        val currentJumpStrength = if (currentLevel == 5 && (currentChunk == 2 || currentChunk == 3)) 500f else jumpStrength
+                        // "tap the jump button again and again to fly ofk like flappy bird"
+                        if ((currentLevel == 5 && (currentChunk == 1 || currentChunk == 2 || currentChunk == 3)) ||
+                            (currentLevel == 6 && currentChunk == 3) ||
+                            (currentLevel == 7 && (currentChunk == 1 || currentChunk == 2))) {
+                            if (reverseGravity) {
+                                velocityY = -currentJumpStrength
+                            } else {
+                                velocityY = currentJumpStrength
+                            }
                         } else {
-                            if (canJump) velocityY = currentJumpStrength
+                            if (reverseGravity) {
+                                if (canJump) velocityY = -currentJumpStrength
+                            } else {
+                                if (canJump) velocityY = currentJumpStrength
+                            }
                         }
                     }
                 }
@@ -1962,7 +1970,7 @@ class GameScreen(
                 // The prompt says "when antigravity activates and u reach the top platform then at that damn moment if u press the jump controls the antigravity deactivates"
                 if (playerY > 500f) {
                     reverseGravity = false
-                    velocityY = 0f
+                    velocityY = -500f // Instantly start falling down to avoid floating
                 }
             }
 
@@ -1977,7 +1985,10 @@ class GameScreen(
                     if (worldTilt > 20f) worldTilt = 20f
                     if (worldTilt < -20f) worldTilt = -20f
 
-                    val slideForce = 800f * MathUtils.sinDeg(worldTilt)
+                    var slideForce = 800f * MathUtils.sinDeg(worldTilt)
+                    if (reverseGravity) {
+                        slideForce = 0f // Make the player still and steady when inverted
+                    }
                     playerX += slideForce * delta
 
                     // The Golden Line Gate
@@ -1985,9 +1996,9 @@ class GameScreen(
                         if (!Level10State.hasTriggeredLine) {
                             Level10State.hasTriggeredLine = true
                             Level10State.displayStayStillMessage = true
-                            // Wake up the laser with 40f speed
+                            // Wake up the laser with 80f speed (2x)
                             if (lasers.isNotEmpty()) {
-                                lasers[0].sweepSpeed = 40f
+                                lasers[0].sweepSpeed = 80f
                             }
                         }
 
@@ -4704,7 +4715,7 @@ class GameScreen(
         if (currentLevel == 10 && Level10State.currentScreen == 1 && Level10State.displayStayStillMessage) {
             val font = game.generateFont(24)
             font.color = Color.WHITE
-            font.draw(game.batch, "Stay still for 4 seconds or you are cooked", 400f + renderOffset, 600f)
+            font.draw(game.batch, "BE STILL FOR 4 SECONDS OR YOU ARE COOKED", 400f + renderOffset, 600f)
             font.dispose()
         }
 
