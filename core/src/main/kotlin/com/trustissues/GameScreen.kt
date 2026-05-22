@@ -1993,6 +1993,13 @@ class GameScreen(
                         if (!Level10State.hasTriggeredLine) {
                             Level10State.hasTriggeredLine = true
                             Level10State.displayStayStillMessage = true
+
+                            messageLabel?.setText("STAND STILL OR YOU ARE COOKED")
+                            messageLabel?.color = Color.RED
+                            messageLabel?.isVisible = true
+                            messageLabel?.pack()
+                            messageLabel?.setPosition(1280f / 2 - messageLabel!!.width / 2, 500f)
+
                             // Wake up the laser with 180f speed (increased by 10f)
                             if (lasers.isNotEmpty()) {
                                 lasers[0].sweepSpeed = 180f
@@ -2006,6 +2013,7 @@ class GameScreen(
                             // Setting the timer high ensures it never opens, effectively crushing them.
                             Level10State.gateTimer = 99f
                             Level10State.displayStayStillMessage = false
+                            messageLabel?.isVisible = false
                         }
 
                         if (Level10State.gateTimer <= 4.0f && Level10State.gateTimer > 0f) {
@@ -2013,6 +2021,7 @@ class GameScreen(
                             if (Level10State.gateTimer <= 0f) {
                                 Level10State.isGateOpen = true
                                 Level10State.displayStayStillMessage = false
+                                messageLabel?.isVisible = false
                             }
                         }
                     } else {
@@ -2024,6 +2033,7 @@ class GameScreen(
                             // Left the plate early
                             Level10State.gateTimer = 99f
                             Level10State.displayStayStillMessage = false
+                            messageLabel?.isVisible = false
                         }
                     }
                 }
@@ -4719,13 +4729,6 @@ class GameScreen(
         }
 
         // Level 9 Chunk 1 Box Text
-        if (currentLevel == 10 && Level10State.currentScreen == 1 && Level10State.displayStayStillMessage) {
-            val font = game.generateFont(24)
-            font.color = Color.WHITE
-            font.draw(game.batch, "STAND STILL OR YOU ARE COOKED", 400f + renderOffset, 600f)
-            font.dispose()
-        }
-
         if (currentLevel == 10 && Level10State.currentScreen == 4 && Level10State.isCrashActive) {
             val font = game.generateFont(24)
             font.color = Color.BLACK
