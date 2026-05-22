@@ -608,7 +608,14 @@ class GameScreen(
         flashlightRadius = 300f // Reset default
         chunk3FlashTimer = 0f // Reset
 
-        if (levelLabel != null) levelLabel!!.setText("Level $currentLevel-$chunk")
+        if (levelLabel != null) {
+            if (currentLevel == 10) {
+                levelLabel!!.isVisible = false
+            } else {
+                levelLabel!!.isVisible = true
+                levelLabel!!.setText("Level $currentLevel-$chunk")
+            }
+        }
 
         if (currentLevel == 1) {
             setupLevel1(chunk)
@@ -1775,6 +1782,9 @@ class GameScreen(
         val hudStyle = Label.LabelStyle(buttonFont, Color.YELLOW)
         levelLabel = Label("Level $currentLevel-$currentChunk", hudStyle)
         levelLabel!!.setPosition(20f, 720f - 50f)
+        if (currentLevel == 10) {
+            levelLabel!!.isVisible = false
+        }
         uiStage.addActor(levelLabel!!)
 
         val pauseBtn = ImageButton(skin!!.get("pause", ImageButton.ImageButtonStyle::class.java))
@@ -1944,6 +1954,18 @@ class GameScreen(
 
         // --- LEVEL 10 NO CAP TIER LOGIC ---
         if (currentLevel == 10 && !isDead && !isLevelComplete) {
+            // Antigravity deactivation hack for Level 10
+            if (reverseGravity && velocityY >= 0 && isJumpPressed) {
+                // If they are on the top platform (meaning they are upside down and colliding)
+                // Actually they are colliding if velocityY is ~0.
+                // Let's check if they are near the ceiling platform which is at y=650.
+                // The prompt says "when antigravity activates and u reach the top platform then at that damn moment if u press the jump controls the antigravity deactivates"
+                if (playerY > 500f) {
+                    reverseGravity = false
+                    velocityY = 0f
+                }
+            }
+
             when (Level10State.currentScreen) {
                 1 -> {
                     // Tilt Mechanics
