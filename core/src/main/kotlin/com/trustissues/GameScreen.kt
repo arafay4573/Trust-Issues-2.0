@@ -472,6 +472,7 @@ class GameScreen(
 
         isPaused = false
         pauseGroup?.isVisible = false
+        messageLabel?.isVisible = false
         worldTilt = 0f
 
         if (screen == 1) {
@@ -492,9 +493,6 @@ class GameScreen(
 
             // Ceiling platform on the right to catch u
             platforms.add(Platform(Rectangle(450f, 650f, 150f, 20f), PlatformType.NORMAL))
-
-            // Switch to the right to restore gravity
-            gravitySwitches.add(GravitySwitch(Rectangle(600f, 100f, 50f, 600f), false))
 
             // Lengthy base platform to the right wall
             platforms.add(Platform(Rectangle(700f, 130f, 580f, 20f), PlatformType.NORMAL))
@@ -4173,6 +4171,48 @@ class GameScreen(
             shapeRenderer.rect(wall.rect.x + renderOffset, wall.rect.y, wall.rect.width, wall.rect.height)
         }
 
+        if (currentLevel == 10 && Level10State.currentScreen == 1) {
+            shapeRenderer.color = Color.GOLD
+            shapeRenderer.rect(Level10State.pressurePlate.x + renderOffset, Level10State.pressurePlate.y, Level10State.pressurePlate.width, Level10State.pressurePlate.height)
+
+            if (!Level10State.isGateOpen) {
+                shapeRenderer.color = Color.GRAY
+                shapeRenderer.rect(1200f + renderOffset, 130f, 40f, 200f) // The steel door graphic blocking the right edge
+            }
+        } else if (currentLevel == 10 && Level10State.currentScreen == 2) {
+            shapeRenderer.color = Color.BLUE
+            shapeRenderer.rect(Level10State.windowAlpha.x + renderOffset, Level10State.windowAlpha.y, Level10State.windowAlpha.width, Level10State.windowAlpha.height)
+
+            shapeRenderer.color = Color.YELLOW
+            shapeRenderer.rect(Level10State.windowBeta.x + renderOffset, Level10State.windowBeta.y, Level10State.windowBeta.width, Level10State.windowBeta.height)
+
+            shapeRenderer.color = Color.PINK
+            shapeRenderer.rect(Level10State.windowGamma.x + renderOffset, Level10State.windowGamma.y, Level10State.windowGamma.width, Level10State.windowGamma.height)
+        } else if (currentLevel == 10 && Level10State.currentScreen == 3) {
+            shapeRenderer.color = Color.valueOf("111111") // Dark grey/black for Compiler
+            shapeRenderer.rect(Level10State.compilerRect.x + renderOffset, Level10State.compilerRect.y, Level10State.compilerRect.width, Level10State.compilerRect.height)
+        } else if (currentLevel == 10 && Level10State.currentScreen == 4 && Level10State.isCrashActive) {
+            // Apply rotation for the popup
+            val boxCenterX = Level10State.crashWindowRect.x + Level10State.crashWindowRect.width / 2f
+            val boxCenterY = Level10State.crashWindowRect.y + Level10State.crashWindowRect.height / 2f
+
+            shapeRenderer.translate(boxCenterX + renderOffset, boxCenterY, 0f)
+            shapeRenderer.rotate(0f, 0f, 1f, Level10State.crashBoxAngle)
+            shapeRenderer.translate(-(boxCenterX + renderOffset), -boxCenterY, 0f)
+
+            // Draw window base
+            shapeRenderer.color = Color.valueOf("F5F5F5")
+            shapeRenderer.rect(Level10State.crashWindowRect.x + renderOffset, Level10State.crashWindowRect.y, Level10State.crashWindowRect.width, Level10State.crashWindowRect.height)
+
+            // Draw buttons
+            shapeRenderer.color = Color.valueOf("E0E0E0")
+            shapeRenderer.rect(Level10State.forceCloseBtnRect.x + renderOffset, Level10State.forceCloseBtnRect.y, Level10State.forceCloseBtnRect.width, Level10State.forceCloseBtnRect.height)
+            shapeRenderer.rect(Level10State.waitBtnRect.x + renderOffset, Level10State.waitBtnRect.y, Level10State.waitBtnRect.width, Level10State.waitBtnRect.height)
+
+            // Reset transforms
+            shapeRenderer.identity()
+        }
+
         // Draw Level 9 Chunk 3 Windows
         if (currentLevel == 9 && currentChunk == 3) {
             shapeRenderer.color = Color.BLUE
@@ -4553,6 +4593,7 @@ class GameScreen(
                 hideMask = true
             }
 
+            if (currentLevel == 10 && Level10State.currentScreen == 1) hideMask = true
             if (!hideMask && isVisible(maskX, maskY)) {
                 game.batch.draw(tex, maskX + renderOffset, maskY + renderOffsetY, 32f, 32f)
             }
@@ -4638,6 +4679,37 @@ class GameScreen(
         }
 
         // Level 9 Chunk 1 Box Text
+        if (currentLevel == 10 && Level10State.currentScreen == 1 && Level10State.displayStayStillMessage) {
+            val font = game.generateFont(24)
+            font.color = Color.WHITE
+            font.draw(game.batch, "Stay still for 4 seconds or you are cooked", 400f + renderOffset, 600f)
+            font.dispose()
+        }
+
+        if (currentLevel == 10 && Level10State.currentScreen == 4 && Level10State.isCrashActive) {
+            val font = game.generateFont(24)
+            font.color = Color.BLACK
+
+            val boxCenterX = Level10State.crashWindowRect.x + Level10State.crashWindowRect.width / 2f
+            val boxCenterY = Level10State.crashWindowRect.y + Level10State.crashWindowRect.height / 2f
+
+            val originalTransform = game.batch.transformMatrix.cpy()
+            val m = com.badlogic.gdx.math.Matrix4()
+            m.setToTranslation(boxCenterX + renderOffset, boxCenterY, 0f)
+            m.rotate(com.badlogic.gdx.math.Vector3.Z, Level10State.crashBoxAngle)
+            m.translate(-(boxCenterX + renderOffset), -boxCenterY, 0f)
+
+            game.batch.transformMatrix = m
+
+            font.draw(game.batch, "App Error", -180f, 80f)
+            font.draw(game.batch, "Trust Issues has stopped responding.", -180f, 40f)
+            font.draw(game.batch, "[ Force Close ]", -180f, -40f)
+            font.draw(game.batch, "[ Wait ]", 50f, -40f)
+
+            game.batch.transformMatrix = originalTransform
+            font.dispose()
+        }
+
         if (currentLevel == 9 && currentChunk == 1 && Level9Chunk1State.phase == 2) {
             val oldMatrix = game.batch.transformMatrix.cpy()
             val textMatrix = com.badlogic.gdx.math.Matrix4()
