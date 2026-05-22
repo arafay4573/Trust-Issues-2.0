@@ -492,7 +492,7 @@ class GameScreen(
             gravitySwitches.add(GravitySwitch(Rectangle(200f, 150f, 100f, 400f), true))
 
             // Ceiling platform on the right to catch u
-            platforms.add(Platform(Rectangle(450f, 650f, 150f, 20f), PlatformType.NORMAL))
+            platforms.add(Platform(Rectangle(250f, 650f, 350f, 20f), PlatformType.NORMAL))
 
             // Lengthy base platform to the right wall
             platforms.add(Platform(Rectangle(700f, 130f, 580f, 20f), PlatformType.NORMAL))
@@ -1976,20 +1976,8 @@ class GameScreen(
 
             when (Level10State.currentScreen) {
                 1 -> {
-                    // Tilt Mechanics
-                    if (isRightPressed) {
-                        worldTilt += 48f * delta
-                    } else if (isLeftPressed) {
-                        worldTilt -= 48f * delta
-                    }
-                    if (worldTilt > 20f) worldTilt = 20f
-                    if (worldTilt < -20f) worldTilt = -20f
-
-                    var slideForce = 800f * MathUtils.sinDeg(worldTilt)
-                    if (reverseGravity) {
-                        slideForce = 0f // Make the player still and steady when inverted
-                    }
-                    playerX += slideForce * delta
+                    // Removed tilt/drifting mechanics from Level 10 entirely to ensure it is totally still and smooth
+                    worldTilt = 0f
 
                     // The Golden Line Gate
                     if (Intersector.overlaps(playerRect, Level10State.pressurePlate)) {
