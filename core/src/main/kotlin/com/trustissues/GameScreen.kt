@@ -1986,22 +1986,21 @@ class GameScreen(
                     if (Intersector.overlaps(playerRect, Level10State.pressurePlate)) {
                         if (!Level10State.isPlatePressed) {
                             Level10State.isPlatePressed = true
-                            // Visually depress the plate
-                            Level10State.pressurePlate.y = 150f
-                            Level10State.pressurePlate.height = 5f
+                            // Visually depress the plate by drawing it smaller, but don't shrink the actual physics rectangle
+                            // so the player doesn't fall through and immediately fail.
                         }
 
                         if (!Level10State.hasTriggeredLine) {
                             Level10State.hasTriggeredLine = true
                             Level10State.displayStayStillMessage = true
-                            // Wake up the laser with 170f speed
+                            // Wake up the laser with 180f speed (increased by 10f)
                             if (lasers.isNotEmpty()) {
-                                lasers[0].sweepSpeed = 170f
+                                lasers[0].sweepSpeed = 180f
                             }
                         }
 
-                        // Fail condition: moving during the 4 seconds
-                        if (Level10State.gateTimer > 0f && (isLeftPressed || isRightPressed || isJumpPressed)) {
+                        // Fail condition: moving during the 4 seconds (with 0.2s grace period to release fingers)
+                        if (Level10State.gateTimer <= 3.8f && Level10State.gateTimer > 0f && (isLeftPressed || isRightPressed || isJumpPressed)) {
                             // If they touch controls while the timer is counting down, they fail.
                             // To immediately punish them as described: "if u touch ur screen ..any controls the gate doesnt open and ua re crushed by the laser coming towards u"
                             // Setting the timer high ensures it never opens, effectively crushing them.
@@ -2019,7 +2018,6 @@ class GameScreen(
                     } else {
                         if (Level10State.isPlatePressed) {
                             Level10State.isPlatePressed = false
-                            Level10State.pressurePlate.y = 150f
                             Level10State.pressurePlate.height = 10f
                         }
                         if (Level10State.hasTriggeredLine && Level10State.gateTimer > 0f && Level10State.gateTimer <= 4.0f) {
@@ -4211,7 +4209,11 @@ class GameScreen(
 
         if (currentLevel == 10 && Level10State.currentScreen == 1) {
             shapeRenderer.color = Color.GOLD
-            shapeRenderer.rect(Level10State.pressurePlate.x + renderOffset, Level10State.pressurePlate.y, Level10State.pressurePlate.width, Level10State.pressurePlate.height)
+            if (Level10State.isPlatePressed) {
+                shapeRenderer.rect(Level10State.pressurePlate.x + renderOffset, Level10State.pressurePlate.y, Level10State.pressurePlate.width, 5f)
+            } else {
+                shapeRenderer.rect(Level10State.pressurePlate.x + renderOffset, Level10State.pressurePlate.y, Level10State.pressurePlate.width, 10f)
+            }
 
             if (!Level10State.isGateOpen) {
                 shapeRenderer.color = Color.GRAY
