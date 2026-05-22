@@ -1994,14 +1994,14 @@ class GameScreen(
                         if (!Level10State.hasTriggeredLine) {
                             Level10State.hasTriggeredLine = true
                             Level10State.displayStayStillMessage = true
-                            // Wake up the laser with 160f speed (2x the previous 80f)
+                            // Wake up the laser with 170f speed
                             if (lasers.isNotEmpty()) {
-                                lasers[0].sweepSpeed = 160f
+                                lasers[0].sweepSpeed = 170f
                             }
                         }
 
                         // Fail condition: moving during the 4 seconds
-                        if (Level10State.gateTimer > 0f && (Math.abs(velocityY) > 0f || isLeftPressed || isRightPressed || isJumpPressed)) {
+                        if (Level10State.gateTimer > 0f && (isLeftPressed || isRightPressed || isJumpPressed)) {
                             // If they touch controls while the timer is counting down, they fail.
                             // To immediately punish them as described: "if u touch ur screen ..any controls the gate doesnt open and ua re crushed by the laser coming towards u"
                             // Setting the timer high ensures it never opens, effectively crushing them.
