@@ -297,7 +297,7 @@ class GameScreen(
         val windowAlpha = Rectangle(300f, 450f, 80f, 80f) // Blue
         val windowBeta = Rectangle(600f, 200f, 80f, 80f) // Yellow
         val windowGamma = Rectangle(850f, 500f, 80f, 80f) // Pink
-        val pressurePlate = Rectangle(1000f, 150f, 40f, 10f)
+        val pressurePlate = Rectangle(1150f, 150f, 40f, 10f)
 
         var compilerX = -100f
         val compilerRect = Rectangle(-100f, 0f, 150f, 720f)
@@ -472,6 +472,7 @@ class GameScreen(
 
         isPaused = false
         pauseGroup?.isVisible = false
+        worldTilt = 0f
 
         if (screen == 1) {
             Level10State.resetScreen1()
@@ -481,23 +482,24 @@ class GameScreen(
             playerY = 150f
             velocityY = 0f
 
-            // Start platform
+            // Start platform on the left most side
             platforms.add(Platform(Rectangle(0f, 130f, 150f, 20f), PlatformType.NORMAL))
 
-            // Second platform (jumps to antigravity)
-            platforms.add(Platform(Rectangle(200f, 130f, 150f, 20f), PlatformType.NORMAL))
-            gravitySwitches.add(GravitySwitch(Rectangle(200f, 150f, 150f, 100f), true)) // Activates on jump
+            // Second platform right in front of u
+            platforms.add(Platform(Rectangle(200f, 130f, 100f, 20f), PlatformType.NORMAL))
+            // As soon as u jump to stand on it antigravity kicks in (switch placed right above it)
+            gravitySwitches.add(GravitySwitch(Rectangle(200f, 150f, 100f, 400f), true))
 
-            // Ceiling platform on the right to catch
-            platforms.add(Platform(Rectangle(450f, 550f, 200f, 20f), PlatformType.NORMAL))
+            // Ceiling platform on the right to catch u
+            platforms.add(Platform(Rectangle(450f, 650f, 150f, 20f), PlatformType.NORMAL))
 
-            // Switch slightly off to the right to restore gravity
-            gravitySwitches.add(GravitySwitch(Rectangle(650f, 100f, 50f, 500f), false))
+            // Switch to the right to restore gravity
+            gravitySwitches.add(GravitySwitch(Rectangle(600f, 100f, 50f, 600f), false))
 
             // Lengthy base platform to the right wall
             platforms.add(Platform(Rectangle(700f, 130f, 580f, 20f), PlatformType.NORMAL))
 
-            // The Laser starts at left wall, moves very fast towards player, but inactive initially (speed 0)
+            // The Laser starts at left wall, inactive initially (speed 0)
             lasers.add(Laser(Rectangle(0f, 0f, 20f, 720f), isSweeping = true, sweepSpeed = 0f, minX = 0f, maxX = 1280f))
 
         } else if (screen == 2) {
@@ -1963,9 +1965,9 @@ class GameScreen(
                         if (!Level10State.hasTriggeredLine) {
                             Level10State.hasTriggeredLine = true
                             Level10State.displayStayStillMessage = true
-                            // Wake up the laser
+                            // Wake up the laser with 40f speed
                             if (lasers.isNotEmpty()) {
-                                lasers[0].sweepSpeed = 250f
+                                lasers[0].sweepSpeed = 40f
                             }
                         }
 
@@ -1983,10 +1985,6 @@ class GameScreen(
                             if (Level10State.gateTimer <= 0f) {
                                 Level10State.isGateOpen = true
                                 Level10State.displayStayStillMessage = false
-                                // Optionally stop or disable the laser?
-                                if (lasers.isNotEmpty()) {
-                                    lasers[0].rect.x = -9999f
-                                }
                             }
                         }
                     } else if (Level10State.hasTriggeredLine && Level10State.gateTimer > 0f && Level10State.gateTimer <= 4.0f) {
@@ -2563,8 +2561,8 @@ class GameScreen(
              if (playerX < -40f) playerX = 1280f
              else if (playerX > 1320f) playerX = 0f
         } else if (currentLevel == 10) {
-            if (Level10State.currentScreen == 1 && !Level10State.isGateOpen && playerX > 1175f - playerWidth) {
-                playerX = 1175f - playerWidth
+            if (Level10State.currentScreen == 1 && !Level10State.isGateOpen && playerX > 1200f - playerWidth) {
+                playerX = 1200f - playerWidth
             }
 
             // Transitions
@@ -2594,7 +2592,7 @@ class GameScreen(
         if (isWalking) walkTime += delta * 15f else walkTime = 0f
 
         // Physics
-        val isExemptLevel = (currentLevel == 4 && (currentChunk == 2 || currentChunk == 3)) || currentLevel == 3 || currentLevel == 5 || currentLevel == 6 || currentLevel == 7 || (currentLevel == 8 && currentChunk == 2) || (currentLevel == 8 && currentChunk == 3) || (currentLevel == 9 && currentChunk == 1) || (currentLevel == 9 && currentChunk == 2) || (currentLevel == 9 && currentChunk == 3)
+        val isExemptLevel = (currentLevel == 4 && (currentChunk == 2 || currentChunk == 3)) || currentLevel == 3 || currentLevel == 5 || currentLevel == 6 || currentLevel == 7 || (currentLevel == 8 && currentChunk == 2) || (currentLevel == 8 && currentChunk == 3) || (currentLevel == 9 && currentChunk == 1) || (currentLevel == 9 && currentChunk == 2) || (currentLevel == 9 && currentChunk == 3) || currentLevel == 10
 
         val currentGravity = if (currentLevel == 9 && currentChunk == 3 && reverseGravity) 3200f else if (currentLevel == 5 && (currentChunk == 2 || currentChunk == 3)) -1800f else if (currentLevel == 6 && currentChunk == 1 && isPortalLoopActive) -3200f * 3f else -3200f
 
@@ -3001,6 +2999,11 @@ class GameScreen(
         }
 
         // --- LEVEL 9 CHUNK 3 LOGIC (The Shark Aquarium Error) ---
+        // Sky Death for Level 10 explicitly
+        if (currentLevel == 10 && !isDead && !isLevelComplete && playerY > 720f) {
+            die("Flew too close to the sun.")
+        }
+
         if (currentLevel == 9 && currentChunk == 3 && !isDead && !isLevelComplete) {
             chunkTime += delta
 
