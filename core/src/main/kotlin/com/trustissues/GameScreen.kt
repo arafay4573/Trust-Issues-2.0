@@ -2000,9 +2000,9 @@ class GameScreen(
                             messageLabel?.pack()
                             messageLabel?.setPosition(1280f / 2 - messageLabel!!.width / 2, 500f)
 
-                            // Wake up the laser with 180f speed (increased by 10f)
+                            // Wake up the laser with 200f speed (increased by 20f)
                             if (lasers.isNotEmpty()) {
-                                lasers[0].sweepSpeed = 180f
+                                lasers[0].sweepSpeed = 200f
                             }
                         }
 
@@ -2625,6 +2625,11 @@ class GameScreen(
                     playerX = 1260f - playerWidth
                     // Restore active traps of previous screen
                     setupLevel10(Level10State.currentScreen)
+
+                    if (Level10State.currentScreen == 1) {
+                        // Drop a laser directly on the right entrance to burn backtrackers
+                        lasers.add(Laser(Rectangle(1200f, 0f, 100f, 720f), isSweeping = false))
+                    }
                 }
             } else if ((playerX < 0f && Level10State.currentScreen == 1) || (playerX > 1280f - playerWidth && Level10State.currentScreen == 4)) {
                 die("There is no escape.")
