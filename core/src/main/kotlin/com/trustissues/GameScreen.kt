@@ -293,6 +293,7 @@ class GameScreen(
         var hasTriggeredLine = false
         var displayStayStillMessage = false
         var playerFacingRight = true
+        var isPlatePressed = false
 
         val windowAlpha = Rectangle(300f, 450f, 80f, 80f) // Blue
         val windowBeta = Rectangle(600f, 200f, 80f, 80f) // Yellow
@@ -316,6 +317,8 @@ class GameScreen(
             isGateOpen = false
             hasTriggeredLine = false
             displayStayStillMessage = false
+            isPlatePressed = false
+            pressurePlate.set(1150f, 150f, 40f, 10f)
         }
 
         fun resetScreen3() {
@@ -1981,12 +1984,19 @@ class GameScreen(
 
                     // The Golden Line Gate
                     if (Intersector.overlaps(playerRect, Level10State.pressurePlate)) {
+                        if (!Level10State.isPlatePressed) {
+                            Level10State.isPlatePressed = true
+                            // Visually depress the plate
+                            Level10State.pressurePlate.y = 150f
+                            Level10State.pressurePlate.height = 5f
+                        }
+
                         if (!Level10State.hasTriggeredLine) {
                             Level10State.hasTriggeredLine = true
                             Level10State.displayStayStillMessage = true
-                            // Wake up the laser with 80f speed (2x)
+                            // Wake up the laser with 160f speed (2x the previous 80f)
                             if (lasers.isNotEmpty()) {
-                                lasers[0].sweepSpeed = 80f
+                                lasers[0].sweepSpeed = 160f
                             }
                         }
 
@@ -2006,10 +2016,17 @@ class GameScreen(
                                 Level10State.displayStayStillMessage = false
                             }
                         }
-                    } else if (Level10State.hasTriggeredLine && Level10State.gateTimer > 0f && Level10State.gateTimer <= 4.0f) {
-                        // Left the plate early
-                        Level10State.gateTimer = 99f
-                        Level10State.displayStayStillMessage = false
+                    } else {
+                        if (Level10State.isPlatePressed) {
+                            Level10State.isPlatePressed = false
+                            Level10State.pressurePlate.y = 150f
+                            Level10State.pressurePlate.height = 10f
+                        }
+                        if (Level10State.hasTriggeredLine && Level10State.gateTimer > 0f && Level10State.gateTimer <= 4.0f) {
+                            // Left the plate early
+                            Level10State.gateTimer = 99f
+                            Level10State.displayStayStillMessage = false
+                        }
                     }
                 }
                 2 -> {
@@ -4703,7 +4720,7 @@ class GameScreen(
         if (currentLevel == 10 && Level10State.currentScreen == 1 && Level10State.displayStayStillMessage) {
             val font = game.generateFont(24)
             font.color = Color.WHITE
-            font.draw(game.batch, "BE STILL FOR 4 SECONDS OR YOU ARE COOKED", 400f + renderOffset, 600f)
+            font.draw(game.batch, "STAND STILL OR YOU ARE COOKED", 400f + renderOffset, 600f)
             font.dispose()
         }
 
