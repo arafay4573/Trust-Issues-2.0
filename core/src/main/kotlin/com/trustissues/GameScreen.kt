@@ -4181,11 +4181,11 @@ class GameScreen(
 
     private fun draw() {
         // Apply world tilt to camera
-        if (currentLevel == 7 && (currentChunk == 1 || currentChunk == 2 || currentChunk == 3)) {
+        if ((currentLevel == 7 && (currentChunk == 1 || currentChunk == 2 || currentChunk == 3)) || (currentLevel == 10 && Level10State.currentScreen == 2)) {
             gameViewport.camera.up.set(0f, 1f, 0f)
             gameViewport.camera.direction.set(0f, 0f, -1f)
             gameViewport.camera.rotate(worldTilt, 0f, 0f, 1f)
-            if (currentChunk == 2) {
+            if (currentLevel == 7 && currentChunk == 2) {
                 val targetY = Math.max(360f, Math.min(playerY, 850f))
                 gameViewport.camera.position.y = targetY
             }
