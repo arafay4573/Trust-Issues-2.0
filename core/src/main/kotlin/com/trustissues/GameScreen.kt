@@ -497,6 +497,11 @@ class GameScreen(
         worldTilt = 0f
 
         if (screen == 1) {
+            // "so it has to be a simple straight normal screen not tilted in screen 1 no matter what"
+            gameViewport.camera.up.set(0f, 1f, 0f)
+            gameViewport.camera.direction.set(0f, 0f, -1f)
+            gameViewport.camera.update()
+
             Level10State.resetScreen1()
 
             // Spawn Location
@@ -2056,8 +2061,12 @@ class GameScreen(
                                 messageLabel?.isVisible = false
                                 // "golden button not justs unlock the door but make the laser disappear in the 2nd screen"
                                 // The user implies the anti-backtrack laser blocking the door should vanish so they can enter Screen 2.
+                                // We must ONLY disappear the anti-backtrack laser, not the main sweeping laser that is punishing them.
+                                // The sweeping laser has isSweeping = true. The anti-backtrack laser has isSweeping = false.
                                 for (laser in lasers) {
-                                    laser.rect.x = -9999f
+                                    if (!laser.isSweeping) {
+                                        laser.rect.x = -9999f
+                                    }
                                 }
                             }
                         }
