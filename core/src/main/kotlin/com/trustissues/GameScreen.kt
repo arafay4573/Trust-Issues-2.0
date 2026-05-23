@@ -295,9 +295,9 @@ class GameScreen(
         var playerFacingRight = true
         var isPlatePressed = false
 
-        val windowAlpha = Rectangle(300f, 450f, 80f, 80f) // Blue
-        val windowBeta = Rectangle(600f, 200f, 80f, 80f) // Yellow
-        val windowGamma = Rectangle(850f, 500f, 80f, 80f) // Pink
+        val windowAlpha = Rectangle(250f, 350f, 80f, 80f) // Blue (Entrance)
+        val windowBeta = Rectangle(800f, 500f, 80f, 80f) // Yellow (Target)
+        val windowGamma = Rectangle(400f, 350f, 80f, 80f) // Pink (Trap)
         val pressurePlate = Rectangle(1150f, 150f, 40f, 10f)
 
         var compilerX = -100f
@@ -508,18 +508,15 @@ class GameScreen(
             playerY = 150f
             velocityY = 0f
 
-            // The camera angle resets to perfectly flat
+            // Left bank (Start)
+            platforms.add(Platform(Rectangle(0f, 130f, 150f, 20f), PlatformType.NORMAL))
 
+            // Right bank safe landing zone (Destination)
+            platforms.add(Platform(Rectangle(1100f, 130f, 180f, 20f), PlatformType.NORMAL))
 
-            // Left bank
-            platforms.add(Platform(Rectangle(0f, 130f, 200f, 20f), PlatformType.NORMAL))
-
-            // Right bank safe landing zone
-            platforms.add(Platform(Rectangle(1000f, 130f, 280f, 20f), PlatformType.NORMAL))
-
-            // Socially Anxious Shark
-            sharks.add(Shark(600f, 350f, 0f, 600f, 600f, facingRight = false))
-            val sharkPlat = Platform(Rectangle(600f, 350f, 120.3f, 10f), PlatformType.SAFE_SHARK)
+            // Socially Anxious Shark (Patrolling between 500f and 780f at y=150f directly under Alpha's exit point)
+            sharks.add(Shark(640f, 150f, 300f, 500f, 780f, facingRight = false))
+            val sharkPlat = Platform(Rectangle(640f, 150f, 120.3f, 10f), PlatformType.SAFE_SHARK)
             platforms.add(sharkPlat)
 
         } else if (screen == 3) {
@@ -2055,19 +2052,30 @@ class GameScreen(
 
                     // Window teleports
                     if (Intersector.overlaps(playerRect, Level10State.windowAlpha)) {
-                        playerX = 600f
+                        playerX = 640f
                         playerY = 700f
                         velocityY = 0f
                     }
                     if (Intersector.overlaps(playerRect, Level10State.windowBeta)) {
-                        playerX = 1100f
-                        playerY = 200f
+                        playerX = 1150f
+                        playerY = 150f
                         velocityY = 0f
                     }
                     if (Intersector.overlaps(playerRect, Level10State.windowGamma)) {
-                        playerX = 500f
+                        playerX = 640f
                         playerY = -100f
                         velocityY = 0f
+                    }
+
+                    // Special bounce off the SAFE_SHARK platform if they land on it
+                    if (sharks.isNotEmpty() && sharks[0].x != -9999f && velocityY <= 0) {
+                        val sharkPlat = platforms.find { it.type == PlatformType.SAFE_SHARK }
+                        if (sharkPlat != null && Intersector.overlaps(playerRect, sharkPlat.rect)) {
+                            // If they hit the shark platform while falling, they bounce up
+                            velocityY = 1000f
+                            playerY = sharkPlat.rect.y + sharkPlat.rect.height
+                            canJump = true
+                        }
                     }
                 }
                 3 -> {
