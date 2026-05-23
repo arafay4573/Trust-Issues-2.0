@@ -505,7 +505,7 @@ class GameScreen(
             Level10State.resetScreen1()
 
             // Spawn Location
-            playerX = 40f
+            playerX = 75f
             playerY = 150f
             velocityY = 0f
 
