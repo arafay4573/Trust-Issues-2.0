@@ -496,6 +496,12 @@ class GameScreen(
         messageLabel?.isVisible = false
         worldTilt = 0f
 
+        // Clear active inputs so the player spawns "standing static"
+        // without residual momentum or directional drift from teleports.
+        isLeftPressed = false
+        isRightPressed = false
+        isJumpPressed = false
+
         if (screen == 1) {
             // "so it has to be a simple straight normal screen not tilted in screen 1 no matter what"
             gameViewport.camera.up.set(0f, 1f, 0f)
@@ -505,7 +511,7 @@ class GameScreen(
             Level10State.resetScreen1()
 
             // Spawn Location
-            playerX = 75f
+            playerX = 100f
             playerY = 150f
             velocityY = 0f
 
