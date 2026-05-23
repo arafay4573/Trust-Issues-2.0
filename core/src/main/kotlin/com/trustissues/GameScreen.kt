@@ -295,10 +295,17 @@ class GameScreen(
         var playerFacingRight = true
         var isPlatePressed = false
 
+        var isPinkPortalActive = false
+        var isYellowPortalActive = false
+        var laserRoofY = 320f
+        var floorLaserY = 0f
+
         val windowAlpha = Rectangle(250f, 350f, 80f, 80f) // Blue (Entrance)
         val windowBeta = Rectangle(800f, 500f, 80f, 80f) // Yellow (Target)
         val windowGamma = Rectangle(400f, 350f, 80f, 80f) // Pink (Trap)
         val pressurePlate = Rectangle(1150f, 150f, 40f, 10f)
+        val roofLaserRect = Rectangle(1100f, 320f, 180f, 20f)
+        val floorLaserRect = Rectangle(1100f, 0f, 180f, 20f)
 
         var compilerX = -100f
         val compilerRect = Rectangle(-100f, 0f, 150f, 720f)
@@ -321,6 +328,14 @@ class GameScreen(
             pressurePlate.set(1150f, 150f, 40f, 10f)
         }
 
+        fun resetScreen2() {
+            isYellowPortalActive = false
+            laserRoofY = 340f
+            floorLaserY = 100f
+            roofLaserRect.set(1100f, 340f, 180f, 20f)
+            floorLaserRect.set(1100f, 100f, 180f, 20f)
+        }
+
         fun resetScreen3() {
             compilerX = -100f
             compilerRect.x = -100f
@@ -337,7 +352,10 @@ class GameScreen(
 
         fun resetAll() {
             currentScreen = 1
+            isPinkPortalActive = false
+            isYellowPortalActive = false
             resetScreen1()
+            resetScreen2()
             resetScreen3()
             resetScreen4()
         }
@@ -503,7 +521,18 @@ class GameScreen(
             // The Laser starts at left wall, inactive initially (speed 0)
             lasers.add(Laser(Rectangle(0f, 0f, 20f, 720f), isSweeping = true, sweepSpeed = 0f, minX = 0f, maxX = 1280f))
 
+            // The anti-backtrack laser (always block the door initially)
+            lasers.add(Laser(Rectangle(1240f, 0f, 40f, 720f), isSweeping = false))
+
+            // Pink portal sharks penalty
+            if (Level10State.isPinkPortalActive) {
+                sharks.add(Shark(300f, 150f, 400f, 100f, 1280f))
+                sharks.add(Shark(600f, 150f, 500f, 100f, 1280f))
+            }
+
         } else if (screen == 2) {
+            Level10State.resetScreen2()
+
             playerX = 20f
             playerY = 150f
             velocityY = 0f
@@ -518,6 +547,11 @@ class GameScreen(
             sharks.add(Shark(640f, 150f, 300f, 500f, 780f, facingRight = false))
             val sharkPlat = Platform(Rectangle(640f, 150f, 120.3f, 10f), PlatformType.SAFE_SHARK)
             platforms.add(sharkPlat)
+
+            // Pink portal sharks penalty for screen 2
+            if (Level10State.isPinkPortalActive) {
+                sharks.add(Shark(400f, 350f, 250f, 100f, 1100f))
+            }
 
         } else if (screen == 3) {
             playerX = 20f
@@ -2020,6 +2054,11 @@ class GameScreen(
                                 Level10State.isGateOpen = true
                                 Level10State.displayStayStillMessage = false
                                 messageLabel?.isVisible = false
+                                // "golden button not justs unlock the door but make the laser disappear in the 2nd screen"
+                                // The user implies the anti-backtrack laser blocking the door should vanish so they can enter Screen 2.
+                                for (laser in lasers) {
+                                    laser.rect.x = -9999f
+                                }
                             }
                         }
                     } else {
@@ -2069,19 +2108,40 @@ class GameScreen(
 
                     // Window teleports
                     if (Intersector.overlaps(playerRect, Level10State.windowAlpha)) {
-                        playerX = 640f
-                        playerY = 700f
-                        velocityY = 0f
+                        // Blue Portal: "teleports u back to the respawn point but with inverse controls till u die"
+                        Level10State.currentScreen = 1
+                        setupLevel10(1)
+                        isControlsInverted = !isControlsInverted
                     }
                     if (Intersector.overlaps(playerRect, Level10State.windowBeta)) {
-                        playerX = 1150f
-                        playerY = 150f
-                        velocityY = 0f
+                        // Yellow Portal: "activates the laser roof which starts comming up and teleports u below it"
+                        // The user said: "teleports u below it so u have to tap again and again in air... emerging from floor... until u find a window to stand on the platform and rush to the 3rd screen"
+                        if (!Level10State.isYellowPortalActive) {
+                            Level10State.isYellowPortalActive = true
+                            playerX = 1150f
+                            playerY = 220f
+                            velocityY = 0f
+                        }
                     }
                     if (Intersector.overlaps(playerRect, Level10State.windowGamma)) {
-                        playerX = 640f
-                        playerY = -100f
-                        velocityY = 0f
+                        // Pink Portal: "respawns u back on screen 1 on the repsawn point with sharks all over patrolling"
+                        Level10State.currentScreen = 1
+                        Level10State.isPinkPortalActive = true
+                        setupLevel10(1)
+                    }
+
+                    // Yellow Portal Challenge Logic
+                    if (Level10State.isYellowPortalActive) {
+                        // Move roof and floor up to create a dynamic squeeze
+                        Level10State.floorLaserY += 30f * delta
+                        Level10State.floorLaserRect.y = Level10State.floorLaserY
+
+                        Level10State.laserRoofY += 30f * delta
+                        Level10State.roofLaserRect.y = Level10State.laserRoofY
+
+                        if (Intersector.overlaps(playerRect, Level10State.roofLaserRect) || Intersector.overlaps(playerRect, Level10State.floorLaserRect)) {
+                            die("Squeezed out of existence.")
+                        }
                     }
 
                     // Special bounce off the SAFE_SHARK platform if they land on it
@@ -4085,6 +4145,7 @@ class GameScreen(
 
         if (currentLevel == 10) {
             Level10State.resetAll()
+            isControlsInverted = false
         }
 
         // Define original arrays per scope
@@ -4268,6 +4329,12 @@ class GameScreen(
 
             shapeRenderer.color = Color.PINK
             shapeRenderer.rect(Level10State.windowGamma.x + renderOffset, Level10State.windowGamma.y, Level10State.windowGamma.width, Level10State.windowGamma.height)
+
+            if (Level10State.isYellowPortalActive) {
+                shapeRenderer.color = Color(1f, 0.1f, 0.1f, 0.8f) // Same transparent red as lasers
+                shapeRenderer.rect(Level10State.roofLaserRect.x + renderOffset, Level10State.roofLaserRect.y, Level10State.roofLaserRect.width, Level10State.roofLaserRect.height)
+                shapeRenderer.rect(Level10State.floorLaserRect.x + renderOffset, Level10State.floorLaserRect.y, Level10State.floorLaserRect.width, Level10State.floorLaserRect.height)
+            }
         } else if (currentLevel == 10 && Level10State.currentScreen == 3) {
             shapeRenderer.color = Color.valueOf("111111") // Dark grey/black for Compiler
             shapeRenderer.rect(Level10State.compilerRect.x + renderOffset, Level10State.compilerRect.y, Level10State.compilerRect.width, Level10State.compilerRect.height)
