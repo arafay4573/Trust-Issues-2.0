@@ -2035,6 +2035,18 @@ class GameScreen(
                     }
                 }
                 2 -> {
+                    // Tilt Mechanics
+                    if (isRightPressed) {
+                        worldTilt += 48f * delta
+                    } else if (isLeftPressed) {
+                        worldTilt -= 48f * delta
+                    }
+                    if (worldTilt > 20f) worldTilt = 20f
+                    if (worldTilt < -20f) worldTilt = -20f
+
+                    val slideForce = 800f * MathUtils.sinDeg(worldTilt)
+                    playerX += slideForce * delta
+
                     // The Look Vector Check
                     if (sharks.isNotEmpty() && sharks[0].x != -9999f) {
                         val shark = sharks[0]
