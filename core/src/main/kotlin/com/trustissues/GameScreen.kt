@@ -505,7 +505,7 @@ class GameScreen(
             Level10State.resetScreen1()
 
             // Spawn Location
-            playerX = 20f
+            playerX = 40f
             playerY = 150f
             velocityY = 0f
 
@@ -531,8 +531,8 @@ class GameScreen(
 
             // Pink portal sharks penalty
             if (Level10State.isPinkPortalActive) {
-                sharks.add(Shark(300f, 150f, 400f, 100f, 1280f))
-                sharks.add(Shark(600f, 150f, 500f, 100f, 1280f))
+                sharks.add(Shark(800f, 150f, 300f, 700f, 1280f))
+                sharks.add(Shark(1000f, 150f, 400f, 800f, 1280f))
             }
 
         } else if (screen == 2) {
