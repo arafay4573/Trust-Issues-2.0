@@ -307,8 +307,8 @@ class GameScreen(
         val roofLaserRect = Rectangle(1100f, 320f, 180f, 20f)
         val floorLaserRect = Rectangle(1100f, 0f, 180f, 20f)
 
-        var compilerX = -100f
-        val compilerRect = Rectangle(-100f, 0f, 150f, 720f)
+        var compilerX = -200f
+        val compilerRect = Rectangle(-200f, 0f, 150f, 720f)
         var laserTimer = 0f
         var isLaserLethal = true
 
@@ -337,8 +337,8 @@ class GameScreen(
         }
 
         fun resetScreen3() {
-            compilerX = -100f
-            compilerRect.x = -100f
+            compilerX = -200f
+            compilerRect.x = -200f
             laserTimer = 0f
             isLaserLethal = true
         }
@@ -542,7 +542,9 @@ class GameScreen(
             }
 
         } else if (screen == 2) {
-            Level10State.resetScreen2()
+            // We purposefully DO NOT resetScreen2() here.
+            // If they die, `resetAll` handles it.
+            // If they backtrack from Screen 3, the lasers MUST persist and kill them!
 
             playerX = 20f
             playerY = 150f
@@ -2094,17 +2096,22 @@ class GameScreen(
                     canJump = true
 
                     // Tilt Mechanics (Strictly like Level 7 Chunk 1)
-                    if (isRightPressed) {
-                        worldTilt += 48f * delta
-                    } else if (isLeftPressed) {
-                        worldTilt -= 48f * delta
+                    // The tilt effect STOPS when the Yellow portal is active so they can flappy bird normally.
+                    if (!Level10State.isYellowPortalActive) {
+                        if (isRightPressed) {
+                            worldTilt += 48f * delta
+                        } else if (isLeftPressed) {
+                            worldTilt -= 48f * delta
+                        }
+
+                        if (worldTilt > 20f) worldTilt = 20f
+                        if (worldTilt < -20f) worldTilt = -20f
+
+                        val slideForce = 350f * MathUtils.sinDeg(worldTilt)
+                        playerX += slideForce * delta
+                    } else {
+                        worldTilt = 0f
                     }
-
-                    if (worldTilt > 20f) worldTilt = 20f
-                    if (worldTilt < -20f) worldTilt = -20f
-
-                    val slideForce = 350f * MathUtils.sinDeg(worldTilt)
-                    playerX += slideForce * delta
 
                     // The Look Vector Check
                     if (sharks.isNotEmpty() && sharks[0].x != -9999f) {
@@ -2722,9 +2729,11 @@ class GameScreen(
                     die("There is no escape.") // Backtrack protection: Screen 3 is deleted
                 } else {
                     Level10State.currentScreen--
-                    playerX = 1260f - playerWidth
-                    // Restore active traps of previous screen
+                    // Restore active traps of previous screen FIRST
                     setupLevel10(Level10State.currentScreen)
+
+                    // THEN set playerX so setupLevel10 doesn't overwrite it with the spawn coordinate!
+                    playerX = 1260f - playerWidth
 
                     if (Level10State.currentScreen == 1) {
                         // Drop a laser directly on the right entrance to burn backtrackers
