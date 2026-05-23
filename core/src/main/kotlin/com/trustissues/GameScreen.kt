@@ -2035,16 +2035,25 @@ class GameScreen(
                     }
                 }
                 2 -> {
-                    // Tilt Mechanics
+                    // Tilt Mechanics (like Level 7, but with stabilization)
                     if (isRightPressed) {
                         worldTilt += 48f * delta
                     } else if (isLeftPressed) {
                         worldTilt -= 48f * delta
+                    } else {
+                        // Decay worldTilt back to 0 so it stays still without controls
+                        if (worldTilt > 0f) {
+                            worldTilt -= 48f * delta
+                            if (worldTilt < 0f) worldTilt = 0f
+                        } else if (worldTilt < 0f) {
+                            worldTilt += 48f * delta
+                            if (worldTilt > 0f) worldTilt = 0f
+                        }
                     }
                     if (worldTilt > 20f) worldTilt = 20f
                     if (worldTilt < -20f) worldTilt = -20f
 
-                    val slideForce = 800f * MathUtils.sinDeg(worldTilt)
+                    val slideForce = 350f * MathUtils.sinDeg(worldTilt)
                     playerX += slideForce * delta
 
                     // The Look Vector Check
