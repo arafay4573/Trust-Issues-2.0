@@ -1850,7 +1850,8 @@ class GameScreen(
                         // "tap the jump button again and again to fly ofk like flappy bird"
                         if ((currentLevel == 5 && (currentChunk == 1 || currentChunk == 2 || currentChunk == 3)) ||
                             (currentLevel == 6 && currentChunk == 3) ||
-                            (currentLevel == 7 && (currentChunk == 1 || currentChunk == 2))) {
+                            (currentLevel == 7 && (currentChunk == 1 || currentChunk == 2)) ||
+                            (currentLevel == 10 && Level10State.currentScreen == 2)) {
                             if (reverseGravity) {
                                 velocityY = -currentJumpStrength
                             } else {
@@ -2035,21 +2036,16 @@ class GameScreen(
                     }
                 }
                 2 -> {
-                    // Tilt Mechanics (like Level 7, but with stabilization)
+                    // Flappy Bird Mechanic
+                    canJump = true
+
+                    // Tilt Mechanics (Strictly like Level 7 Chunk 1)
                     if (isRightPressed) {
                         worldTilt += 48f * delta
                     } else if (isLeftPressed) {
                         worldTilt -= 48f * delta
-                    } else {
-                        // Decay worldTilt back to 0 so it stays still without controls
-                        if (worldTilt > 0f) {
-                            worldTilt -= 48f * delta
-                            if (worldTilt < 0f) worldTilt = 0f
-                        } else if (worldTilt < 0f) {
-                            worldTilt += 48f * delta
-                            if (worldTilt > 0f) worldTilt = 0f
-                        }
                     }
+
                     if (worldTilt > 20f) worldTilt = 20f
                     if (worldTilt < -20f) worldTilt = -20f
 
@@ -4669,15 +4665,10 @@ class GameScreen(
             // Level 9 Chunk 2 Fake Mask (always visible for deception)
             // It is drawn at maskX, maskY normally.
 
-            if (currentLevel == 10 && Level10State.currentScreen == 1) {
+            if (currentLevel == 10 && (Level10State.currentScreen == 1 || Level10State.currentScreen == 2)) {
                 hideMask = true
             }
 
-            if (currentLevel == 10 && Level10State.currentScreen == 1) {
-                hideMask = true
-            }
-
-            if (currentLevel == 10 && Level10State.currentScreen == 1) hideMask = true
             if (!hideMask && isVisible(maskX, maskY)) {
                 game.batch.draw(tex, maskX + renderOffset, maskY + renderOffsetY, 32f, 32f)
             }
