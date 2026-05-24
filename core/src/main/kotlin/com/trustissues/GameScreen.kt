@@ -502,6 +502,8 @@ class GameScreen(
         isRightPressed = false
         isJumpPressed = false
 
+        chunkTime = 0f
+
         if (screen == 1) {
             // "so it has to be a simple straight normal screen not tilted in screen 1 no matter what"
             gameViewport.camera.up.set(0f, 1f, 0f)
@@ -589,8 +591,8 @@ class GameScreen(
                 platforms.add(Platform(Rectangle(startX + i * stepX, startY + i * stepY, 80f, 20f), PlatformType.CRUMBLING))
             }
 
-            // The Level 9 Laser at x=640f (vertically spanning to block the way)
-            lasers.add(Laser(Rectangle(640f, 0f, 20f, 720f), isSweeping = false))
+            // The Level 9 Laser at x=600f (vertically spanning to block the way)
+            lasers.add(Laser(Rectangle(600f, 0f, 20f, 720f), isSweeping = false))
 
             // Right Bank
             platforms.add(Platform(Rectangle(1100f, 450f, 180f, 20f), PlatformType.NORMAL))
@@ -2010,6 +2012,8 @@ class GameScreen(
 
         // --- LEVEL 10 NO CAP TIER LOGIC ---
         if (currentLevel == 10 && !isDead && !isLevelComplete) {
+            chunkTime += delta
+
             // Antigravity deactivation hack for Level 10
             if (reverseGravity && velocityY >= 0 && isJumpPressed) {
                 // If they are on the top platform (meaning they are upside down and colliding)
@@ -2199,6 +2203,21 @@ class GameScreen(
                     if (Level10State.laserTimer >= 0.8f) {
                         Level10State.laserTimer = 0f
                         Level10State.isLaserLethal = !Level10State.isLaserLethal
+                    }
+
+                    // Warning Text Flashing
+                    if (chunkTime < 3f) {
+                        if (chunkTime % 0.4f < 0.2f) {
+                            messageLabel?.setText("WARNING: CORRUPTED DATA OVERFLOW")
+                            messageLabel?.color = Color.RED
+                            messageLabel?.isVisible = true
+                            messageLabel?.pack()
+                            messageLabel?.setPosition(1280f / 2 - messageLabel!!.width / 2, 500f)
+                        } else {
+                            messageLabel?.isVisible = false
+                        }
+                    } else if (chunkTime >= 3f && chunkTime < 3.1f) {
+                         messageLabel?.isVisible = false
                     }
                 }
                 4 -> {
@@ -2849,6 +2868,10 @@ class GameScreen(
 
                 // Check laser collision for Mask
                 for (laser in lasers) {
+                    // Ignore collision if the laser is safe
+                    if (currentLevel == 10 && Level10State.currentScreen == 3 && !Level10State.isLaserLethal) {
+                        continue
+                    }
                     if (laser.rect.x > -1000f && Intersector.overlaps(maskRect, laser.rect)) {
                         die("The mask shattered into pieces!")
                     }
@@ -3721,6 +3744,7 @@ class GameScreen(
                 if (isTouchedByPlayer || isTouchedByEcho || isTouchedByMirror) {
                     // DYNAMIC LIMITS
                     val actualLimit = when {
+                         currentLevel == 10 && Level10State.currentScreen == 3 -> 0.6f
                          currentLevel == 5 && currentChunk == 1 -> 1.2f // Level 5-1: 1.2s
                          currentLevel == 6 && currentChunk == 1 -> 1.0f // Level 6-1: 1.0s
 
@@ -3811,15 +3835,18 @@ class GameScreen(
                     }
                 }
             }
-            if (Intersector.overlaps(playerRect, laser.rect)) {
-                if (currentLevel == 9 && currentChunk == 3 && Level9Chunk3State.isHidden) {
-                    // Hidden inside the purple box, immune to lasers!
-                } else if (currentLevel == 10 && Level10State.currentScreen == 3 && !Level10State.isLaserLethal) {
-                    // Immune to laser when it's safe (white)
-                } else if (currentLevel == 5 && currentChunk == 2) {
-                    die("You ain't no Newton")
-                } else {
-                    die("Grilled to perfection. Serve with a side of failure.")
+            // Turn off collisions entirely when it's white/safe in Level 10 Screen 3
+            if (currentLevel == 10 && Level10State.currentScreen == 3 && !Level10State.isLaserLethal) {
+                // Ignore collision for this specific frame
+            } else {
+                if (Intersector.overlaps(playerRect, laser.rect)) {
+                    if (currentLevel == 9 && currentChunk == 3 && Level9Chunk3State.isHidden) {
+                        // Hidden inside the purple box, immune to lasers!
+                    } else if (currentLevel == 5 && currentChunk == 2) {
+                        die("You ain't no Newton")
+                    } else {
+                        die("Grilled to perfection. Serve with a side of failure.")
+                    }
                 }
             }
         }
@@ -4362,6 +4389,17 @@ class GameScreen(
         } else if (currentLevel == 10 && Level10State.currentScreen == 3) {
             shapeRenderer.color = Color.valueOf("111111") // Dark grey/black for Compiler
             shapeRenderer.rect(Level10State.compilerRect.x + renderOffset, Level10State.compilerRect.y, Level10State.compilerRect.width, Level10State.compilerRect.height)
+
+            // Compiler Monster Eyes (Red)
+            shapeRenderer.color = Color.RED
+            shapeRenderer.rect(Level10State.compilerRect.x + Level10State.compilerRect.width - 40f + renderOffset, Level10State.compilerRect.y + 400f, 20f, 20f)
+            shapeRenderer.rect(Level10State.compilerRect.x + Level10State.compilerRect.width - 40f + renderOffset, Level10State.compilerRect.y + 350f, 20f, 20f)
+
+            // Compiler Syntax Lines (White)
+            shapeRenderer.color = Color.WHITE
+            shapeRenderer.rect(Level10State.compilerRect.x + 20f + renderOffset, Level10State.compilerRect.y + 200f, 80f, 10f)
+            shapeRenderer.rect(Level10State.compilerRect.x + 20f + renderOffset, Level10State.compilerRect.y + 170f, 60f, 10f)
+            shapeRenderer.rect(Level10State.compilerRect.x + 20f + renderOffset, Level10State.compilerRect.y + 140f, 100f, 10f)
         } else if (currentLevel == 10 && Level10State.currentScreen == 4 && Level10State.isCrashActive) {
             // Apply rotation for the popup
             val boxCenterX = Level10State.crashWindowRect.x + Level10State.crashWindowRect.width / 2f
@@ -4424,7 +4462,13 @@ class GameScreen(
              if (currentLevel == 10 && Level10State.currentScreen == 3) {
                  shapeRenderer.color = if (Level10State.isLaserLethal) Color(1f, 0.1f, 0.1f, 0.8f) else Color.WHITE
              }
-             shapeRenderer.rect(laser.rect.x + renderOffset, laser.rect.y, laser.rect.width, laser.rect.height)
+             // Turn off collisions when it's white/safe
+             if (currentLevel == 10 && Level10State.currentScreen == 3 && !Level10State.isLaserLethal) {
+                 // Do not check collisions below, but still render
+                 shapeRenderer.rect(laser.rect.x + renderOffset, laser.rect.y, laser.rect.width, laser.rect.height)
+             } else {
+                 shapeRenderer.rect(laser.rect.x + renderOffset, laser.rect.y, laser.rect.width, laser.rect.height)
+             }
         }
 
 
