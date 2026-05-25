@@ -504,11 +504,10 @@ class GameScreen(
         messageLabel?.isVisible = false
         worldTilt = 0f
 
-        // Clear active inputs so the player spawns "standing static"
-        // without residual momentum or directional drift from teleports.
-        isLeftPressed = false
-        isRightPressed = false
-        isJumpPressed = false
+        // Retain inputs on screen transition for smooth play across screens.
+        // isLeftPressed = false
+        // isRightPressed = false
+        // isJumpPressed = false
 
         chunkTime = 0f
 
