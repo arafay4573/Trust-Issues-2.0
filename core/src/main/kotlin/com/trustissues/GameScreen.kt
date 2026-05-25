@@ -2198,12 +2198,20 @@ class GameScreen(
                 3 -> {
                     // Level 10 Screen 3: Compiler and Shadow Phase
                     if (!Level10State.shadowPhaseActive) {
-                        // The Compiler Engine (normal speed)
-                        Level10State.compilerX += 55f * delta
+                        // The Compiler Engine (faster speed)
+                        Level10State.compilerX += 120f * delta
                     } else {
                         // Shadow Phase: compiler moves back
-                        Level10State.compilerX -= 55f * delta
+                        Level10State.compilerX -= 120f * delta
                     }
+
+                    // Wrap-around logic
+                    if (Level10State.compilerX > 1280f) {
+                        Level10State.compilerX = -150f
+                    } else if (Level10State.compilerX < -200f) {
+                        Level10State.compilerX = 1280f
+                    }
+
                     Level10State.compilerRect.x = Level10State.compilerX
 
                     if (Intersector.overlaps(playerRect, Level10State.compilerRect)) {
