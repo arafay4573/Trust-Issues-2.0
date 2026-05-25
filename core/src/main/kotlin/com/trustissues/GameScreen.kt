@@ -316,13 +316,12 @@ class GameScreen(
         var mirrorVelocityY = 0f
         var shadowPhaseCompleted = false
 
-        var isCrashActive = false
-        val crashWindowRect = Rectangle(440f, 260f, 400f, 200f)
-        var crashBoxAngle = 0f
-        var isOnCrashBox = false
-        var crashLaunchVelocityX = 0f
-        val forceCloseBtnRect = Rectangle(460f, 280f, 150f, 50f)
-        val waitBtnRect = Rectangle(660f, 280f, 150f, 50f)
+                var isCrashActive = false
+        val crashWindowRect = Rectangle(340f, 210f, 600f, 300f)
+        var isBufferActive = false
+        val forceCloseBtnRect = Rectangle(380f, 230f, 240f, 60f)
+        val waitBtnRect = Rectangle(660f, 230f, 240f, 60f)
+        val bufferBarRect = Rectangle(390f, 250f, 500f, 20f)
 
         fun resetScreen1() {
             gateTimer = 4.0f
@@ -352,11 +351,9 @@ class GameScreen(
             shadowPhaseCompleted = false
         }
 
-        fun resetScreen4() {
+                fun resetScreen4() {
             isCrashActive = false
-            crashWindowRect.set(440f, 300f, 400f, 200f)
-            crashBoxAngle = 0f
-            isOnCrashBox = false
+            isBufferActive = false
         }
 
         fun resetAll() {
@@ -613,16 +610,17 @@ class GameScreen(
 
                 } else if (screen == 4) {
             playerX = 20f
-            playerY = 150f
+            playerY = 470f
             velocityY = 0f
 
             Level10State.resetScreen4()
 
             // Spawn the genuine OxygenMask
-            maskX = 640f
-            maskY = 360f
+            maskX = 1050f
+            maskY = 470f
 
-            platforms.add(Platform(Rectangle(0f, 130f, 1280f, 20f), PlatformType.NORMAL))
+            // Start ledge
+            platforms.add(Platform(Rectangle(0f, 450f, 300f, 20f), PlatformType.NORMAL))
         }
         // Bounding box reset to avoid stale hits
         playerRect.set(playerX, playerY, playerWidth, playerHeight)
@@ -2196,12 +2194,19 @@ class GameScreen(
                 }
                 3 -> {
                     // Level 10 Screen 3: Compiler and Shadow Phase
-                    // The Compiler Engine: loops continuously left-to-right
-                    Level10State.compilerX += 80f * delta
+                    if (!Level10State.shadowPhaseActive) {
+                        // The Compiler Engine (faster speed)
+                        Level10State.compilerX += 120f * delta
+                    } else {
+                        // Shadow Phase: compiler moves back
+                        Level10State.compilerX -= 120f * delta
+                    }
 
                     // Wrap-around logic
                     if (Level10State.compilerX > 1280f) {
-                        Level10State.compilerX = -200f
+                        Level10State.compilerX = -150f
+                    } else if (Level10State.compilerX < -200f) {
+                        Level10State.compilerX = 1280f
                     }
 
                     Level10State.compilerRect.x = Level10State.compilerX
@@ -2320,8 +2325,8 @@ class GameScreen(
                     }
                 }
                 4 -> {
-                    // The False Hope Trigger
-                    if (!Level10State.isCrashActive && playerX > 440f) {
+                    // The False Hope Trigger (Ledge ends at X=300)
+                    if (!Level10State.isCrashActive && playerX > 250f) {
                         Level10State.isCrashActive = true
                     }
 
@@ -2329,62 +2334,33 @@ class GameScreen(
                         // The Finger-Tap Death Logic
                         if (Gdx.input.justTouched()) {
                             val touchVec = gameViewport.unproject(com.badlogic.gdx.math.Vector2(Gdx.input.x.toFloat(), Gdx.input.y.toFloat()))
-                            if (Level10State.forceCloseBtnRect.contains(touchVec) || Level10State.waitBtnRect.contains(touchVec)) {
-                                die("FAKE_MASK")
-                            }
-                        }
-
-                        // Physics on the Box
-                        val boxCenterX = Level10State.crashWindowRect.x + Level10State.crashWindowRect.width / 2f
-                        val boxCenterY = Level10State.crashWindowRect.y + Level10State.crashWindowRect.height / 2f
-                        val boxHeight = Level10State.crashWindowRect.height
-                        val boxLeftX = Level10State.crashWindowRect.x
-                        val boxRightX = boxLeftX + Level10State.crashWindowRect.width
-
-                        // Calculate tilt if player is standing on it
-                        if (Level10State.isOnCrashBox) {
-                            val offsetFromCenter = (playerX + playerWidth / 2f) - boxCenterX
-                            val maxTilt = 20f
-                            val tiltFactor = offsetFromCenter / (Level10State.crashWindowRect.width / 2f)
-                            val targetAngle = tiltFactor * -maxTilt
-                            Level10State.crashBoxAngle += (targetAngle - Level10State.crashBoxAngle) * 5f * delta
-                        } else {
-                            Level10State.crashBoxAngle += (0f - Level10State.crashBoxAngle) * 2f * delta
-                        }
-
-                        val offset = (playerX + playerWidth / 2f) - boxCenterX
-                        val radians = Math.toRadians(Level10State.crashBoxAngle.toDouble())
-                        val expectedY = boxCenterY + (boxHeight / 2f) / Math.cos(radians).toFloat() + (offset * Math.tan(radians)).toFloat()
-
-                        val withinXBounds = playerX + playerWidth > boxLeftX && playerX < boxRightX
-                        val isTouchingY = playerY - expectedY < 40f && playerY - expectedY >= -20f && velocityY <= 0
-
-                        Level10State.isOnCrashBox = withinXBounds && isTouchingY
-
-                                                if (Level10State.isOnCrashBox) {
-                            playerY = expectedY
-                            velocityY = 0f
-                            canJump = true
-
-                            // Massive springboard leap of faith
-                            if (isJumpPressed) {
-                                if (playerX > 640f) {
-                                    val jumpMag = 1800f
-                                    val rad = Math.toRadians(Level10State.crashBoxAngle.toDouble())
-                                    Level10State.crashLaunchVelocityX = (Math.sin(rad) * jumpMag).toFloat()
-                                    velocityY = (Math.cos(rad) * jumpMag).toFloat()
-                                    canJump = false
-                                    isJumpPressed = false
-                                    // No jump sound
+                            if (!Level10State.isBufferActive) {
+                                if (Level10State.forceCloseBtnRect.contains(touchVec)) {
+                                    Gdx.app.exit() // crashes the game completely
+                                } else if (Level10State.waitBtnRect.contains(touchVec)) {
+                                    Level10State.isBufferActive = true
                                 }
                             }
                         }
 
-                        if (Level10State.crashLaunchVelocityX != 0f) {
-                            playerX += Level10State.crashLaunchVelocityX * delta
-                            // slight drag to feel like a jump curve
-                            Level10State.crashLaunchVelocityX *= 0.98f
+                        if (Level10State.isBufferActive) {
+                            // Buffer Bar acts as a solid platform
+                            val barRect = Level10State.bufferBarRect
+                            val isWithinXBounds = playerX + playerWidth > barRect.x && playerX < barRect.x + barRect.width
+                            val expectedY = barRect.y + barRect.height
+
+                            // Check for landing on the buffer bar
+                            if (isWithinXBounds && playerY - expectedY < 40f && playerY - expectedY >= -20f && velocityY <= 0) {
+                                playerY = expectedY
+                                velocityY = 0f
+                                canJump = true
+                            }
                         }
+                    }
+
+                    // Sky and Abyss Death for Screen 4
+                    if (playerY < -50f) {
+                        die("Fell into the hallucination abyss.")
                     }
 
                     if (Intersector.overlaps(playerRect, maskRect)) {
@@ -2830,10 +2806,7 @@ class GameScreen(
             if (flapsRemaining > 0) {
                 flapTimer -= delta
                 if (flapTimer <= 0f) {
-                                        var currentJumpStrength = if (currentLevel == 5 && (currentChunk == 2 || currentChunk == 3)) 500f else jumpStrength // Flappy strength logic remains standard
-                    if (currentLevel == 10 && Level10State.currentScreen == 4) {
-                        currentJumpStrength = 1300f // Allows jumping onto the 460f box from 150f floor
-                    }
+                    val currentJumpStrength = if (currentLevel == 5 && (currentChunk == 2 || currentChunk == 3)) 500f else jumpStrength // Flappy strength logic remains standard
                     if (reverseGravity) {
                         velocityY = -currentJumpStrength
                     } else {
@@ -3303,9 +3276,7 @@ class GameScreen(
         // --- LEVEL 9 CHUNK 3 LOGIC (The Shark Aquarium Error) ---
         // Sky Death for Level 10 explicitly
         if (currentLevel == 10 && !isDead && !isLevelComplete && playerY > 720f) {
-            if (Level10State.currentScreen != 4) {
-                die("Flew too close to the sun.")
-            }
+            die("Flew too close to the sun.")
         }
 
         if (currentLevel == 9 && currentChunk == 3 && !isDead && !isLevelComplete) {
@@ -4523,407 +4494,25 @@ class GameScreen(
             shapeRenderer.rect(Level10State.compilerRect.x + 20f + renderOffset, Level10State.compilerRect.y + 200f, 80f, 10f)
             shapeRenderer.rect(Level10State.compilerRect.x + 20f + renderOffset, Level10State.compilerRect.y + 170f, 60f, 10f)
             shapeRenderer.rect(Level10State.compilerRect.x + 20f + renderOffset, Level10State.compilerRect.y + 140f, 100f, 10f)
-        } else if (currentLevel == 10 && Level10State.currentScreen == 4 && Level10State.isCrashActive) {
-            // Apply rotation for the popup
-            val boxCenterX = Level10State.crashWindowRect.x + Level10State.crashWindowRect.width / 2f
-            val boxCenterY = Level10State.crashWindowRect.y + Level10State.crashWindowRect.height / 2f
-
-            shapeRenderer.translate(boxCenterX + renderOffset, boxCenterY, 0f)
-            shapeRenderer.rotate(0f, 0f, 1f, Level10State.crashBoxAngle)
-            shapeRenderer.translate(-(boxCenterX + renderOffset), -boxCenterY, 0f)
-
+                } else if (currentLevel == 10 && Level10State.currentScreen == 4 && Level10State.isCrashActive) {
             // Draw window base
             shapeRenderer.color = Color.valueOf("F5F5F5")
             shapeRenderer.rect(Level10State.crashWindowRect.x + renderOffset, Level10State.crashWindowRect.y, Level10State.crashWindowRect.width, Level10State.crashWindowRect.height)
 
-            // Draw buttons
-            shapeRenderer.color = Color.valueOf("E0E0E0")
-            shapeRenderer.rect(Level10State.forceCloseBtnRect.x + renderOffset, Level10State.forceCloseBtnRect.y, Level10State.forceCloseBtnRect.width, Level10State.forceCloseBtnRect.height)
-            shapeRenderer.rect(Level10State.waitBtnRect.x + renderOffset, Level10State.waitBtnRect.y, Level10State.waitBtnRect.width, Level10State.waitBtnRect.height)
-
-            // Reset transforms
-            shapeRenderer.identity()
-        }
-
-        // Draw Level 9 Chunk 3 Windows
-        if (currentLevel == 9 && currentChunk == 3) {
-            shapeRenderer.color = Color.BLUE
-            shapeRenderer.rect(Level9Chunk3State.windowA.x + renderOffset, Level9Chunk3State.windowA.y, Level9Chunk3State.windowA.width, Level9Chunk3State.windowA.height)
-
-            shapeRenderer.color = Color.YELLOW
-            shapeRenderer.rect(Level9Chunk3State.windowB.x + renderOffset, Level9Chunk3State.windowB.y, Level9Chunk3State.windowB.width, Level9Chunk3State.windowB.height)
-
-            shapeRenderer.color = Color.GREEN
-            shapeRenderer.rect(Level9Chunk3State.windowC.x + renderOffset, Level9Chunk3State.windowC.y, Level9Chunk3State.windowC.width, Level9Chunk3State.windowC.height)
-
-            shapeRenderer.color = Color.PURPLE
-            shapeRenderer.rect(Level9Chunk3State.windowD.x + renderOffset, Level9Chunk3State.windowD.y, Level9Chunk3State.windowD.width, Level9Chunk3State.windowD.height)
-
-            // Isolated Mask Window
-            shapeRenderer.color = Color.WHITE
-            shapeRenderer.rectLine(Level9Chunk3State.maskWindow.x + renderOffset, Level9Chunk3State.maskWindow.y, Level9Chunk3State.maskWindow.x + renderOffset, Level9Chunk3State.maskWindow.y + Level9Chunk3State.maskWindow.height, 4f)
-        }
-
-        // Draw Game Buttons
-        for (btn in gameButtons) {
-            shapeRenderer.color = if (btn.isPressed) Color.GRAY else Color.YELLOW
-            if (currentLevel == 7 && currentChunk == 2) {
-                // Keep the visual representation as a 40x10 line centered above the shark's Y+90
-                shapeRenderer.rect(btn.rect.x + 40f + renderOffset, btn.rect.y + 10f, 40f, 10f)
-            } else if (currentLevel == 9 && currentChunk == 1) {
-                // Skip drawing it here since the blackout will cover it. We'll draw it below.
+            if (!Level10State.isBufferActive) {
+                // Draw buttons
+                shapeRenderer.color = Color.valueOf("E0E0E0")
+                shapeRenderer.rect(Level10State.forceCloseBtnRect.x + renderOffset, Level10State.forceCloseBtnRect.y, Level10State.forceCloseBtnRect.width, Level10State.forceCloseBtnRect.height)
+                shapeRenderer.rect(Level10State.waitBtnRect.x + renderOffset, Level10State.waitBtnRect.y, Level10State.waitBtnRect.width, Level10State.waitBtnRect.height)
             } else {
-                shapeRenderer.rect(btn.rect.x + renderOffset, btn.rect.y, btn.rect.width, btn.rect.height)
+                // Draw buffer bar
+                shapeRenderer.color = Color.valueOf("E0E0E0") // Grey background
+                shapeRenderer.rect(Level10State.bufferBarRect.x + renderOffset, Level10State.bufferBarRect.y, Level10State.bufferBarRect.width, Level10State.bufferBarRect.height)
+
+                shapeRenderer.color = Color.valueOf("1a73e8") // Blue progress
+                shapeRenderer.rect(Level10State.bufferBarRect.x + renderOffset, Level10State.bufferBarRect.y, Level10State.bufferBarRect.width * 0.64f, Level10State.bufferBarRect.height) // 64% progress like image
             }
         }
-
-        // Draw Lasers (Transparent Red)
-        shapeRenderer.color = Color(1f, 0.1f, 0.1f, 0.8f)
-        for (laser in lasers) {
-             if (currentLevel == 9 && currentChunk == 1 && Level9Chunk1State.phase < 2) continue
-
-             if (currentLevel == 10 && Level10State.currentScreen == 3) {
-                 shapeRenderer.color = if (Level10State.isLaserLethal) Color(1f, 0.1f, 0.1f, 0.8f) else Color.WHITE
-             }
-             // Turn off collisions when it's white/safe
-             if (currentLevel == 10 && Level10State.currentScreen == 3 && !Level10State.isLaserLethal) {
-                 // Do not check collisions below, but still render
-                 shapeRenderer.rect(laser.rect.x + renderOffset, laser.rect.y, laser.rect.width, laser.rect.height)
-             } else {
-                 shapeRenderer.rect(laser.rect.x + renderOffset, laser.rect.y, laser.rect.width, laser.rect.height)
-             }
-        }
-
-
-        // Level 9 Chunk 1 Glitch Effect
-        if (currentLevel == 9 && currentChunk == 1 && Level9Chunk1State.phase == 1) {
-            // Draw random glitch rectangles over everything
-            val glitchCount = (Math.random() * 20).toInt() + 10
-            for (i in 0..glitchCount) {
-                shapeRenderer.color = if (Math.random() > 0.5) Color.WHITE else Color.BLACK
-                val gw = (Math.random() * 200).toFloat()
-                val gh = (Math.random() * 50).toFloat()
-                val gx = (Math.random() * 1280).toFloat()
-                val gy = (Math.random() * 720).toFloat()
-                shapeRenderer.rect(gx + renderOffset, gy, gw, gh)
-            }
-        }
-
-        // Draw WiFi Bars (Level 9 Chunk 2) using ShapeRenderer
-        if (currentLevel == 9 && currentChunk == 2) {
-            val cx = 640f + renderOffset
-            val cy = 50f // The focal center of the WiFi icon
-            val isRedPhase = Level9Chunk2State.wifiColorPhase == 1
-
-            shapeRenderer.color = if (isRedPhase) Color.RED else Color.WHITE
-
-            // Draw Base Dot
-            shapeRenderer.circle(Level9Chunk2State.baseDotRect.x + Level9Chunk2State.baseDotRect.width / 2f + renderOffset, Level9Chunk2State.baseDotRect.y + Level9Chunk2State.baseDotRect.height / 2f, 25f)
-
-            // Draw 4 curved illusion bars.
-            val radii = arrayOf(155f, 295f, 435f, 575f)
-            val arcThickness = 120f
-
-            for (r in radii) {
-                // Draw arc using a thick line approximation
-                val segments = 40
-                val startAngle = 45f
-                val sweepAngle = 90f // Total angle is 90 (from 45 to 135, centered at 90)
-                for (i in 0 until segments) {
-                    val a1 = startAngle + (i.toFloat() / segments) * sweepAngle
-                    val a2 = startAngle + ((i + 1).toFloat() / segments) * sweepAngle
-                    val r1 = Math.toRadians(a1.toDouble())
-                    val r2 = Math.toRadians(a2.toDouble())
-                    val x1 = cx + (r * Math.cos(r1)).toFloat()
-                    val y1 = cy + (r * Math.sin(r1)).toFloat()
-                    val x2 = cx + (r * Math.cos(r2)).toFloat()
-                    val y2 = cy + (r * Math.sin(r2)).toFloat()
-                    shapeRenderer.rectLine(x1, y1, x2, y2, arcThickness)
-                }
-            }
-        }
-
-
-        // Level 9 Chunk 1 Blackout & Seesaw Box
-        if (currentLevel == 9 && currentChunk == 1 && Level9Chunk1State.phase == 2) {
-            // Draw Blackout over everything else drawn so far
-            shapeRenderer.color = Color.BLACK
-            shapeRenderer.rect(-5000f, -5000f, 10000f, 10000f) // Cover everything
-
-            // Re-draw BLUE platform
-            shapeRenderer.color = Color.BLUE
-            platforms.forEach {
-                if (it.type == PlatformType.BLUE) {
-                    shapeRenderer.rect(it.rect.x + renderOffset, it.rect.y, it.rect.width, it.rect.height)
-                }
-            }
-
-            // Re-draw Lasers because the blackout covered them
-            shapeRenderer.color = Color(1f, 0.1f, 0.1f, 0.8f)
-            for (laser in lasers) {
-                 shapeRenderer.rect(laser.rect.x + renderOffset, laser.rect.y, laser.rect.width, laser.rect.height)
-            }
-
-            // Re-draw Cross Button because the blackout covered it
-            for (btn in gameButtons) {
-                if (!btn.isPressed) {
-                    shapeRenderer.color = Color(0f, 0.47f, 0.95f, 1f) // Android blue
-                    // Draw it slightly higher at Y=480 explicitly, regardless of the giant logical hitbox
-                    val cx = 60f + renderOffset // Mask is at 50, width 20, center is 60
-                    val cy = 480f
-                    // Make the cross much smaller ("like a bar cross where u cross it to close the windows")
-                    val half = 15f
-                    shapeRenderer.rectLine(cx - half, cy - half, cx + half, cy + half, 4f)
-                    shapeRenderer.rectLine(cx - half, cy + half, cx + half, cy - half, 4f)
-                }
-            }
-
-            // Draw Seesaw Box
-            val boxWidth = 700f
-            val boxHeight = 350f
-            val boxCenterX = 640f
-            val boxCenterY = 360f
-
-            val boxTransform = shapeRenderer.transformMatrix.cpy()
-            shapeRenderer.translate(boxCenterX + renderOffset, boxCenterY, 0f)
-            shapeRenderer.rotate(0f, 0f, 1f, Level9Chunk1State.boxAngle)
-
-            // Background (Light UI grey) with rounded look approximation (circles at corners)
-            val bgColor = Color(0.85f, 0.88f, 0.91f, 1f) // very light blueish grey
-            shapeRenderer.color = bgColor
-
-            val r = 40f
-            // Main rects
-            shapeRenderer.rect(-boxWidth/2 + r, -boxHeight/2, boxWidth - 2*r, boxHeight)
-            shapeRenderer.rect(-boxWidth/2, -boxHeight/2 + r, boxWidth, boxHeight - 2*r)
-            // Corners
-            shapeRenderer.circle(-boxWidth/2 + r, -boxHeight/2 + r, r)
-            shapeRenderer.circle(boxWidth/2 - r, -boxHeight/2 + r, r)
-            shapeRenderer.circle(-boxWidth/2 + r, boxHeight/2 - r, r)
-            shapeRenderer.circle(boxWidth/2 - r, boxHeight/2 - r, r)
-
-            // Progress bar background (light grey)
-            val pbWidth = 580f
-            val pbHeight = 8f
-            val pbX = -290f
-            val pbY = -30f
-            shapeRenderer.color = Color(0.8f, 0.8f, 0.8f, 1f)
-            shapeRenderer.rect(pbX, pbY, pbWidth, pbHeight)
-
-            // Progress bar fill (blue)
-            val fillWidth = pbWidth * Level9Chunk1State.updateProgress
-            shapeRenderer.color = Color(0f, 0.47f, 0.95f, 1f) // Android blue
-            shapeRenderer.rect(pbX, pbY, fillWidth, pbHeight)
-
-            shapeRenderer.transformMatrix = boxTransform
-        }
-
-
-        // Draw the frozen original player when shadow phase is active
-        if (currentLevel == 10 && Level10State.shadowPhaseActive && ghostX != -999f) {
-            shapeRenderer.color = Color.WHITE
-            val frozenCenterX = ghostX + 12.5f + renderOffset
-            val fHead = 44f
-            val fNeck = 38f
-            val fWaist = 18f
-            shapeRenderer.circle(frozenCenterX, ghostY + fHead, 6f)
-            shapeRenderer.rectLine(frozenCenterX, ghostY + fNeck, frozenCenterX, ghostY + fWaist, 3f)
-            shapeRenderer.rectLine(frozenCenterX, ghostY + fWaist, frozenCenterX - 6f, ghostY, 3f)
-            shapeRenderer.rectLine(frozenCenterX, ghostY + fWaist, frozenCenterX + 6f, ghostY, 3f)
-        }
-
-        // Draw Player (Procedural Shapes)
-        if (currentLevel == 6 && currentChunk == 2 && hasSwappedIdentity) {
-            shapeRenderer.color = Color.RED
-        } else {
-            shapeRenderer.color = if (horrorMode) Color.GRAY else Color.GREEN
-        }
-        if (isDead) shapeRenderer.color = Color.GRAY
-
-        // Hide player if hidden in purple box
-        val isPlayerVisible = !(currentLevel == 9 && currentChunk == 3 && Level9Chunk3State.isHidden)
-
-        val renderPlayerX = playerX
-        val renderPlayerY = playerY
-
-        val centerX = renderPlayerX + 12.5f + renderOffset
-        val isCrouching = playerHeight < normalHeight
-        val headOffset = if (isCrouching) 22f else 44f
-        val neckOffset = if (isCrouching) 15f else 38f
-        val waistOffset = if (isCrouching) 5f else 18f
-        val legOffset = if (isCrouching) 0f else (Math.sin(walkTime.toDouble()).toFloat() * 6f)
-
-        val oldTransform = shapeRenderer.transformMatrix.cpy()
-        if (isPlayerVisible) {
-            if (currentLevel == 8 && currentChunk == 1 && Level8Chunk1State.phase == 8 && Level8Chunk1State.wallStickTimer > 0f) {
-                // Rotate the player 90 degrees clockwise so feet are on the right wall
-                shapeRenderer.translate(centerX, renderPlayerY + 22f, 0f)
-                shapeRenderer.rotate(0f, 0f, 1f, 90f)
-                shapeRenderer.translate(-centerX, -(renderPlayerY + 22f), 0f)
-            } else if (currentLevel == 8 && currentChunk == 2) {
-                if (Level8Chunk2State.wallState == 1) { // Left Wall
-                    shapeRenderer.translate(centerX, renderPlayerY + 22f, 0f)
-                    shapeRenderer.rotate(0f, 0f, 1f, -90f)
-                    shapeRenderer.translate(-centerX, -(renderPlayerY + 22f), 0f)
-                } else if (Level8Chunk2State.wallState == 2) { // Ceiling
-                    shapeRenderer.translate(centerX, renderPlayerY + 22f, 0f)
-                    shapeRenderer.rotate(0f, 0f, 1f, 180f)
-                    shapeRenderer.translate(-centerX, -(renderPlayerY + 22f), 0f)
-                } else if (Level8Chunk2State.wallState == 3) { // Right Wall
-                    shapeRenderer.translate(centerX, renderPlayerY + 22f, 0f)
-                    shapeRenderer.rotate(0f, 0f, 1f, 90f)
-                    shapeRenderer.translate(-centerX, -(renderPlayerY + 22f), 0f)
-                }
-            } else if (currentLevel == 8 && currentChunk == 3 && (Level8Chunk3State.phase == 1 || Level8Chunk3State.phase == 2) && Level8Chunk3State.wallState != 0) {
-                if (Level8Chunk3State.wallState == 1) { // Left Wall
-                    shapeRenderer.translate(centerX, renderPlayerY + 22f, 0f)
-                    shapeRenderer.rotate(0f, 0f, 1f, -90f)
-                    shapeRenderer.translate(-centerX, -(renderPlayerY + 22f), 0f)
-                } else if (Level8Chunk3State.wallState == 2) { // Right Wall
-                    shapeRenderer.translate(centerX, renderPlayerY + 22f, 0f)
-                    shapeRenderer.rotate(0f, 0f, 1f, 90f)
-                    shapeRenderer.translate(-centerX, -(renderPlayerY + 22f), 0f)
-                }
-            }
-
-            shapeRenderer.circle(centerX, renderPlayerY + headOffset, 6f)
-            shapeRenderer.rectLine(centerX, renderPlayerY + neckOffset, centerX, renderPlayerY + waistOffset, 3f)
-            shapeRenderer.rectLine(centerX, renderPlayerY + waistOffset, centerX - 6f - legOffset, renderPlayerY, 3f)
-            shapeRenderer.rectLine(centerX, renderPlayerY + waistOffset, centerX + 6f + legOffset, renderPlayerY, 3f)
-
-            shapeRenderer.transformMatrix = oldTransform
-        }
-
-        // Draw Echo (Transparent Red) for Level 5
-        if ((currentLevel == 5 && (currentChunk == 1 || currentChunk == 3)) && echoActive) {
-            shapeRenderer.color = Color(1f, 0f, 0f, 0.5f) // Transparent Red
-            val eCenterX = echoX + 12.5f + renderOffset
-            val eCrouch = echoHeight < normalHeight
-            val eHead = if (eCrouch) 22f else 44f
-            val eNeck = if (eCrouch) 15f else 38f
-            val eWaist = if (eCrouch) 5f else 18f
-            // Echo legs don't strictly need animation but we can leave them static or use walkTime
-            shapeRenderer.circle(eCenterX, echoY + eHead, 6f)
-            shapeRenderer.rectLine(eCenterX, echoY + eNeck, eCenterX, echoY + eWaist, 3f)
-            shapeRenderer.rectLine(eCenterX, echoY + eWaist, eCenterX - 6f, echoY, 3f)
-            shapeRenderer.rectLine(eCenterX, echoY + eWaist, eCenterX + 6f, echoY, 3f)
-        }
-
-        // Draw Mirror Player / Ghost for Level 5/6/8/10
-        if ((currentLevel == 5 && currentChunk == 2 && mirrorActive) || (currentLevel == 6 && currentChunk == 2) || (currentLevel == 8 && currentChunk == 3 && mirrorActive) || (currentLevel == 10 && Level10State.currentScreen == 3 && mirrorActive)) {
-            shapeRenderer.color = Color.RED // Deadly Red
-
-            // If shadow phase is active, the red body is at `ghostX, ghostY` instead of `mirrorRect` because player controls the shadow
-            val renderMirrorX = if (currentLevel == 10 && Level10State.shadowPhaseActive) playerX else mirrorRect.x
-            val renderMirrorY = if (currentLevel == 10 && Level10State.shadowPhaseActive) playerY else mirrorRect.y
-
-            val mCenterX = renderMirrorX + 12.5f + renderOffset
-
-            // In L8C3, mirror mimics height
-            val mCrouch = if (currentLevel == 8 && currentChunk == 3) playerHeight < normalHeight else mirrorRect.height < normalHeight
-
-            val mHead = if (mCrouch) 22f else 44f
-            val mNeck = if (mCrouch) 15f else 38f
-            val mWaist = if (mCrouch) 5f else 18f
-            // Mirror legs animation is opposite phase or same? Let's keep it same or inverse
-            val mLegOffset = if (mCrouch) 0f else (Math.sin(walkTime.toDouble()).toFloat() * -6f)
-
-            val mOldTransform = shapeRenderer.transformMatrix.cpy()
-            if (currentLevel == 8 && currentChunk == 3 && (Level8Chunk3State.phase == 1 || Level8Chunk3State.phase == 2) && Level8Chunk3State.wallState != 0) {
-                if (Level8Chunk3State.wallState == 1) { // Right Wall (Mirror sticks to opposite wall, player on Left Wall means mirror on Right)
-                    shapeRenderer.translate(mCenterX, renderMirrorY + 22f, 0f)
-                    shapeRenderer.rotate(0f, 0f, 1f, 90f) // Right wall
-                    shapeRenderer.translate(-mCenterX, -(renderMirrorY + 22f), 0f)
-                } else if (Level8Chunk3State.wallState == 2) { // Left Wall
-                    shapeRenderer.translate(mCenterX, renderMirrorY + 22f, 0f)
-                    shapeRenderer.rotate(0f, 0f, 1f, -90f) // Left wall
-                    shapeRenderer.translate(-mCenterX, -(renderMirrorY + 22f), 0f)
-                }
-            }
-
-            shapeRenderer.circle(mCenterX, renderMirrorY + mHead, 6f)
-            shapeRenderer.rectLine(mCenterX, renderMirrorY + mNeck, mCenterX, renderMirrorY + mWaist, 3f)
-            shapeRenderer.rectLine(mCenterX, renderMirrorY + mWaist, mCenterX - 6f - mLegOffset, renderMirrorY, 3f)
-            shapeRenderer.rectLine(mCenterX, renderMirrorY + mWaist, mCenterX + 6f + mLegOffset, renderMirrorY, 3f)
-
-            shapeRenderer.transformMatrix = mOldTransform
-        }
-
-        // Draw spinning laser cage for Level 5 Chunk 3
-        if ((currentLevel == 5 && currentChunk == 3 && isCageActive && !fakeMaskTouched) ||
-            (currentLevel == 6 && currentChunk == 3 && isCageActive && !fakeMaskTouched)) {
-            shapeRenderer.color = Color(1f, 0.1f, 0.1f, 0.8f) // Same transparent red as lasers
-            val centerX = maskX + maskWidth / 2f + renderOffset
-            val centerY = maskY + maskHeight / 2f
-            val radius = 50f
-            for (i in 0..3) {
-                val angle = cageAngle + i * 90f
-                val rad = Math.toRadians(angle.toDouble())
-                val endX = centerX + (Math.cos(rad) * radius).toFloat()
-                val endY = centerY + (Math.sin(rad) * radius).toFloat()
-                // Just draw a line or thin rect, since we need to check collision let's draw a rect line
-                shapeRenderer.rectLine(centerX, centerY, endX, endY, 4f)
-            }
-        }
-
-        // Draw The Shrinking Void Overlay (Level 7 Chunk 3)
-        if (currentLevel == 7 && currentChunk == 3) {
-            shapeRenderer.color = Color.BLACK
-            // Left Void
-            shapeRenderer.rect(-2000f + renderOffset, -2000f, 2000f + Level7Chunk3State.voidLeft, 4000f)
-            // Right Void
-            shapeRenderer.rect(Level7Chunk3State.voidRight + renderOffset, -2000f, 4000f, 4000f)
-            // Bottom Void
-            shapeRenderer.rect(Level7Chunk3State.voidLeft + renderOffset, -2000f, Level7Chunk3State.voidRight - Level7Chunk3State.voidLeft, 2000f + Level7Chunk3State.voidBottom)
-            // Top Void
-            shapeRenderer.rect(Level7Chunk3State.voidLeft + renderOffset, Level7Chunk3State.voidTop, Level7Chunk3State.voidRight - Level7Chunk3State.voidLeft, 4000f)
-        }
-
-        if (currentLevel == 9 && currentChunk == 3) {
-            val movingSharks = sharks.filter { it.y == 300f }
-            if (movingSharks.size >= 2) {
-                val leftShark = movingSharks[0]
-                val rightShark = movingSharks[1]
-
-                // Function to draw small WiFi signals above a shark
-                fun drawSharkWifi(sharkX: Float, sharkY: Float, isRed: Boolean) {
-                    shapeRenderer.color = if (isRed) Color.RED else Color.WHITE
-                    val cx = sharkX + 60f + renderOffset // Center of shark width 120f
-                    val cy = sharkY + 80f // Base dot position above shark
-
-                    // Draw Base Dot
-                    shapeRenderer.circle(cx, cy, 5f)
-
-                    val radii = arrayOf(15f, 30f, 45f)
-                    val arcThickness = 5f
-
-                    for (r in radii) {
-                        val segments = 10
-                        val startAngle = 45f
-                        val sweepAngle = 90f
-                        for (i in 0 until segments) {
-                            val a1 = startAngle + (i.toFloat() / segments) * sweepAngle
-                            val a2 = startAngle + ((i + 1).toFloat() / segments) * sweepAngle
-                            val r1 = Math.toRadians(a1.toDouble())
-                            val r2 = Math.toRadians(a2.toDouble())
-                            val x1 = cx + (r * Math.cos(r1)).toFloat()
-                            val y1 = cy + (r * Math.sin(r1)).toFloat()
-                            val x2 = cx + (r * Math.cos(r2)).toFloat()
-                            val y2 = cy + (r * Math.sin(r2)).toFloat()
-                            shapeRenderer.rectLine(x1, y1, x2, y2, arcThickness)
-                        }
-                    }
-                }
-
-                if (isVisible(leftShark.x, leftShark.y)) {
-                    drawSharkWifi(leftShark.x, leftShark.y, isRed = false)
-                }
-                if (isVisible(rightShark.x, rightShark.y)) {
-                    drawSharkWifi(rightShark.x, rightShark.y, isRed = true)
-                }
-            }
-        }
-
         shapeRenderer.end()
         Gdx.gl.glDisable(com.badlogic.gdx.graphics.GL20.GL_BLEND)
 
@@ -5026,30 +4615,43 @@ class GameScreen(
             buttonFont?.data?.setScale(1f)
         }
 
-        // Level 9 Chunk 1 Box Text
+        // Level 10 Screen 4 Box Text
         if (currentLevel == 10 && Level10State.currentScreen == 4 && Level10State.isCrashActive) {
-            val font = game.generateFont(24)
-            font.color = Color.BLACK
+            val titleFont = game.generateFont(32)
+            titleFont.color = Color.BLACK
 
-            val boxCenterX = Level10State.crashWindowRect.x + Level10State.crashWindowRect.width / 2f
-            val boxCenterY = Level10State.crashWindowRect.y + Level10State.crashWindowRect.height / 2f
+            val bodyFont = game.generateFont(24)
+            bodyFont.color = Color.DARK_GRAY
 
-            val originalTransform = game.batch.transformMatrix.cpy()
-            val m = com.badlogic.gdx.math.Matrix4()
-            m.setToTranslation(boxCenterX + renderOffset, boxCenterY, 0f)
-            m.rotate(com.badlogic.gdx.math.Vector3.Z, Level10State.crashBoxAngle)
-            m.translate(-(boxCenterX + renderOffset), -boxCenterY, 0f)
+            val btnFont = game.generateFont(28)
+            btnFont.color = Color.BLACK
 
-            game.batch.transformMatrix = m
+            val infoFont = game.generateFont(20)
+            infoFont.color = Color.DARK_GRAY
 
-            font.draw(game.batch, "App Error", -180f, 80f)
-            font.draw(game.batch, "Trust Issues has stopped responding.", -180f, 40f)
-            font.draw(game.batch, "[ Force Close ]", -180f, -40f)
-            font.draw(game.batch, "[ Wait ]", 50f, -40f)
+            // Left padding of 40f inside the box
+            val startX = Level10State.crashWindowRect.x + 40f + renderOffset
+            val topY = Level10State.crashWindowRect.y + Level10State.crashWindowRect.height
 
-            game.batch.transformMatrix = originalTransform
-            font.dispose()
+            titleFont.draw(game.batch, "App Error", startX, topY - 50f)
+
+            if (!Level10State.isBufferActive) {
+                bodyFont.draw(game.batch, "Trust Issues has stopped responding.", startX, topY - 110f)
+
+                // Centered text in buttons
+                btnFont.draw(game.batch, "[ Force Close ]", Level10State.forceCloseBtnRect.x + 35f + renderOffset, Level10State.forceCloseBtnRect.y + 40f)
+                btnFont.draw(game.batch, "[ Wait ]", Level10State.waitBtnRect.x + 75f + renderOffset, Level10State.waitBtnRect.y + 40f)
+            } else {
+                bodyFont.draw(game.batch, "Processing the update package...", startX, topY - 130f)
+                infoFont.draw(game.batch, "64%", Level10State.bufferBarRect.x + Level10State.bufferBarRect.width - 40f + renderOffset, Level10State.bufferBarRect.y - 15f)
+            }
+
+            titleFont.dispose()
+            bodyFont.dispose()
+            btnFont.dispose()
+            infoFont.dispose()
         }
+
 
         if (currentLevel == 9 && currentChunk == 1 && Level9Chunk1State.phase == 2) {
             val oldMatrix = game.batch.transformMatrix.cpy()
