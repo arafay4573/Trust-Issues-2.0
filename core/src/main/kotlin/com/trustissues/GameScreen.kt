@@ -2210,13 +2210,7 @@ class GameScreen(
                         die("SYSTEM_GLITCH")
                     }
 
-                    // The Level Deletion
-                    for (plat in platforms) {
-                        if (plat.rect.x + plat.rect.width < Level10State.compilerX) {
-                            plat.rect.x = -9999f // Disable collision
-                            plat.state = PlatformState.DESTROYED
-                        }
-                    }
+                    // The Level Deletion logic was removed as requested so platforms remain solid.
 
                     // The Level 9 Laser Toggle
                     Level10State.laserTimer += delta
