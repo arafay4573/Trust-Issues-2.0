@@ -313,6 +313,8 @@ class GameScreen(
         var isLaserLethal = true
         var shadowPhaseActive = false
         var shadowFrozen = false
+        var mirrorVelocityY = 0f
+        var shadowPhaseCompleted = false
 
         var isCrashActive = false
         val crashWindowRect = Rectangle(440f, 300f, 400f, 200f)
@@ -345,6 +347,8 @@ class GameScreen(
             isLaserLethal = true
             shadowPhaseActive = false
             shadowFrozen = false
+            mirrorVelocityY = 0f
+            shadowPhaseCompleted = false
         }
 
         fun resetScreen4() {
@@ -579,9 +583,10 @@ class GameScreen(
 
             Level10State.resetScreen3()
             mirrorActive = true
-            mirrorRect.set(1280f - playerWidth - playerX, 600f - playerY, playerWidth, playerHeight)
+            mirrorRect.set(1100f, 470f, playerWidth, playerHeight)
+            Level10State.mirrorVelocityY = 0f
 
-            maskX = 1150f
+            maskX = 1240f
             maskY = 470f
 
             // Left Bank
@@ -2219,21 +2224,47 @@ class GameScreen(
                         Level10State.laserTimer = 0f
                         Level10State.isLaserLethal = !Level10State.isLaserLethal
                     }
-
                     // Shadow/Mirror Logic
                     if (!Level10State.shadowPhaseActive) {
-                        // Shadow is mirroring player
-                        mirrorRect.set(1280f - playerWidth - playerX, 600f - playerY, playerWidth, playerHeight)
+                        // Shadow X mirrors player
+                        val targetMirrorX = 1280f - playerWidth - playerX
+                        mirrorRect.x = targetMirrorX
+
+                        // Physics for shadow Y
+                        Level10State.mirrorVelocityY += gravity * delta
+                        mirrorRect.y += Level10State.mirrorVelocityY * delta
+
+                        // Platform collisions for shadow
+                        var shadowCanJump = false
+                        for (plat in platforms) {
+                            if (plat.state == PlatformState.DESTROYED || plat.type == PlatformType.DEADLY_RED) continue
+                            if (Intersector.overlaps(mirrorRect, plat.rect)) {
+                                if (Level10State.mirrorVelocityY <= 0 && mirrorRect.y - Level10State.mirrorVelocityY * delta >= plat.rect.y + plat.rect.height - 10f) {
+                                    mirrorRect.y = plat.rect.y + plat.rect.height
+                                    Level10State.mirrorVelocityY = 0f
+                                    shadowCanJump = true
+                                }
+                            }
+                        }
+
+                        if (mirrorRect.y <= 130f) { // Floor collision for shadow
+                            mirrorRect.y = 130f
+                            Level10State.mirrorVelocityY = 0f
+                            shadowCanJump = true
+                        }
+
+                        if (shadowCanJump && isJumpPressed && canJump) {
+                            Level10State.mirrorVelocityY = jumpStrength
+                        }
 
                         // "u have one meeting point to meet...on middle platform when u are crossing the laser platform....it touches u u die"
-                        // (We only kill if they touch during the normal phase)
                         if (Intersector.overlaps(playerRect, mirrorRect)) {
                             die("Do not touch the shadow.")
                         }
 
                         // Trigger Shadow Phase when player touches top platform
                         val topPlat = platforms.find { it.rect.x == 1100f && it.rect.y == 450f }
-                        if (topPlat != null && Intersector.overlaps(playerRect, topPlat.rect) && playerY >= 450f) {
+                        if (topPlat != null && Intersector.overlaps(playerRect, topPlat.rect) && playerY >= 450f && !Level10State.shadowPhaseCompleted) {
                             Level10State.shadowPhaseActive = true
                             Level10State.shadowFrozen = true
 
@@ -2246,6 +2277,7 @@ class GameScreen(
                             ghostY = playerY
                             playerX = mirrorRect.x
                             playerY = mirrorRect.y
+                            velocityY = Level10State.mirrorVelocityY
                             isControlsInverted = true
                         }
                     } else {
@@ -2253,8 +2285,12 @@ class GameScreen(
                         // Player is currently controlling the shadow, the "real" player is frozen at ghostX, ghostY.
                         mirrorRect.set(ghostX, ghostY, playerWidth, playerHeight) // Mirror visually stays at ghost pos
 
-                        // "the shadow cant pass the wall to the right into the 4th screen"
-                        if (playerX > 1100f) playerX = 1100f // Keep shadow from going to next screen
+                        // "also the shadow cant bypass the main guy and enter screen 4...ih he does he diesss"
+                        // The main guy is frozen at `ghostX`. If shadow's X goes past ghostX, he dies.
+                        // Assuming shadow starts left of ghostX since ghostX is at the top right platform.
+                        if (playerX > ghostX + playerWidth / 2f) {
+                            die("The shadow cannot abandon its host.")
+                        }
 
                         // The shadow has to touch the frozen player to give controls back
                         val frozenRect = Rectangle(ghostX, ghostY, playerWidth, playerHeight)
@@ -2265,13 +2301,14 @@ class GameScreen(
                             ghostX = -999f
                             ghostY = -999f
                             isControlsInverted = false
-                            Level10State.shadowPhaseActive = false // Or transition to another state
+                            Level10State.shadowPhaseActive = false
                             Level10State.shadowFrozen = false
-                            mirrorActive = false // shadow disappears? Or keeps mirroring?
-                            // Let's just turn mirror off and let player rush to screen 4
+                            Level10State.shadowPhaseCompleted = true
+                            mirrorActive = false
                             mirrorRect.set(-1000f, -1000f, 0f, 0f)
                         }
                     }
+
 
                     // Warning Text Flashing
                     if (chunkTime < 3f) {
