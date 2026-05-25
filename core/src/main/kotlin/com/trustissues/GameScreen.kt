@@ -311,6 +311,8 @@ class GameScreen(
         val compilerRect = Rectangle(-200f, 0f, 150f, 720f)
         var laserTimer = 0f
         var isLaserLethal = true
+        var shadowPhaseActive = false
+        var shadowFrozen = false
 
         var isCrashActive = false
         val crashWindowRect = Rectangle(440f, 300f, 400f, 200f)
@@ -341,6 +343,8 @@ class GameScreen(
             compilerRect.x = -200f
             laserTimer = 0f
             isLaserLethal = true
+            shadowPhaseActive = false
+            shadowFrozen = false
         }
 
         fun resetScreen4() {
@@ -568,12 +572,17 @@ class GameScreen(
                 sharks.add(Shark(400f, 350f, 250f, 100f, 1100f))
             }
 
-        } else if (screen == 3) {
+                } else if (screen == 3) {
             playerX = 20f
             playerY = 150f
             velocityY = 0f
 
             Level10State.resetScreen3()
+            mirrorActive = true
+            mirrorRect.set(1280f - playerWidth - playerX, 600f - playerY, playerWidth, playerHeight)
+
+            maskX = 1150f
+            maskY = 470f
 
             // Left Bank
             platforms.add(Platform(Rectangle(0f, 130f, 150f, 20f), PlatformType.NORMAL))
@@ -2182,8 +2191,14 @@ class GameScreen(
                     }
                 }
                 3 -> {
-                    // The Compiler Engine
-                    Level10State.compilerX += 35f * delta
+                    // Level 10 Screen 3: Compiler and Shadow Phase
+                    if (!Level10State.shadowPhaseActive) {
+                        // The Compiler Engine (normal speed)
+                        Level10State.compilerX += 55f * delta
+                    } else {
+                        // Shadow Phase: compiler moves back
+                        Level10State.compilerX -= 55f * delta
+                    }
                     Level10State.compilerRect.x = Level10State.compilerX
 
                     if (Intersector.overlaps(playerRect, Level10State.compilerRect)) {
@@ -2203,6 +2218,59 @@ class GameScreen(
                     if (Level10State.laserTimer >= 0.8f) {
                         Level10State.laserTimer = 0f
                         Level10State.isLaserLethal = !Level10State.isLaserLethal
+                    }
+
+                    // Shadow/Mirror Logic
+                    if (!Level10State.shadowPhaseActive) {
+                        // Shadow is mirroring player
+                        mirrorRect.set(1280f - playerWidth - playerX, 600f - playerY, playerWidth, playerHeight)
+
+                        // "u have one meeting point to meet...on middle platform when u are crossing the laser platform....it touches u u die"
+                        // (We only kill if they touch during the normal phase)
+                        if (Intersector.overlaps(playerRect, mirrorRect)) {
+                            die("Do not touch the shadow.")
+                        }
+
+                        // Trigger Shadow Phase when player touches top platform
+                        val topPlat = platforms.find { it.rect.x == 1100f && it.rect.y == 450f }
+                        if (topPlat != null && Intersector.overlaps(playerRect, topPlat.rect) && playerY >= 450f) {
+                            Level10State.shadowPhaseActive = true
+                            Level10State.shadowFrozen = true
+
+                            // Mask rushes to screen 4 (disappears from screen 3)
+                            maskX = 2000f
+                            maskRect.set(maskX, maskY, maskWidth, maskHeight)
+
+                            // Swap player and ghost to give shadow controls
+                            ghostX = playerX
+                            ghostY = playerY
+                            playerX = mirrorRect.x
+                            playerY = mirrorRect.y
+                            isControlsInverted = true
+                        }
+                    } else {
+                        // Shadow Phase Active
+                        // Player is currently controlling the shadow, the "real" player is frozen at ghostX, ghostY.
+                        mirrorRect.set(ghostX, ghostY, playerWidth, playerHeight) // Mirror visually stays at ghost pos
+
+                        // "the shadow cant pass the wall to the right into the 4th screen"
+                        if (playerX > 1100f) playerX = 1100f // Keep shadow from going to next screen
+
+                        // The shadow has to touch the frozen player to give controls back
+                        val frozenRect = Rectangle(ghostX, ghostY, playerWidth, playerHeight)
+                        if (Intersector.overlaps(playerRect, frozenRect)) {
+                            // Controls reverted back to player
+                            playerX = ghostX
+                            playerY = ghostY
+                            ghostX = -999f
+                            ghostY = -999f
+                            isControlsInverted = false
+                            Level10State.shadowPhaseActive = false // Or transition to another state
+                            Level10State.shadowFrozen = false
+                            mirrorActive = false // shadow disappears? Or keeps mirroring?
+                            // Let's just turn mirror off and let player rush to screen 4
+                            mirrorRect.set(-1000f, -1000f, 0f, 0f)
+                        }
                     }
 
                     // Warning Text Flashing
@@ -4595,6 +4663,20 @@ class GameScreen(
             shapeRenderer.transformMatrix = boxTransform
         }
 
+
+        // Draw the frozen original player when shadow phase is active
+        if (currentLevel == 10 && Level10State.shadowPhaseActive && ghostX != -999f) {
+            shapeRenderer.color = Color.WHITE
+            val frozenCenterX = ghostX + 12.5f + renderOffset
+            val fHead = 44f
+            val fNeck = 38f
+            val fWaist = 18f
+            shapeRenderer.circle(frozenCenterX, ghostY + fHead, 6f)
+            shapeRenderer.rectLine(frozenCenterX, ghostY + fNeck, frozenCenterX, ghostY + fWaist, 3f)
+            shapeRenderer.rectLine(frozenCenterX, ghostY + fWaist, frozenCenterX - 6f, ghostY, 3f)
+            shapeRenderer.rectLine(frozenCenterX, ghostY + fWaist, frozenCenterX + 6f, ghostY, 3f)
+        }
+
         // Draw Player (Procedural Shapes)
         if (currentLevel == 6 && currentChunk == 2 && hasSwappedIdentity) {
             shapeRenderer.color = Color.RED
@@ -4672,12 +4754,13 @@ class GameScreen(
             shapeRenderer.rectLine(eCenterX, echoY + eWaist, eCenterX + 6f, echoY, 3f)
         }
 
-        // Draw Mirror Player / Ghost for Level 5/6/8
-        if ((currentLevel == 5 && currentChunk == 2 && mirrorActive) || (currentLevel == 6 && currentChunk == 2) || (currentLevel == 8 && currentChunk == 3 && mirrorActive)) {
+        // Draw Mirror Player / Ghost for Level 5/6/8/10
+        if ((currentLevel == 5 && currentChunk == 2 && mirrorActive) || (currentLevel == 6 && currentChunk == 2) || (currentLevel == 8 && currentChunk == 3 && mirrorActive) || (currentLevel == 10 && Level10State.currentScreen == 3 && mirrorActive)) {
             shapeRenderer.color = Color.RED // Deadly Red
 
-            val renderMirrorX = mirrorRect.x
-            val renderMirrorY = mirrorRect.y
+            // If shadow phase is active, the red body is at `ghostX, ghostY` instead of `mirrorRect` because player controls the shadow
+            val renderMirrorX = if (currentLevel == 10 && Level10State.shadowPhaseActive) playerX else mirrorRect.x
+            val renderMirrorY = if (currentLevel == 10 && Level10State.shadowPhaseActive) playerY else mirrorRect.y
 
             val mCenterX = renderMirrorX + 12.5f + renderOffset
 
