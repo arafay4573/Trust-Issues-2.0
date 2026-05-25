@@ -592,7 +592,7 @@ class GameScreen(
             // Left Bank
             platforms.add(Platform(Rectangle(0f, 130f, 150f, 20f), PlatformType.NORMAL))
 
-            // Staircase of 6 Crumbling Platforms diagonally upward
+            // Staircase of 6 Normal Platforms diagonally upward
             val startX = 200f
             val startY = 150f
             val endX = 1000f
@@ -602,7 +602,7 @@ class GameScreen(
             val stepY = (endY - startY) / 5f
 
             for (i in 0 until 6) {
-                platforms.add(Platform(Rectangle(startX + i * stepX, startY + i * stepY, 80f, 20f), PlatformType.CRUMBLING))
+                platforms.add(Platform(Rectangle(startX + i * stepX, startY + i * stepY, 80f, 20f), PlatformType.NORMAL))
             }
 
             // The Level 9 Laser at x=600f (vertically spanning to block the way)
