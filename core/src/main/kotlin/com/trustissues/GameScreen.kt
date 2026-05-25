@@ -592,7 +592,7 @@ class GameScreen(
             // Staircase of 6 Normal Platforms diagonally upward
             val startX = 200f
             val startY = 150f
-            val endX = 1000f
+            val endX = 850f
             val endY = 450f
 
             val stepX = (endX - startX) / 5f
