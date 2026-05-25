@@ -317,11 +317,12 @@ class GameScreen(
         var shadowPhaseCompleted = false
 
         var isCrashActive = false
-        val crashWindowRect = Rectangle(440f, 300f, 400f, 200f)
+        val crashWindowRect = Rectangle(440f, 260f, 400f, 200f)
         var crashBoxAngle = 0f
         var isOnCrashBox = false
-        val forceCloseBtnRect = Rectangle(460f, 320f, 150f, 50f)
-        val waitBtnRect = Rectangle(660f, 320f, 150f, 50f)
+        var crashLaunchVelocityX = 0f
+        val forceCloseBtnRect = Rectangle(460f, 280f, 150f, 50f)
+        val waitBtnRect = Rectangle(660f, 280f, 150f, 50f)
 
         fun resetScreen1() {
             gateTimer = 4.0f
@@ -610,7 +611,7 @@ class GameScreen(
             // Right Bank
             platforms.add(Platform(Rectangle(1100f, 450f, 180f, 20f), PlatformType.NORMAL))
 
-        } else if (screen == 4) {
+                } else if (screen == 4) {
             playerX = 20f
             playerY = 150f
             velocityY = 0f
@@ -619,11 +620,10 @@ class GameScreen(
 
             // Spawn the genuine OxygenMask
             maskX = 640f
-            maskY = 250f
+            maskY = 360f
 
             platforms.add(Platform(Rectangle(0f, 130f, 1280f, 20f), PlatformType.NORMAL))
         }
-
         // Bounding box reset to avoid stale hits
         playerRect.set(playerX, playerY, playerWidth, playerHeight)
     }
@@ -2361,10 +2361,29 @@ class GameScreen(
 
                         Level10State.isOnCrashBox = withinXBounds && isTouchingY
 
-                        if (Level10State.isOnCrashBox) {
+                                                if (Level10State.isOnCrashBox) {
                             playerY = expectedY
                             velocityY = 0f
                             canJump = true
+
+                            // Massive springboard leap of faith
+                            if (isJumpPressed) {
+                                if (playerX > 640f) {
+                                    val jumpMag = 1800f
+                                    val rad = Math.toRadians(Level10State.crashBoxAngle.toDouble())
+                                    Level10State.crashLaunchVelocityX = (Math.sin(rad) * jumpMag).toFloat()
+                                    velocityY = (Math.cos(rad) * jumpMag).toFloat()
+                                    canJump = false
+                                    isJumpPressed = false
+                                    // No jump sound
+                                }
+                            }
+                        }
+
+                        if (Level10State.crashLaunchVelocityX != 0f) {
+                            playerX += Level10State.crashLaunchVelocityX * delta
+                            // slight drag to feel like a jump curve
+                            Level10State.crashLaunchVelocityX *= 0.98f
                         }
                     }
 
@@ -2811,7 +2830,10 @@ class GameScreen(
             if (flapsRemaining > 0) {
                 flapTimer -= delta
                 if (flapTimer <= 0f) {
-                    val currentJumpStrength = if (currentLevel == 5 && (currentChunk == 2 || currentChunk == 3)) 500f else jumpStrength // Flappy strength logic remains standard
+                                        var currentJumpStrength = if (currentLevel == 5 && (currentChunk == 2 || currentChunk == 3)) 500f else jumpStrength // Flappy strength logic remains standard
+                    if (currentLevel == 10 && Level10State.currentScreen == 4) {
+                        currentJumpStrength = 1300f // Allows jumping onto the 460f box from 150f floor
+                    }
                     if (reverseGravity) {
                         velocityY = -currentJumpStrength
                     } else {
@@ -3281,7 +3303,9 @@ class GameScreen(
         // --- LEVEL 9 CHUNK 3 LOGIC (The Shark Aquarium Error) ---
         // Sky Death for Level 10 explicitly
         if (currentLevel == 10 && !isDead && !isLevelComplete && playerY > 720f) {
-            die("Flew too close to the sun.")
+            if (Level10State.currentScreen != 4) {
+                die("Flew too close to the sun.")
+            }
         }
 
         if (currentLevel == 9 && currentChunk == 3 && !isDead && !isLevelComplete) {
