@@ -311,10 +311,11 @@ class GameScreen(
         val compilerRect = Rectangle(-200f, 0f, 150f, 720f)
         var laserTimer = 0f
         var isLaserLethal = true
-        var shadowPhaseActive = false
+                var shadowPhaseActive = false
         var shadowFrozen = false
         var mirrorVelocityY = 0f
         var shadowPhaseCompleted = false
+        var maskFleeing = false
 
         var isCrashActive = false
         val crashWindowRect = Rectangle(340f, 210f, 600f, 300f)
@@ -340,15 +341,14 @@ class GameScreen(
             floorLaserRect.set(1100f, 100f, 180f, 20f)
         }
 
-        fun resetScreen3() {
+                fun resetScreen3() {
             compilerX = -200f
-            compilerRect.x = -200f
             laserTimer = 0f
             isLaserLethal = true
             shadowPhaseActive = false
             shadowFrozen = false
-            mirrorVelocityY = 0f
             shadowPhaseCompleted = false
+            maskFleeing = false
         }
 
         fun resetScreen4() {
@@ -2255,16 +2255,19 @@ class GameScreen(
                             die("Do not touch the shadow.")
                         }
 
+                        // "as soon as step foot on the 2nd last platform... the mask runs"
+                        val secondLastPlat = platforms.find { it.rect.x == 850f && it.rect.y == 450f }
+                        if (secondLastPlat != null && Intersector.overlaps(playerRect, secondLastPlat.rect) && playerY >= 450f) {
+                            Level10State.maskFleeing = true
+                        }
+
                         // Trigger Shadow Phase when player touches top platform
                         val topPlat = platforms.find { it.rect.x == 1100f && it.rect.y == 450f }
                         if (topPlat != null && Intersector.overlaps(playerRect, topPlat.rect) && playerY >= 450f && !Level10State.shadowPhaseCompleted) {
                             Level10State.shadowPhaseActive = true
                             Level10State.shadowFrozen = true
 
-                            // Mask rushes to screen 4 (disappears from screen 3)
-                            maskX = 2000f
-                            maskRect.set(maskX, maskY, maskWidth, maskHeight)
-
+                            // Mask no longer teleports; it's already fleeing
                             // Swap player and ghost to give shadow controls
                             ghostX = playerX
                             ghostY = playerY
@@ -2278,11 +2281,9 @@ class GameScreen(
                         // Player is currently controlling the shadow, the "real" player is frozen at ghostX, ghostY.
                         mirrorRect.set(ghostX, ghostY, playerWidth, playerHeight) // Mirror visually stays at ghost pos
 
-                        // "also the shadow cant bypass the main guy and enter screen 4...ih he does he diesss"
-                        // The main guy is frozen at `ghostX`. If shadow's X goes past ghostX, he dies.
-                        // Assuming shadow starts left of ghostX since ghostX is at the top right platform.
-                        if (playerX > ghostX + playerWidth / 2f) {
-                            die("The shadow cannot abandon its host.")
+                        // "touching the wall into 4th screen does kill him"
+                        if (playerX >= 1280f - playerWidth) {
+                            die("The shadow cannot enter Screen 4.")
                         }
 
                         // The shadow has to touch the frozen player to give controls back
@@ -2300,6 +2301,16 @@ class GameScreen(
                             mirrorActive = false
                             mirrorRect.set(-1000f, -1000f, 0f, 0f)
                         }
+                    }
+
+                    if (Level10State.maskFleeing) {
+                        maskX += 400f * delta
+                        maskRect.set(maskX, maskY, maskWidth, maskHeight)
+                    }
+
+                    if (Level10State.maskFleeing) {
+                        maskX += 400f * delta
+                        maskRect.set(maskX, maskY, maskWidth, maskHeight)
                     }
 
 
