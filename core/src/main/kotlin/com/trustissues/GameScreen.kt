@@ -2247,7 +2247,8 @@ class GameScreen(
                         }
 
                         if (shadowCanJump && isJumpPressed && canJump) {
-                            Level10State.mirrorVelocityY = jumpStrength
+                            // Jump big to cross the gap and land on the 850f platform
+                            Level10State.mirrorVelocityY = 1700f
                         }
 
                         // "u have one meeting point to meet...on middle platform when u are crossing the laser platform....it touches u u die"
@@ -2308,10 +2309,6 @@ class GameScreen(
                         maskRect.set(maskX, maskY, maskWidth, maskHeight)
                     }
 
-                    if (Level10State.maskFleeing) {
-                        maskX += 400f * delta
-                        maskRect.set(maskX, maskY, maskWidth, maskHeight)
-                    }
 
 
                     // Warning Text Flashing
