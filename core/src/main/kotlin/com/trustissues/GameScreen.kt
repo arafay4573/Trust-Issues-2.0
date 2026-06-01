@@ -2332,6 +2332,7 @@ class GameScreen(
                     }
 
                     if (Level10State.isCrashActive) {
+                        // Removed touch-death logic to allow normal controls
                         if (!Level10State.isBufferActive) {
                             // Decline Button Platform (forceCloseBtnRect)
                             val declineRect = Level10State.forceCloseBtnRect
