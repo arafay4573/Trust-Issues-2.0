@@ -322,7 +322,7 @@ class GameScreen(
         var isBufferActive = false
         val forceCloseBtnRect = Rectangle(380f, 230f, 240f, 60f)
         val waitBtnRect = Rectangle(660f, 230f, 240f, 60f)
-        val bufferBarRect = Rectangle(390f, 250f, 500f, 20f)
+        val bufferCircleRect = Rectangle(900f, 350f, 80f, 80f)
 
         fun resetScreen1() {
             gateTimer = 4.0f
@@ -2337,40 +2337,38 @@ class GameScreen(
 
                     if (Level10State.isCrashActive) {
                         // Removed touch-death logic to allow normal controls
-                        if (!Level10State.isBufferActive) {
-                            // Decline Button Platform (forceCloseBtnRect)
-                            val declineRect = Level10State.forceCloseBtnRect
-                            val isDeclineX = playerX + playerWidth > declineRect.x && playerX < declineRect.x + declineRect.width
-                            val expectedDeclineY = declineRect.y + declineRect.height
-                            if (isDeclineX && playerY - expectedDeclineY < 40f && playerY - expectedDeclineY >= -20f && velocityY <= 0) {
-                                playerY = expectedDeclineY
-                                velocityY = 0f
-                                canJump = true
-                                // Trigger Decline Shark
-                                if (sharks.isEmpty()) {
-                                    sharks.add(Shark(playerX - 25f, -200f, 100f, 0f, 1280f))
-                                }
-                            }
-
-                            // Accept Button Platform (waitBtnRect)
-                            val acceptRect = Level10State.waitBtnRect
-                            val isAcceptX = playerX + playerWidth > acceptRect.x && playerX < acceptRect.x + acceptRect.width
-                            val expectedAcceptY = acceptRect.y + acceptRect.height
-                            if (isAcceptX && playerY - expectedAcceptY < 40f && playerY - expectedAcceptY >= -20f && velocityY <= 0) {
-                                playerY = expectedAcceptY
-                                velocityY = 0f
-                                canJump = true
-                                Level10State.isBufferActive = true
+                        // Decline Button Platform (forceCloseBtnRect)
+                        val declineRect = Level10State.forceCloseBtnRect
+                        val isDeclineX = playerX + playerWidth > declineRect.x && playerX < declineRect.x + declineRect.width
+                        val expectedDeclineY = declineRect.y + declineRect.height
+                        if (isDeclineX && playerY - expectedDeclineY < 40f && playerY - expectedDeclineY >= -20f && velocityY <= 0) {
+                            playerY = expectedDeclineY
+                            velocityY = 0f
+                            canJump = true
+                            // Trigger Decline Shark
+                            if (sharks.isEmpty()) {
+                                sharks.add(Shark(playerX - 25f, -200f, 100f, 0f, 1280f))
                             }
                         }
 
+                        // Accept Button Platform (waitBtnRect)
+                        val acceptRect = Level10State.waitBtnRect
+                        val isAcceptX = playerX + playerWidth > acceptRect.x && playerX < acceptRect.x + acceptRect.width
+                        val expectedAcceptY = acceptRect.y + acceptRect.height
+                        if (isAcceptX && playerY - expectedAcceptY < 40f && playerY - expectedAcceptY >= -20f && velocityY <= 0) {
+                            playerY = expectedAcceptY
+                            velocityY = 0f
+                            canJump = true
+                            Level10State.isBufferActive = true
+                        }
+
                         if (Level10State.isBufferActive) {
-                            // Buffer Bar acts as a solid platform
-                            val barRect = Level10State.bufferBarRect
+                            // Buffer Circle acts as a solid platform
+                            val barRect = Level10State.bufferCircleRect
                             val isWithinXBounds = playerX + playerWidth > barRect.x && playerX < barRect.x + barRect.width
                             val expectedY = barRect.y + barRect.height
 
-                            // Check for landing on the buffer bar
+                            // Check for landing on the buffer circle
                             if (isWithinXBounds && playerY - expectedY < 40f && playerY - expectedY >= -20f && velocityY <= 0) {
                                 playerY = expectedY
                                 velocityY = 0f
@@ -4534,18 +4532,19 @@ class GameScreen(
             shapeRenderer.color = Color.valueOf("F5F5F5")
             shapeRenderer.rect(Level10State.crashWindowRect.x + renderOffset, Level10State.crashWindowRect.y, Level10State.crashWindowRect.width, Level10State.crashWindowRect.height)
 
-            if (!Level10State.isBufferActive) {
-                // Draw buttons
-                shapeRenderer.color = Color.valueOf("E0E0E0")
-                shapeRenderer.rect(Level10State.forceCloseBtnRect.x + renderOffset, Level10State.forceCloseBtnRect.y, Level10State.forceCloseBtnRect.width, Level10State.forceCloseBtnRect.height)
-                shapeRenderer.rect(Level10State.waitBtnRect.x + renderOffset, Level10State.waitBtnRect.y, Level10State.waitBtnRect.width, Level10State.waitBtnRect.height)
-            } else {
-                // Draw buffer bar
-                shapeRenderer.color = Color.valueOf("E0E0E0") // Grey background
-                shapeRenderer.rect(Level10State.bufferBarRect.x + renderOffset, Level10State.bufferBarRect.y, Level10State.bufferBarRect.width, Level10State.bufferBarRect.height)
+            // Draw buttons
+            shapeRenderer.color = Color.valueOf("E0E0E0")
+            shapeRenderer.rect(Level10State.forceCloseBtnRect.x + renderOffset, Level10State.forceCloseBtnRect.y, Level10State.forceCloseBtnRect.width, Level10State.forceCloseBtnRect.height)
+            shapeRenderer.rect(Level10State.waitBtnRect.x + renderOffset, Level10State.waitBtnRect.y, Level10State.waitBtnRect.width, Level10State.waitBtnRect.height)
 
-                shapeRenderer.color = Color.valueOf("1a73e8") // Blue progress
-                shapeRenderer.rect(Level10State.bufferBarRect.x + renderOffset, Level10State.bufferBarRect.y, Level10State.bufferBarRect.width * 0.64f, Level10State.bufferBarRect.height) // 64% progress like image
+            if (Level10State.isBufferActive) {
+                // Draw buffer circle (spinning)
+                shapeRenderer.color = Color.valueOf("E0E0E0")
+                shapeRenderer.circle(Level10State.bufferCircleRect.x + Level10State.bufferCircleRect.width / 2f + renderOffset, Level10State.bufferCircleRect.y + Level10State.bufferCircleRect.height / 2f, Level10State.bufferCircleRect.width / 2f)
+
+                shapeRenderer.color = Color.valueOf("1a73e8")
+                val spinAngle = (chunkTime * 300f) % 360f
+                shapeRenderer.arc(Level10State.bufferCircleRect.x + Level10State.bufferCircleRect.width / 2f + renderOffset, Level10State.bufferCircleRect.y + Level10State.bufferCircleRect.height / 2f, Level10State.bufferCircleRect.width / 2f, spinAngle, 270f)
             }
         }
 
@@ -5050,15 +5049,15 @@ class GameScreen(
 
             titleFont.draw(game.batch, "App Error", startX, topY - 50f)
 
-            if (!Level10State.isBufferActive) {
-                bodyFont.draw(game.batch, "Trust Issues has stopped responding.", startX, topY - 110f)
+            bodyFont.draw(game.batch, "Trust Issues has stopped responding.", startX, topY - 110f)
 
-                // Centered text in buttons
-                btnFont.draw(game.batch, "[ Decline ]", Level10State.forceCloseBtnRect.x + 55f + renderOffset, Level10State.forceCloseBtnRect.y + 40f)
-                btnFont.draw(game.batch, "[ Accept ]", Level10State.waitBtnRect.x + 65f + renderOffset, Level10State.waitBtnRect.y + 40f)
-            } else {
-                bodyFont.draw(game.batch, "Processing the update package...", startX, topY - 130f)
-                infoFont.draw(game.batch, "64%", Level10State.bufferBarRect.x + Level10State.bufferBarRect.width - 40f + renderOffset, Level10State.bufferBarRect.y - 15f)
+            // Centered text in buttons
+            btnFont.draw(game.batch, "[ Decline ]", Level10State.forceCloseBtnRect.x + 55f + renderOffset, Level10State.forceCloseBtnRect.y + 40f)
+            btnFont.draw(game.batch, "[ Accept ]", Level10State.waitBtnRect.x + 65f + renderOffset, Level10State.waitBtnRect.y + 40f)
+
+            if (Level10State.isBufferActive) {
+                infoFont.color = Color.WHITE
+                infoFont.draw(game.batch, "WAIT", Level10State.bufferCircleRect.x + 15f + renderOffset, Level10State.bufferCircleRect.y + 45f)
             }
 
             titleFont.dispose()
