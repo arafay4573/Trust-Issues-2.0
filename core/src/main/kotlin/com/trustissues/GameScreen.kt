@@ -2240,15 +2240,9 @@ class GameScreen(
                             }
                         }
 
-                        if (mirrorRect.y <= 130f) { // Floor collision for shadow
-                            mirrorRect.y = 130f
-                            Level10State.mirrorVelocityY = 0f
-                            shadowCanJump = true
-                        }
-
                         if (shadowCanJump && isJumpPressed && canJump) {
-                            // Jump big to cross the gap and land on the 850f platform
-                            Level10State.mirrorVelocityY = 1700f
+                            // Jump normal to cross the gap and land on the 850f platform
+                            Level10State.mirrorVelocityY = jumpStrength
                         }
 
                         // "u have one meeting point to meet...on middle platform when u are crossing the laser platform....it touches u u die"
