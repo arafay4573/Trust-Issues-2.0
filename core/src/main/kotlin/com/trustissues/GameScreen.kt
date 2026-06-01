@@ -2329,6 +2329,10 @@ class GameScreen(
                     // The False Hope Trigger (Ledge ends at X=300)
                     if (!Level10State.isCrashActive && playerX > 250f) {
                         Level10State.isCrashActive = true
+                        // Force stop the player so they don't accidentally run off the 300f ledge
+                        isLeftPressed = false
+                        isRightPressed = false
+                        isJumpPressed = false
                     }
 
                     if (Level10State.isCrashActive) {
@@ -2384,7 +2388,7 @@ class GameScreen(
                         }
                     }
 
-                    // Sky and Abyss Death for Screen 4
+                    // Sky and Abyss Death for Screen 4 - verified touch death is removed
                     if (playerY < -50f) {
                         die("Fell into the hallucination abyss.")
                     }
