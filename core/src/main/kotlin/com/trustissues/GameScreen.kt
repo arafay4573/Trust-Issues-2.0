@@ -502,6 +502,11 @@ class GameScreen(
         messageLabel?.isVisible = false
         worldTilt = 0f
 
+        isControlsInverted = false
+        mirrorActive = false
+        ghostX = -999f
+        ghostY = -999f
+
         // Retain inputs on screen transition for smooth play across screens.
         // isLeftPressed = false
         // isRightPressed = false
@@ -4287,6 +4292,7 @@ class GameScreen(
     private fun die(customMessage: String? = null) {
         if (isDead) return
         isDead = true
+        println("Player died: $customMessage")
 
         if (currentLevel == 10) {
             Level10State.resetAll()
