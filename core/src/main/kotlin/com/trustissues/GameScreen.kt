@@ -3892,6 +3892,10 @@ class GameScreen(
             die("Darkness consumes you.")
         }
 
+        if (mirrorActive && mirrorRect.y < bottomLimit && mirrorRect.y > -500f) {
+            die("The shadow fell into the abyss.")
+        }
+
         // 4. CRITICAL: Ghost Floor Fix
         // Remove destroyed platforms to prevent walking on air.
         platforms.removeAll { it.type == PlatformType.CRUMBLING && it.state == PlatformState.DESTROYED }
