@@ -2332,15 +2332,30 @@ class GameScreen(
                     }
 
                     if (Level10State.isCrashActive) {
-                        // The Finger-Tap Death Logic
-                        if (Gdx.input.justTouched()) {
-                            val touchVec = gameViewport.unproject(com.badlogic.gdx.math.Vector2(Gdx.input.x.toFloat(), Gdx.input.y.toFloat()))
-                            if (!Level10State.isBufferActive) {
-                                if (Level10State.forceCloseBtnRect.contains(touchVec)) {
-                                    Gdx.app.exit() // crashes the game completely
-                                } else if (Level10State.waitBtnRect.contains(touchVec)) {
-                                    Level10State.isBufferActive = true
+                        if (!Level10State.isBufferActive) {
+                            // Decline Button Platform (forceCloseBtnRect)
+                            val declineRect = Level10State.forceCloseBtnRect
+                            val isDeclineX = playerX + playerWidth > declineRect.x && playerX < declineRect.x + declineRect.width
+                            val expectedDeclineY = declineRect.y + declineRect.height
+                            if (isDeclineX && playerY - expectedDeclineY < 40f && playerY - expectedDeclineY >= -20f && velocityY <= 0) {
+                                playerY = expectedDeclineY
+                                velocityY = 0f
+                                canJump = true
+                                // Trigger Decline Shark
+                                if (sharks.isEmpty()) {
+                                    sharks.add(Shark(playerX - 25f, -200f, 100f, 0f, 1280f))
                                 }
+                            }
+
+                            // Accept Button Platform (waitBtnRect)
+                            val acceptRect = Level10State.waitBtnRect
+                            val isAcceptX = playerX + playerWidth > acceptRect.x && playerX < acceptRect.x + acceptRect.width
+                            val expectedAcceptY = acceptRect.y + acceptRect.height
+                            if (isAcceptX && playerY - expectedAcceptY < 40f && playerY - expectedAcceptY >= -20f && velocityY <= 0) {
+                                playerY = expectedAcceptY
+                                velocityY = 0f
+                                canJump = true
+                                Level10State.isBufferActive = true
                             }
                         }
 
@@ -2355,6 +2370,15 @@ class GameScreen(
                                 playerY = expectedY
                                 velocityY = 0f
                                 canJump = true
+                            }
+                        }
+
+                        // Shark rush logic
+                        if (sharks.isNotEmpty()) {
+                            val shark = sharks[0]
+                            shark.y += 800f * delta
+                            if (Intersector.overlaps(playerRect, Rectangle(shark.x, shark.y, 120f, 60f))) {
+                                die("Your decline was not accepted.")
                             }
                         }
                     }
