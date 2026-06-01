@@ -606,7 +606,7 @@ class GameScreen(
             lasers.add(Laser(Rectangle(600f, 0f, 20f, 720f), isSweeping = false))
 
             // Right Bank
-            platforms.add(Platform(Rectangle(1100f, 450f, 180f, 20f), PlatformType.NORMAL))
+            platforms.add(Platform(Rectangle(980f, 450f, 300f, 20f), PlatformType.NORMAL))
 
         } else if (screen == 4) {
             playerX = 20f
@@ -2263,7 +2263,7 @@ class GameScreen(
                         }
 
                         // Trigger Shadow Phase when player touches top platform
-                        val topPlat = platforms.find { it.rect.x == 1100f && it.rect.y == 450f }
+                        val topPlat = platforms.find { it.rect.x == 980f && it.rect.y == 450f }
                         if (topPlat != null && Intersector.overlaps(playerRect, topPlat.rect) && playerY >= 450f && !Level10State.shadowPhaseCompleted) {
                             Level10State.shadowPhaseActive = true
                             Level10State.shadowFrozen = true
