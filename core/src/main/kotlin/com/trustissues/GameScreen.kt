@@ -5049,8 +5049,8 @@ class GameScreen(
                 bodyFont.draw(game.batch, "Trust Issues has stopped responding.", startX, topY - 110f)
 
                 // Centered text in buttons
-                btnFont.draw(game.batch, "[ Force Close ]", Level10State.forceCloseBtnRect.x + 35f + renderOffset, Level10State.forceCloseBtnRect.y + 40f)
-                btnFont.draw(game.batch, "[ Wait ]", Level10State.waitBtnRect.x + 75f + renderOffset, Level10State.waitBtnRect.y + 40f)
+                btnFont.draw(game.batch, "[ Decline ]", Level10State.forceCloseBtnRect.x + 55f + renderOffset, Level10State.forceCloseBtnRect.y + 40f)
+                btnFont.draw(game.batch, "[ Accept ]", Level10State.waitBtnRect.x + 65f + renderOffset, Level10State.waitBtnRect.y + 40f)
             } else {
                 bodyFont.draw(game.batch, "Processing the update package...", startX, topY - 130f)
                 infoFont.draw(game.batch, "64%", Level10State.bufferBarRect.x + Level10State.bufferBarRect.width - 40f + renderOffset, Level10State.bufferBarRect.y - 15f)
