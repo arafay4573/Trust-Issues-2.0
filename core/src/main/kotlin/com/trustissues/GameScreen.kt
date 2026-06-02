@@ -2020,7 +2020,12 @@ class GameScreen(
                 val wasDead = isDead
                 Gdx.app.postRunnable {
                     if (wasDead) {
-                        if (currentLevel == 10) setupLevel10(Level10State.currentScreen) else setupChunk(currentChunk)
+                        if (currentLevel == 10) {
+                            Level10State.resetAll()
+                            setupLevel10(Level10State.currentScreen)
+                        } else {
+                            setupChunk(currentChunk)
+                        }
                     } else completeChunk()
                 }
             }
@@ -4320,7 +4325,6 @@ class GameScreen(
         println("Player died: $customMessage")
 
         if (currentLevel == 10) {
-            Level10State.resetAll()
             isControlsInverted = false
         }
 
