@@ -3834,7 +3834,9 @@ class GameScreen(
 
 
         // Platform Collision
+        val wasJumpManuallyEnabled = canJump
         canJump = false // Reset per frame
+        if (wasJumpManuallyEnabled && currentLevel == 10 && Level10State.currentScreen == 4) canJump = true
         if (currentLevel == 6 && currentChunk == 3) canJump = true
         if (currentLevel == 7 && currentChunk == 3) canJump = true
         if (currentLevel == 9 && currentChunk == 1 && Level9Chunk1State.isOnBox) canJump = true
