@@ -286,6 +286,10 @@ class GameScreen(
         }
     }
 
+    private object Level11State {
+        var timer = 0f
+    }
+
     private object Level10State {
         var currentScreen = 1
         var gateTimer = 4.0f
@@ -475,12 +479,47 @@ class GameScreen(
         Gdx.input.inputProcessor = uiStage
         createUi()
 
-        if (currentLevel == 10) setupLevel10(Level10State.currentScreen) else setupChunk(currentChunk)
+        if (currentLevel == 10) setupLevel10(Level10State.currentScreen) else if (currentLevel == 11) setupLevel11() else setupChunk(currentChunk)
 
         // Init Bubbles
         for (i in 0 until 10) spawnBubble(MathUtils.random(720f))
     }
 
+    private fun setupLevel11() {
+        sharks.clear()
+        platforms.clear()
+        gravitySwitches.clear()
+        lasers.clear()
+        movingWalls.clear()
+        gameButtons.clear()
+
+        playerX = 640f - playerWidth / 2f
+        playerY = 360f - playerHeight / 2f
+        velocityY = 0f
+
+        isDead = false
+        isLevelComplete = false
+        stateTimer = 0f
+        allowScreenWrap = false
+        reverseGravity = false
+        gravity = 0f
+
+        isPaused = false
+        pauseGroup?.isVisible = false
+        messageLabel?.isVisible = false
+        worldTilt = 0f
+        isControlsInverted = false
+        mirrorActive = false
+        ghostX = -999f
+        ghostY = -999f
+
+        chunkTime = 0f
+        Level11State.timer = 0f
+
+        uiStage.clear()
+
+        playerRect.set(playerX, playerY, playerWidth, playerHeight)
+    }
 
     private fun setupLevel10(screen: Int) {
         sharks.clear()
@@ -1761,7 +1800,12 @@ class GameScreen(
                 prefs.putInteger("unlockedLevel", nextLevel).flush()
                 prefs.putInteger("level_${nextLevel}_maxChunk", 1).flush()
             }
-            game.screen = if (nextLevel > 9) LevelSelectScreen(game) else GameScreen(game, nextLevel, 1)
+            if (currentLevel == 10) {
+                prefs.putBoolean("devNoteUnlocked", true).flush()
+                game.screen = GameScreen(game, 11, 1)
+            } else {
+                game.screen = if (nextLevel > 11) LevelSelectScreen(game) else GameScreen(game, nextLevel, 1)
+            }
         } else {
             game.screen = GameScreen(game, currentLevel, nextChunk)
         }
@@ -2030,6 +2074,18 @@ class GameScreen(
                 }
             }
             return
+        }
+
+        if (currentLevel == 11) {
+            Level11State.timer += delta
+            if (Level11State.timer >= 63f) {
+                // Exit to Level Select Screen
+                Gdx.app.postRunnable {
+                    game.screen = LevelSelectScreen(game)
+                    dispose()
+                }
+            }
+            return // Skip normal physics and interactions
         }
 
         // --- LEVEL 10 NO CAP TIER LOGIC ---
@@ -5082,6 +5138,22 @@ class GameScreen(
 
             buttonFont?.data?.setScale(1f) // Reset scale
             game.batch.transformMatrix = oldMatrix
+        }
+
+        if (currentLevel == 11) {
+            if (Level11State.timer <= 60f) {
+                buttonFont?.color = Color.WHITE
+                buttonFont?.data?.setScale(0.6f)
+                val text = "👑 NO CAP, YOU ACTUALLY COOKED. 👑\n" +
+                        "Dear Crash-Out Champions, if you are reading this, your Aura Score just hit infinity because you stood in the kitchen and survived the ultimate Swifter Studio meltdown! You officially have unlimited rizz for cementing your place in our lore as a True Swiftie—and no, not the Taylor kind, but the hardcore, unbeatable, elite kind who trusted nothing, questioned everything, and earned the crown. Go touch some grass now, unc, because your brain cells definitely need to recover from this absolute Ohio experience (though let's be real, the number of times you choked before this win needs to be studied by top-tier scientists \uD83D\uDC80\uD83D\uDE2D). Do not get too comfortable, because Swifter Studio will be back soon with another absolute banger to destroy your sanity all over again—keep your trust low! — The Dev Team at Swifter Studio \uD83D\uDE80"
+                buttonFont?.draw(game.batch, text, 100f + renderOffset, 600f, 1080f, Align.center, true)
+                buttonFont?.data?.setScale(1f)
+            } else {
+                buttonFont?.color = Color.WHITE
+                buttonFont?.data?.setScale(1.5f)
+                buttonFont?.draw(game.batch, "Goodbye.", 0f + renderOffset, 400f, 1280f, Align.center, false)
+                buttonFont?.data?.setScale(1f)
+            }
         }
 
         game.batch.end()

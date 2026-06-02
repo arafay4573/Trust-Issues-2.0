@@ -71,7 +71,21 @@ class LevelSelectScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
 
         // Boss Level
         val bossBtn = createLevelButton(10, 10 <= unlockedLevel, isBoss = true)
-        rootTable.add(bossBtn).colspan(5).size(200f, 200f).padTop(30f)
+        rootTable.add(bossBtn).colspan(5).size(200f, 200f).padTop(30f).row()
+
+        val prefs = Gdx.app.getPreferences("TrustIssues")
+        if (prefs.getBoolean("devNoteUnlocked", false)) {
+            val devBtn = TextButton("Dev Notes", skin, "rect-default")
+            devBtn.addListener(object : ClickListener() {
+                override fun clicked(event: InputEvent?, x: Float, y: Float) {
+                    Gdx.app.postRunnable {
+                        game.screen = GameScreen(game, 11, 1)
+                        dispose()
+                    }
+                }
+            })
+            rootTable.add(devBtn).colspan(5).size(300f, 80f).padTop(20f)
+        }
 
         stage.addActor(rootTable)
 
