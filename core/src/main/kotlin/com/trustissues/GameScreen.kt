@@ -624,8 +624,8 @@ class GameScreen(
             maskX = 1050f
             maskY = 470f
 
-            // Start ledge
-            platforms.add(Platform(Rectangle(0f, 450f, 300f, 20f), PlatformType.NORMAL))
+            // Start ledge - extend to 340f so player doesn't fall into the invisible gap before the box
+            platforms.add(Platform(Rectangle(0f, 450f, 340f, 20f), PlatformType.NORMAL))
         }
 
         // Bounding box reset to avoid stale hits
@@ -2326,13 +2326,9 @@ class GameScreen(
                     }
                 }
                 4 -> {
-                    // The False Hope Trigger (Ledge ends at X=300)
+                    // The False Hope Trigger
                     if (!Level10State.isCrashActive && playerX > 250f) {
                         Level10State.isCrashActive = true
-                        // Force stop the player so they don't accidentally run off the 300f ledge
-                        isLeftPressed = false
-                        isRightPressed = false
-                        isJumpPressed = false
                     }
 
                     if (Level10State.isCrashActive) {
