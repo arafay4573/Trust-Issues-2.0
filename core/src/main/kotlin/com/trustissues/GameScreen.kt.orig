@@ -1785,7 +1785,7 @@ class GameScreen(
 
     private fun completeChunk() {
         val nextChunk = currentChunk + 1
-        val isEndOfLevel = nextChunk > 3 || (currentLevel == 7 && nextChunk > 2) || (currentLevel == 8 && nextChunk > 1) || (currentLevel == 9 && nextChunk > 3) || currentLevel == 10
+        val isEndOfLevel = nextChunk > 3 || (currentLevel == 7 && nextChunk > 2) || (currentLevel == 8 && nextChunk > 1) || (currentLevel == 9 && nextChunk > 3)
 
         val prefs = Gdx.app.getPreferences("TrustIssues")
         val savedMaxChunk = prefs.getInteger("level_${currentLevel}_maxChunk", 1)

@@ -1,0 +1,20 @@
+--- core/src/main/kotlin/com/trustissues/LevelSelectScreen.kt
++++ core/src/main/kotlin/com/trustissues/LevelSelectScreen.kt
+@@ -93,7 +93,7 @@
+
+         val prefs = Gdx.app.getPreferences("TrustIssues")
+         if (prefs.getBoolean("devNoteUnlocked", false)) {
+-            val devBtn = TextButton("Dev Notes", skin, "rect-default")
++            val devBtn = TextButton("Dev\nNotes", skin, "default")
+             devBtn.addListener(object : ClickListener() {
+                 override fun clicked(event: InputEvent?, x: Float, y: Float) {
+                     Gdx.app.postRunnable {
+@@ -102,7 +102,7 @@
+                     }
+                 }
+             })
+-            rootTable.add(devBtn).colspan(5).size(300f, 80f).padTop(20f)
++            rootTable.add(devBtn).colspan(5).size(150f, 150f).padTop(20f)
+         }
+
+         stage.addActor(rootTable)
