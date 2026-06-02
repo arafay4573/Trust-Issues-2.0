@@ -5027,39 +5027,30 @@ class GameScreen(
 
         // Level 10 Screen 4 Box Text
         if (currentLevel == 10 && Level10State.currentScreen == 4 && Level10State.isCrashActive) {
-            val titleFont = game.generateFont(32)
-            titleFont.color = Color.BLACK
-
-            val bodyFont = game.generateFont(24)
-            bodyFont.color = Color.DARK_GRAY
-
-            val btnFont = game.generateFont(28)
-            btnFont.color = Color.BLACK
-
-            val infoFont = game.generateFont(20)
-            infoFont.color = Color.DARK_GRAY
-
-            // Left padding of 40f inside the box
             val startX = Level10State.crashWindowRect.x + 40f + renderOffset
             val topY = Level10State.crashWindowRect.y + Level10State.crashWindowRect.height
 
-            titleFont.draw(game.batch, "App Error", startX, topY - 50f)
+            buttonFont?.color = Color.BLACK
+            buttonFont?.data?.setScale(0.8f)
+            buttonFont?.draw(game.batch, "App Error", startX, topY - 50f)
 
-            bodyFont.draw(game.batch, "Trust Issues has stopped responding.", startX, topY - 110f)
+            buttonFont?.color = Color.DARK_GRAY
+            buttonFont?.data?.setScale(0.6f)
+            buttonFont?.draw(game.batch, "Trust Issues has stopped responding.", startX, topY - 110f)
 
             // Centered text in buttons
-            btnFont.draw(game.batch, "[ Decline ]", Level10State.forceCloseBtnRect.x + 55f + renderOffset, Level10State.forceCloseBtnRect.y + 40f)
-            btnFont.draw(game.batch, "[ Accept ]", Level10State.waitBtnRect.x + 65f + renderOffset, Level10State.waitBtnRect.y + 40f)
+            buttonFont?.color = Color.BLACK
+            buttonFont?.data?.setScale(0.7f)
+            buttonFont?.draw(game.batch, "[ Decline ]", Level10State.forceCloseBtnRect.x + 55f + renderOffset, Level10State.forceCloseBtnRect.y + 40f)
+            buttonFont?.draw(game.batch, "[ Accept ]", Level10State.waitBtnRect.x + 65f + renderOffset, Level10State.waitBtnRect.y + 40f)
 
             if (Level10State.isBufferActive) {
-                infoFont.color = Color.WHITE
-                infoFont.draw(game.batch, "WAIT", Level10State.bufferCircleRect.x + 15f + renderOffset, Level10State.bufferCircleRect.y + 45f)
+                buttonFont?.color = Color.WHITE
+                buttonFont?.data?.setScale(0.5f)
+                buttonFont?.draw(game.batch, "WAIT", Level10State.bufferCircleRect.x + 15f + renderOffset, Level10State.bufferCircleRect.y + 45f)
             }
 
-            titleFont.dispose()
-            bodyFont.dispose()
-            btnFont.dispose()
-            infoFont.dispose()
+            buttonFont?.data?.setScale(1f) // Reset scale
         }
 
         if (currentLevel == 9 && currentChunk == 1 && Level9Chunk1State.phase == 2) {
