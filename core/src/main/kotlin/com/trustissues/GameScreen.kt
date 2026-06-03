@@ -1930,6 +1930,7 @@ class GameScreen(
                 if (!isDead && !isLevelComplete) {
                     isPaused = true
                     pauseGroup?.isVisible = true
+                    backgroundMusic?.pause()
                 }
                 return true
             }
@@ -1951,12 +1952,17 @@ class GameScreen(
             override fun touchDown(event: InputEvent?, x: Float, y: Float, pointer: Int, button: Int): Boolean {
                 isPaused = false
                 pauseGroup?.isVisible = false
+                val prefs = Gdx.app.getPreferences("TrustIssues")
+                if (prefs.getBoolean("soundEnabled", true)) {
+                    backgroundMusic?.play()
+                }
                 return true
             }
         })
         val homeBtn = TextButton("HOME", skin)
         homeBtn.addListener(object : InputListener() {
             override fun touchDown(event: InputEvent?, x: Float, y: Float, pointer: Int, button: Int): Boolean {
+                backgroundMusic?.stop()
                 Gdx.app.postRunnable { game.screen = LevelSelectScreen(game); dispose() }
                 return true
             }
@@ -4410,6 +4416,8 @@ class GameScreen(
         val soundEnabled = prefs.getBoolean("soundEnabled", true)
         backgroundMusic?.stop()
         if (soundEnabled) {
+            deathMusic?.stop()
+            deathMusic?.position = 0f
             deathMusic?.play()
         }
 
