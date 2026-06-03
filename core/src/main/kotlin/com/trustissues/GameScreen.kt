@@ -2,6 +2,7 @@ package com.trustissues
 
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.ScreenAdapter
+import com.badlogic.gdx.audio.Music
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.Pixmap
 import com.badlogic.gdx.graphics.Texture
@@ -98,6 +99,10 @@ class GameScreen(
     // Game State
     private var isDead = false
     private var isLevelComplete = false
+
+    // Audio
+    private var backgroundMusic: Music? = null
+    private var deathMusic: Music? = null
     private var stateTimer = 0f
     private var allowScreenWrap = false
     private var isPaused = false
@@ -463,6 +468,26 @@ class GameScreen(
     private var isDownPressed = false
 
     override fun show() {
+        // Audio Setup
+        try {
+            backgroundMusic = Gdx.audio.newMusic(Gdx.files.internal("audio/game_theme.mp3"))
+            backgroundMusic?.isLooping = true
+            backgroundMusic?.volume = 0.5f
+
+            deathMusic = Gdx.audio.newMusic(Gdx.files.internal("audio/fahhhh.mp3"))
+            deathMusic?.isLooping = false
+            deathMusic?.volume = 0.8f
+        } catch (e: Exception) {
+            println("Error loading audio: ${e.message}")
+        }
+
+        val prefs = Gdx.app.getPreferences("TrustIssues")
+        val soundEnabled = prefs.getBoolean("soundEnabled", true)
+
+        if (soundEnabled) {
+            backgroundMusic?.play()
+        }
+
         sharkTexture = Texture(Gdx.files.internal("shark.png"))
 
         // Create Procedural Mask Texture (Cyan Circle)
@@ -4380,6 +4405,14 @@ class GameScreen(
         isDead = true
         println("Player died: $customMessage")
 
+        // Handle Audio
+        val prefs = Gdx.app.getPreferences("TrustIssues")
+        val soundEnabled = prefs.getBoolean("soundEnabled", true)
+        backgroundMusic?.stop()
+        if (soundEnabled) {
+            deathMusic?.play()
+        }
+
         if (currentLevel == 10) {
             isControlsInverted = false
         }
@@ -5180,5 +5213,7 @@ class GameScreen(
         skin?.dispose()
         whiteTexture?.dispose()
         buttonFont?.dispose()
+        backgroundMusic?.dispose()
+        deathMusic?.dispose()
     }
 }
