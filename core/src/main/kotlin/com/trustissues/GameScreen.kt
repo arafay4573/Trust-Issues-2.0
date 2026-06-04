@@ -485,6 +485,8 @@ class GameScreen(
         val soundEnabled = prefs.getBoolean("soundEnabled", true)
 
         if (soundEnabled) {
+            backgroundMusic?.stop()
+            backgroundMusic?.position = 0f
             backgroundMusic?.play()
         }
 
@@ -1809,6 +1811,7 @@ class GameScreen(
     }
 
     private fun completeChunk() {
+        backgroundMusic?.stop()
         val nextChunk = currentChunk + 1
         val isEndOfLevel = nextChunk > 3 || (currentLevel == 7 && nextChunk > 2) || (currentLevel == 8 && nextChunk > 1) || (currentLevel == 9 && nextChunk > 3) || currentLevel == 10
 
