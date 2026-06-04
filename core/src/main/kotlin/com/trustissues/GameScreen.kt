@@ -1943,8 +1943,8 @@ class GameScreen(
                 return true
             }
         })
-        pauseBtn.setPosition(20f, 720f - 120f)
-        pauseBtn.setSize(60f, 60f)
+        pauseBtn.setPosition(10f, 720f - 160f)
+        pauseBtn.setSize(150f, 150f)
         uiStage.addActor(pauseBtn)
 
         pauseGroup = Table()
@@ -1977,8 +1977,8 @@ class GameScreen(
         })
         val pauseCenter = Table()
         pauseCenter.add(Label("PAUSED", hudStyle)).padBottom(50f).row()
-        pauseCenter.add(resumeBtn).size(200f, 80f).padBottom(20f).row()
-        pauseCenter.add(homeBtn).size(200f, 80f)
+        pauseCenter.add(resumeBtn).size(400f, 120f).padBottom(40f).row()
+        pauseCenter.add(homeBtn).size(400f, 120f)
         pauseGroup!!.add(pauseCenter).center()
         uiStage.addActor(pauseGroup!!)
 

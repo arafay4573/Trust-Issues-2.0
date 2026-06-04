@@ -53,6 +53,17 @@ class LevelSelectScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
         backBtn.setPosition(20f, 720f - 100f)
         backBtn.setSize(80f, 80f)
 
+        // Exit Button
+        val exitBtn = TextButton("X", skin, "default")
+        exitBtn.addListener(object : ClickListener() {
+            override fun clicked(event: InputEvent?, x: Float, y: Float) {
+                Gdx.app.exit()
+            }
+        })
+        stage.addActor(exitBtn)
+        exitBtn.setPosition(1280f - 100f, 720f - 100f)
+        exitBtn.setSize(80f, 80f)
+
         // Title
         val titleFont = game.generateFont(50)
         fonts.add(titleFont)
