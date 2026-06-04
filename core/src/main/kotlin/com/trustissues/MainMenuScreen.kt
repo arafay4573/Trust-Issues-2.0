@@ -72,10 +72,18 @@ class MainMenuScreen(private val game: TrustIssuesGame) : ScreenAdapter() {
         val labelStyle = Label.LabelStyle(labelFont, Color.YELLOW)
         soundLabel = Label(if (soundEnabled) "Sound: ON" else "Sound: OFF", labelStyle)
 
+        val exitButton = TextButton("EXIT", skin)
+        exitButton.addListener(object : ClickListener() {
+            override fun clicked(event: InputEvent?, x: Float, y: Float) {
+                Gdx.app.exit()
+            }
+        })
+
         // Layout
-        table.add(titleLabel).padBottom(100f).row()
+        table.add(titleLabel).padBottom(80f).row()
         table.add(playButton).size(300f, 100f).padBottom(20f).row()
-        table.add(settingsButton).size(300f, 80f).padBottom(10f).row()
+        table.add(settingsButton).size(300f, 80f).padBottom(20f).row()
+        table.add(exitButton).size(300f, 80f).padBottom(10f).row()
         table.add(soundLabel).padTop(10f)
 
         stage.addActor(table)

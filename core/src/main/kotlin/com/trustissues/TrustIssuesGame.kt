@@ -19,6 +19,11 @@ class TrustIssuesGame : Game() {
         // FitViewport 1280x720
         viewport = FitViewport(1280f, 720f)
 
+        // Force sound enabled on app start as requested
+        val prefs = Gdx.app.getPreferences("TrustIssues")
+        prefs.putBoolean("soundEnabled", true)
+        prefs.flush()
+
         setScreen(StudioSplashScreen(this))
     }
 
