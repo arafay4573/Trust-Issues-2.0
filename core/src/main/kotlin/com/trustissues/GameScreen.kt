@@ -103,6 +103,7 @@ class GameScreen(
     // Audio
     private var backgroundMusic: Music? = null
     private var deathMusic: Music? = null
+    private var victoryMusic: Music? = null
     private var stateTimer = 0f
     private var allowScreenWrap = false
     private var isPaused = false
@@ -477,6 +478,10 @@ class GameScreen(
             deathMusic = Gdx.audio.newMusic(Gdx.files.internal("audio/fahhhh.mp3"))
             deathMusic?.isLooping = false
             deathMusic?.volume = 0.8f
+
+            victoryMusic = Gdx.audio.newMusic(Gdx.files.internal("audio/victory.mp3"))
+            victoryMusic?.isLooping = false
+            victoryMusic?.volume = 0.8f
         } catch (e: Exception) {
             println("Error loading audio: ${e.message}")
         }
@@ -4482,6 +4487,16 @@ class GameScreen(
         if (isLevelComplete) return
         isLevelComplete = true
 
+        // Handle Audio
+        val prefs = Gdx.app.getPreferences("TrustIssues")
+        val soundEnabled = prefs.getBoolean("soundEnabled", true)
+        backgroundMusic?.stop()
+        if (soundEnabled) {
+            victoryMusic?.stop()
+            victoryMusic?.position = 0f
+            victoryMusic?.play()
+        }
+
         var roast = winRoasts.random()
 
         if (currentLevel == 6 && currentChunk == 3) {
@@ -5232,5 +5247,6 @@ class GameScreen(
         buttonFont?.dispose()
         backgroundMusic?.dispose()
         deathMusic?.dispose()
+        victoryMusic?.dispose()
     }
 }
