@@ -46,6 +46,35 @@ object RoastRegistry {
     }
 }
 
+
+object AudioManager {
+    var backgroundMusic: Music? = null
+    var deathMusic: Music? = null
+    var victoryMusic: Music? = null
+    var isInitialized = false
+
+    fun initAudio() {
+        if (isInitialized) return
+        try {
+            backgroundMusic = Gdx.audio.newMusic(Gdx.files.internal("audio/game_theme.mp3"))
+            backgroundMusic?.isLooping = true
+            backgroundMusic?.volume = 0.5f
+
+            deathMusic = Gdx.audio.newMusic(Gdx.files.internal("audio/fahhhh.mp3"))
+            deathMusic?.isLooping = false
+            deathMusic?.volume = 0.8f
+
+            victoryMusic = Gdx.audio.newMusic(Gdx.files.internal("audio/victory.mp3"))
+            victoryMusic?.isLooping = false
+            victoryMusic?.volume = 0.8f
+
+            isInitialized = true
+        } catch (e: Exception) {
+            println("Error loading audio: ${e.message}")
+        }
+    }
+}
+
 class GameScreen(
     private val game: TrustIssuesGame,
     private val currentLevel: Int = 1,
@@ -101,9 +130,6 @@ class GameScreen(
     private var isLevelComplete = false
 
     // Audio
-    private var backgroundMusic: Music? = null
-    private var deathMusic: Music? = null
-    private var victoryMusic: Music? = null
     private var stateTimer = 0f
     private var allowScreenWrap = false
     private var isPaused = false
@@ -469,30 +495,15 @@ class GameScreen(
     private var isDownPressed = false
 
     override fun show() {
-        // Audio Setup
-        try {
-            backgroundMusic = Gdx.audio.newMusic(Gdx.files.internal("audio/game_theme.mp3"))
-            backgroundMusic?.isLooping = true
-            backgroundMusic?.volume = 0.5f
-
-            deathMusic = Gdx.audio.newMusic(Gdx.files.internal("audio/fahhhh.mp3"))
-            deathMusic?.isLooping = false
-            deathMusic?.volume = 0.8f
-
-            victoryMusic = Gdx.audio.newMusic(Gdx.files.internal("audio/victory.mp3"))
-            victoryMusic?.isLooping = false
-            victoryMusic?.volume = 0.8f
-        } catch (e: Exception) {
-            println("Error loading audio: ${e.message}")
-        }
+        AudioManager.initAudio()
 
         val prefs = Gdx.app.getPreferences("TrustIssues")
         val soundEnabled = prefs.getBoolean("soundEnabled", true)
 
         if (soundEnabled) {
-            backgroundMusic?.stop()
-            backgroundMusic?.position = 0f
-            backgroundMusic?.play()
+            AudioManager.backgroundMusic?.stop()
+            AudioManager.backgroundMusic?.position = 0f
+            AudioManager.backgroundMusic?.play()
         }
 
         sharkTexture = Texture(Gdx.files.internal("shark.png"))
@@ -1816,9 +1827,9 @@ class GameScreen(
     }
 
     private fun completeChunk() {
-        backgroundMusic?.stop()
+        AudioManager.backgroundMusic?.stop()
         val nextChunk = currentChunk + 1
-        val isEndOfLevel = nextChunk > 3 || (currentLevel == 7 && nextChunk > 2) || (currentLevel == 8 && nextChunk > 1) || (currentLevel == 9 && nextChunk > 3) || currentLevel == 10
+        val isEndOfLevel = nextChunk > 3 || currentLevel == 10
 
         val prefs = Gdx.app.getPreferences("TrustIssues")
         val savedMaxChunk = prefs.getInteger("level_${currentLevel}_maxChunk", 1)
@@ -1938,7 +1949,7 @@ class GameScreen(
                 if (!isDead && !isLevelComplete) {
                     isPaused = true
                     pauseGroup?.isVisible = true
-                    backgroundMusic?.pause()
+                    AudioManager.backgroundMusic?.pause()
                 }
                 return true
             }
@@ -1962,7 +1973,7 @@ class GameScreen(
                 pauseGroup?.isVisible = false
                 val prefs = Gdx.app.getPreferences("TrustIssues")
                 if (prefs.getBoolean("soundEnabled", true)) {
-                    backgroundMusic?.play()
+                    AudioManager.backgroundMusic?.play()
                 }
                 return true
             }
@@ -1970,7 +1981,7 @@ class GameScreen(
         val homeBtn = TextButton("HOME", skin)
         homeBtn.addListener(object : InputListener() {
             override fun touchDown(event: InputEvent?, x: Float, y: Float, pointer: Int, button: Int): Boolean {
-                backgroundMusic?.stop()
+                AudioManager.backgroundMusic?.stop()
                 Gdx.app.postRunnable { game.screen = LevelSelectScreen(game); dispose() }
                 return true
             }
@@ -2112,8 +2123,8 @@ class GameScreen(
 
                         val prefs = Gdx.app.getPreferences("TrustIssues")
                         if (prefs.getBoolean("soundEnabled", true)) {
-                            backgroundMusic?.stop()
-                            backgroundMusic?.play()
+                            AudioManager.backgroundMusic?.stop()
+                            AudioManager.backgroundMusic?.play()
                         }
                     } else completeChunk()
                 }
@@ -4428,11 +4439,11 @@ class GameScreen(
         // Handle Audio
         val prefs = Gdx.app.getPreferences("TrustIssues")
         val soundEnabled = prefs.getBoolean("soundEnabled", true)
-        backgroundMusic?.stop()
+        AudioManager.backgroundMusic?.stop()
         if (soundEnabled) {
-            deathMusic?.stop()
-            deathMusic?.position = 0f
-            deathMusic?.play()
+            AudioManager.deathMusic?.stop()
+            AudioManager.deathMusic?.position = 0f
+            AudioManager.deathMusic?.play()
         }
 
         if (currentLevel == 10) {
@@ -4490,11 +4501,11 @@ class GameScreen(
         // Handle Audio
         val prefs = Gdx.app.getPreferences("TrustIssues")
         val soundEnabled = prefs.getBoolean("soundEnabled", true)
-        backgroundMusic?.stop()
+        AudioManager.backgroundMusic?.stop()
         if (soundEnabled) {
-            victoryMusic?.stop()
-            victoryMusic?.position = 0f
-            victoryMusic?.play()
+            AudioManager.victoryMusic?.stop()
+            AudioManager.victoryMusic?.position = 0f
+            AudioManager.victoryMusic?.play()
         }
 
         var roast = winRoasts.random()
@@ -5245,8 +5256,5 @@ class GameScreen(
         skin?.dispose()
         whiteTexture?.dispose()
         buttonFont?.dispose()
-        backgroundMusic?.dispose()
-        deathMusic?.dispose()
-        victoryMusic?.dispose()
     }
 }
