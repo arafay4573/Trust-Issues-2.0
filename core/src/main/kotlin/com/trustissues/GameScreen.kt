@@ -2101,6 +2101,12 @@ class GameScreen(
                         } else {
                             setupChunk(currentChunk)
                         }
+
+                        val prefs = Gdx.app.getPreferences("TrustIssues")
+                        if (prefs.getBoolean("soundEnabled", true)) {
+                            backgroundMusic?.stop()
+                            backgroundMusic?.play()
+                        }
                     } else completeChunk()
                 }
             }
