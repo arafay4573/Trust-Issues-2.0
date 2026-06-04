@@ -12,7 +12,7 @@
         <activity
             android:name="com.trustissues.AndroidLauncher"
             android:label="Trust Issues"
-            android:screenOrientation="landscape"
+            android:screenOrientation="sensorLandscape"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout"
             android:exported="true">
             <intent-filter>
