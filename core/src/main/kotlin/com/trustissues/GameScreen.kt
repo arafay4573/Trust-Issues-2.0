@@ -15,6 +15,7 @@ import com.badlogic.gdx.math.Vector2
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.InputEvent
 import com.badlogic.gdx.scenes.scene2d.InputListener
+import com.badlogic.gdx.scenes.scene2d.utils.ClickListener
 import com.badlogic.gdx.scenes.scene2d.Stage
 import com.badlogic.gdx.scenes.scene2d.ui.ImageButton
 import com.badlogic.gdx.scenes.scene2d.ui.Label
@@ -1933,18 +1934,17 @@ class GameScreen(
         uiStage.addActor(levelLabel!!)
 
         val pauseBtn = ImageButton(skin!!.get("pause", ImageButton.ImageButtonStyle::class.java))
-        pauseBtn.addListener(object : InputListener() {
-            override fun touchDown(event: InputEvent?, x: Float, y: Float, pointer: Int, button: Int): Boolean {
+        pauseBtn.addListener(object : ClickListener() {
+            override fun clicked(event: InputEvent?, x: Float, y: Float) {
                 if (!isDead && !isLevelComplete) {
                     isPaused = true
                     pauseGroup?.isVisible = true
                     backgroundMusic?.pause()
                 }
-                return true
             }
         })
-        pauseBtn.setPosition(10f, 720f - 160f)
-        pauseBtn.setSize(150f, 150f)
+        pauseBtn.setPosition(20f, 720f - 120f)
+        pauseBtn.setSize(60f, 60f)
         uiStage.addActor(pauseBtn)
 
         pauseGroup = Table()
@@ -1956,29 +1956,27 @@ class GameScreen(
         pauseGroup!!.background = TextureRegionDrawable(com.badlogic.gdx.graphics.g2d.TextureRegion(dimTex))
 
         val resumeBtn = TextButton("RESUME", skin)
-        resumeBtn.addListener(object : InputListener() {
-            override fun touchDown(event: InputEvent?, x: Float, y: Float, pointer: Int, button: Int): Boolean {
+        resumeBtn.addListener(object : ClickListener() {
+            override fun clicked(event: InputEvent?, x: Float, y: Float) {
                 isPaused = false
                 pauseGroup?.isVisible = false
                 val prefs = Gdx.app.getPreferences("TrustIssues")
                 if (prefs.getBoolean("soundEnabled", true)) {
                     backgroundMusic?.play()
                 }
-                return true
             }
         })
         val homeBtn = TextButton("HOME", skin)
-        homeBtn.addListener(object : InputListener() {
-            override fun touchDown(event: InputEvent?, x: Float, y: Float, pointer: Int, button: Int): Boolean {
+        homeBtn.addListener(object : ClickListener() {
+            override fun clicked(event: InputEvent?, x: Float, y: Float) {
                 backgroundMusic?.stop()
                 Gdx.app.postRunnable { game.screen = LevelSelectScreen(game); dispose() }
-                return true
             }
         })
         val pauseCenter = Table()
         pauseCenter.add(Label("PAUSED", hudStyle)).padBottom(50f).row()
-        pauseCenter.add(resumeBtn).size(400f, 120f).padBottom(40f).row()
-        pauseCenter.add(homeBtn).size(400f, 120f)
+        pauseCenter.add(resumeBtn).size(200f, 80f).padBottom(20f).row()
+        pauseCenter.add(homeBtn).size(200f, 80f)
         pauseGroup!!.add(pauseCenter).center()
         uiStage.addActor(pauseGroup!!)
 
