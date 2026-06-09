@@ -2,7 +2,7 @@ apply plugin: "com.android.application"
 apply plugin: "kotlin-android"
 
 android {
-    namespace "com.trustissues"
+    namespace "com.swifterstudio.trustissues"
     compileSdk 34
     sourceSets {
         main {
@@ -22,7 +22,7 @@ android {
         }
     }
     defaultConfig {
-        applicationId "com.trustissues"
+        applicationId "com.swifterstudio.trustissues"
         minSdk 24
         targetSdk 34
         versionCode 1
