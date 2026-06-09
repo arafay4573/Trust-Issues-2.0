@@ -3,7 +3,7 @@ apply plugin: "kotlin-android"
 
 android {
     namespace "com.swifterstudio.trustissues"
-    compileSdk 34
+    compileSdk 35
     sourceSets {
         main {
             manifest.srcFile 'AndroidManifest.xml'
@@ -24,7 +24,7 @@ android {
     defaultConfig {
         applicationId "com.swifterstudio.trustissues"
         minSdk 24
-        targetSdk 34
+        targetSdk 35
         versionCode 1
         versionName "1.0"
     }
